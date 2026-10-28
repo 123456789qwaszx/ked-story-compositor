@@ -1,5 +1,10 @@
 # VnTool
 
+> **이 저장소는 연출 툴 `ked-story-director`다.** 2026-10-29에 VnTool(`VNStoryEditor_avalonia` `dev` @ `f2a7bdc`)에서
+> 이력째 갈라졌고, VnTool이 연출을 걷은 것과 반대로 **작가 기능을 걷는 중**이다. 대사의 주인은 VnTool이고 이 툴은
+> VnTool이 발행한 대사 결과를 읽기만 한다. 계획과 단계는 [`docs/plans/director-split.md`](docs/plans/director-split.md).
+> 아래 본문은 아직 VnTool 시절 그대로다 — 단계마다 고친다.
+
 비주얼 노벨 저작 도구. C#/.NET 10 + Avalonia, 한국어 코드베이스.
 
 **세 사람이 서로를 막지 않고 동시에 일하게 하는 것**이 이 도구의 목적입니다. 기획자는
