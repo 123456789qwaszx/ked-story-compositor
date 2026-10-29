@@ -167,10 +167,10 @@ internal static class StoryNodeJson
                 lineJson["conditions"] = array;
             }
 
-            // 「조건 분기」 표식 (R7 P-5) — 이 줄에서 다녀올 노드. 조건이 아니다.
-            if (extension.DetourTargetNodeId is { Length: > 0 } detour)
+            // 「조건 분기」 표식 (R7 P-5) — 이 줄 앞에서 차례로 다녀올 노드들. 조건이 아니다.
+            if (DetourJson.Write(extension.DetourTargetNodeIds) is { } detours)
             {
-                lineJson["detour"] = detour;
+                lineJson["detour"] = detours;
             }
 
             lines.Add(lineJson);
@@ -527,10 +527,7 @@ internal static class StoryNodeJson
 
             // ⛔ 줄의 `set`도 2026-09-17에 폐지됐다 — 옛 파일에 남아 있어도 안 읽는다.
 
-            if ((string?)lineJson["detour"] is { Length: > 0 } detour)
-            {
-                extension.DetourTargetNodeId = detour;
-            }
+            extension.DetourTargetNodeIds.AddRange(DetourJson.Read(lineJson["detour"]));
 
             node.LineExtensions.Add(extension);
         }

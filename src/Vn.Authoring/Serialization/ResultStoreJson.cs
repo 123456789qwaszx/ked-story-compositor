@@ -80,7 +80,7 @@ internal static class DialogueResultJson
                 (string?)lineJson["branchExit"],
                 ReadSetOperations(lineJson["set"] as JsonArray),
                 ExtraTransitions: null,
-                DetourTargetNodeId: (string?)lineJson["detour"]));
+                Detours: DetourJson.Read(lineJson["detour"]) is { Count: > 0 } detours ? detours : null));
         }
 
         var assignments = new List<DialogueResultAssignment>();
@@ -151,9 +151,9 @@ internal static class DialogueResultJson
                 item["branchExit"] = line.BranchExitTargetNodeId;
             }
 
-            if (line.DetourTargetNodeId is { Length: > 0 } detour)
+            if (DetourJson.Write(line.DetourTargetNodeIds) is { } detours)
             {
-                item["detour"] = detour;   // 「조건 분기」 표식 (R7 P-5)
+                item["detour"] = detours;   // 「조건 분기」 표식 (R7 P-5) — 하나면 문자열, 여럿이면 배열
             }
 
             if (line.Sets.Count > 0)
