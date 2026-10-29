@@ -62,6 +62,15 @@ public sealed partial class ProjectEditor
     /// 조건 구조(<c>&lt;&lt;if&gt;&gt;</c>…)는 diff 뒤 해당 라인의 전환으로 반영하되, 식은 이 노드가
     /// 쓸 수 있는 조건과 <b>정확 일치</b>로만 역조회한다(보정 금지). 선택 전환은 파서
     /// 비범위이므로 건드리지 않는다. 해석 못 한 것은 전부 Problems로 남는다(규칙 14).
+    ///
+    /// <b>넣기 한 번이 되돌리기 한 칸이다</b> (D4 · 2026-10-29) — 줄 동기화와 전환 맞추기를
+    /// <see cref="Batch"/>로 묶는다. 예전에는 둘이 따로 Mutate라 한 번 물렀을 때 줄은 돌아오고 전환만
+    /// 남거나 그 반대가 됐다(two-graphs.md §5-7).
+    ///
+    /// <b>새 카드의 빈 첫 줄</b> — 대사 노드는 빈 줄 하나를 들고 태어난다. 그 줄과 새 글의 줄들은
+    /// 서로 다른 문장이 한 구간에 남는 꼴이라 동기화가 "확인 필요"로 거절했다(여러 줄을 처음 넣을 때
+    /// 늘). 살아 있는 줄이 빈 줄 하나뿐이면 그 줄이 새 글의 첫 줄이 된다 — 빈 줄은 아직 아무것도
+    /// 아니므로 잇는 데 확신이 필요 없다.
     /// </summary>
     public ScenarioPasteOutcome ApplyScenarioText(
         string dialogueNodeId,
@@ -86,7 +95,9 @@ public sealed partial class ProjectEditor
                 // 파서가 떼어낸 #line: 신원을 그대로 넘긴다. 여기서 버리면 동기화가 ID를 못 보고
                 // 내용 추정으로 되돌아간다 — 엑셀 경로에서는 그게 통째 거부의 원인이 된다.
                 .Select((line, index) =>
-                    new ParsedScriptLine(index + 1, line.Speaker, line.Text, line.LineId))
+                    new ParsedScriptLine(
+                        index + 1, line.Speaker, line.Text,
+                        line.LineId ?? (index == 0 ? BlankOnlyLineIdOf(script) : null)))
                 .ToList(),
             Array.Empty<ScriptParseProblem>(),
             Convert.ToHexString(
@@ -106,10 +117,24 @@ public sealed partial class ProjectEditor
             return new ScenarioPasteOutcome(parsed, plan, Applied: false, NeedsDeleteConfirmation: true, problems);
         }
 
-        ApplyScriptSync(plan);
-        ApplyScenarioTransitions(node, parsed, plan, definition, problems);
+        Batch(() =>
+        {
+            ApplyScriptSync(plan);
+            ApplyScenarioTransitions(node, parsed, plan, definition, problems);
+        });
 
         return new ScenarioPasteOutcome(parsed, plan, Applied: true, NeedsDeleteConfirmation: false, problems);
+    }
+
+    /// <summary>살아 있는 줄이 <b>빈 줄 하나뿐</b>이면 그 줄의 Id — 새로 선 대사 노드의 모습이다.</summary>
+    private static string? BlankOnlyLineIdOf(ScriptDocument script)
+    {
+        List<ScriptLine> active = script.ActiveLines.Take(2).ToList();
+
+        return active.Count == 1 && script.Text(active[0].Id) is { } only &&
+               string.IsNullOrWhiteSpace(only.Speaker) && string.IsNullOrWhiteSpace(only.Text)
+            ? active[0].Id
+            : null;
     }
 
     /// <summary>diff가 확정한 LineId 위로 조건 전환을 맞춘다. 선택 전환은 보호한다.</summary>

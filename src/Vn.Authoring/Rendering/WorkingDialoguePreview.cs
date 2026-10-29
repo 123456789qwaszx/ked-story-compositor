@@ -60,6 +60,37 @@ public static class WorkingDialoguePreview
             document.PresetId);
     }
 
+    /// <summary>
+    /// <b>대사 노드 카드의 글 칸에 보이는 글</b> (D4 · 2026-10-29) — 보는 면이 아니라 <b>쓰는 면</b>이다.
+    /// 넣을 때 <see cref="Editing.ProjectEditor.ApplyScenarioText"/>가 같은 문법으로 되읽으므로(ScenarioOnly 왕복, X12a)
+    /// 그 프리셋의 표기를 그대로 쓰되 <b>진단은 뺀다</b> — <c>[주의]</c> 줄은 파서가 해석 못 한 줄로 올려,
+    /// 넣을 때마다 제가 낸 글이 문제로 되돌아온다(머리글을 뺀 2026-09-18과 같은 이유).
+    /// 끝의 줄바꿈은 걷는다 — 빈 줄 하나뿐인 새 카드는 빈 칸으로 보인다.
+    /// </summary>
+    public static string ScenarioText(StoryProject project, string dialogueNodeId, GameDefinition? definition = null)
+    {
+        DocumentOutputOptions scenario = OutputPresetCatalog.ScenarioOnly.Options;
+        var writing = new DocumentOutputOptions(
+            scenario.Format,
+            scenario.IncludeStructure,
+            scenario.IncludeSetAssignments,
+            scenario.IncludeConditions,
+            scenario.IncludePresentation,
+            scenario.PresentationCategories,
+            scenario.IncludeUncategorizedPresentation,
+            scenario.IncludeDialogueText,
+            scenario.IncludeLocalizedDialogue,
+            scenario.IncludeSpeaker,
+            scenario.IncludeLineId,
+            scenario.IncludeExecutionJumps,
+            includeDiagnostics: false);
+
+        RenderedDocument document = Compose(
+            project, dialogueNodeId, definition, writing, OutputPresetId.ScenarioOnly);
+
+        return DocumentPreviewFormatter.Format(document).TrimEnd('\n');
+    }
+
     public static RenderedDocument ComposePreset(
         StoryProject project,
         string dialogueNodeId,
