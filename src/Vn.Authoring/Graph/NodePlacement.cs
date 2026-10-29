@@ -35,7 +35,7 @@ public static class NodePlacement
     /// 그 에피소드의 카드가 설 자리.
     /// </summary>
     /// <param name="parentEpisodeId">
-    /// 이 에피소드로 이어 줄 부모. 주지 않으면 챕터의 간선에서 찾는다(들어오는 길의 출발 중 카드가 선 첫 것).
+    /// 이 에피소드로 이어 줄 부모. 주지 않으면 챕터의 간선에서 찾는다(들어오는 길의 출발 중 카드가 선 가장 아래 것).
     /// ⚠ 에피소드와 간선을 <b>한 변경으로</b> 만드는 길(<c>AddNextEpisode</c>)은 자리를 물을 때 간선이 아직
     /// 없다 — 그래서 부모를 직접 준다.
     /// </param>
@@ -70,7 +70,11 @@ public static class NodePlacement
         return FirstFree(board, source.Layout.X + Column, source.Layout.Y);
     }
 
-    /// <summary>부모 카드 — 준 것이 먼저고, 없으면 들어오는 간선의 출발 중 카드가 선 첫 것이다.</summary>
+    /// <summary>
+    /// 부모 카드 — 준 것이 먼저고, 없으면 들어오는 간선의 출발 중 카드가 선 것 가운데 <b>가장 아래</b> 것이다.
+    /// 합류하는 에피소드는 가장 깊은 부모의 밑에 서야 그 부모의 레인이 위로 거슬러 오르지 않는다
+    /// (챕터 그래프의 깊이 규칙과 같다 — <see cref="ChapterBranchPlanner.Depths"/>).
+    /// </summary>
     private static DialogueNode? ParentCard(
         StoryProject project, string chapterId, string episodeId, string? parentEpisodeId)
     {
@@ -86,7 +90,8 @@ public static class NodePlacement
             .Where(edge => string.Equals(edge.ToEpisodeId, episodeId, StringComparison.Ordinal) &&
                            !string.Equals(edge.FromEpisodeId, episodeId, StringComparison.Ordinal))
             .Select(edge => EpisodeNaming.CardFor(project, chapterId, edge.FromEpisodeId))
-            .FirstOrDefault(card => card is not null);
+            .Where(card => card is not null)
+            .MaxBy(card => card!.Layout.Y);
     }
 
     /// <summary>그 자리에 카드가 있으면 한 칸씩 오른쪽으로 — 겹치지만 않으면 된다.</summary>

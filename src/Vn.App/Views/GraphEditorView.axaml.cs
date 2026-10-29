@@ -358,7 +358,7 @@ public partial class GraphEditorView : UserControl
                     continue;
                 }
 
-                var rect = new Rect(node.Position.X, node.Position.Y, CardWidth, CardHeightOf(card));
+                Rect rect = FrameRectOf(node, card);
                 bounds = bounds is { } current ? current.Union(rect) : rect;
             }
 
@@ -490,7 +490,7 @@ public partial class GraphEditorView : UserControl
                     continue;
                 }
 
-                var rect = new Rect(node.Position.X, node.Position.Y, CardWidth, CardHeightOf(card));
+                Rect rect = FrameRectOf(node, card);
                 bounds = bounds is { } current ? current.Union(rect) : rect;
             }
 
@@ -565,6 +565,9 @@ public partial class GraphEditorView : UserControl
     private const double RailTrunkInset = 30;   // 출발 카드 왼쪽에서 줄기까지
     private const double RailBranchGap = 44;    // 가지 사이 세로 간격
     private const double RailFirstDrop = 36;    // 카드 아래 첫 가지까지
+    private const double RailArrivalRise = 26;  // 도착 카드 위 가운데 접점까지의 높이 (D3)
+    private const double RailLaneOut = 12;      // 출발 카드 오른쪽에서 내려가는 레인까지 (D3)
+    private const double RailLaneGap = 8;       // 레인끼리 가로 간격 — 같은 줄로 겹치지 않게 (D3)
 
     /// <summary>
     /// 챕터 간선을 철도 노선처럼 (T1, 소유자 그림) — 출발 카드에서 수직 줄기가 내려오고,
@@ -772,10 +775,13 @@ public partial class GraphEditorView : UserControl
 
         double trunkX = sourceRect.X + RailTrunkInset;
         double branchY = sourceRect.Bottom + RailFirstDrop;
+        int lane = 0;
 
         foreach ((ChapterEdge? edge, ExitPort? port, Rect? target, GraphChoicePort? slot) in branches)
         {
-            DrawRailBranch(source, edge, port, trunkX, branchY, target, nodeRects, freeNodes, slot);
+            // 내려가는 레인은 카드 오른쪽에 가지마다 한 줄씩 — 같은 줄로 겹치면 어느 선이 어디로 가는지 안 보인다.
+            double laneX = sourceRect.Right + RailLaneOut + (lane++ * RailLaneGap);
+            DrawRailBranch(source, edge, port, trunkX, branchY, laneX, target, nodeRects, freeNodes, slot);
 
             if (edge is not null && target is not null)
             {
@@ -795,6 +801,25 @@ public partial class GraphEditorView : UserControl
         _railVisuals.Add(RailLine(trunkX, sourceRect.Bottom, trunkX, branchY - RailBranchGap));
     }
 
+    /// <summary>도착 접점 — 카드의 위 가운데, 조금 위 (D3 · 2026-10-29).</summary>
+    private static (double X, double Y) ArrivalJunction(Rect target) =>
+        (target.X + target.Width / 2, target.Y - RailArrivalRise);
+
+    /// <summary>
+    /// 카드 아래로 레일(선택지 칩)이 차지하는 깊이 — 프레임이 카드만이 아니라 레일까지 감싸게 한다 (D3).
+    /// 에피소드 카드가 아니면(칩이 없으면) 0이다.
+    /// </summary>
+    private double RailDepthOf(string nodeId)
+    {
+        int slots = SlotsOf(nodeId).Count;
+
+        return slots == 0 ? 0 : RailFirstDrop + ((slots - 1) * RailBranchGap) + 14;
+    }
+
+    /// <summary>프레임이 감쌀 한 카드의 자리 — 카드와 그 아래 레일까지.</summary>
+    private Rect FrameRectOf(ExpandedNodeProjection node, NodeCard card) =>
+        new(node.Position.X, node.Position.Y, CardWidth, CardHeightOf(card) + RailDepthOf(node.NodeId));
+
     /// <summary>
     /// 도착 포트 (2026-08-15 소유자) — 들어오는 가지들이 도착 카드 앞의 접점 하나로 모인다.
     /// 누르면 어느 에피소드의 어느 선택지들이 여기로 이어지는지 목록이 열린다(읽기 전용 —
@@ -802,11 +827,10 @@ public partial class GraphEditorView : UserControl
     /// </summary>
     private void DrawArrivalPort(Rect target, string episodeId, IReadOnlyList<(string From, string Label)> incoming)
     {
-        double junctionX = target.X - 26;
-        double junctionY = target.Y + target.Height / 2;
+        (double junctionX, double junctionY) = ArrivalJunction(target);
 
-        _railVisuals.Add(RailLine(junctionX, junctionY, target.X - 10, junctionY));
-        _railVisuals.Add(RailArrow(target.X - 9, junctionY, pointRight: true));
+        _railVisuals.Add(RailLine(junctionX, junctionY, junctionX, target.Y - 10));
+        _railVisuals.Add(RailArrow(junctionX, target.Y - 9, pointRight: false));
 
         var port = new Ellipse
         {
@@ -1063,6 +1087,7 @@ public partial class GraphEditorView : UserControl
         ExitPort? port,
         double trunkX,
         double y,
+        double laneX,
         Rect? target,
         IReadOnlyDictionary<string, Rect> nodeRects,
         IReadOnlyList<DialogueNode> freeNodes,
@@ -1112,35 +1137,37 @@ public partial class GraphEditorView : UserControl
         {
             // 도착 포트로 모인다 (소유자 보고 — 접점만 있고 가지는 직접 붙던 결함).
             // 화살표는 포트의 몫이다 — 가지들은 접점까지만 간다.
-            double junctionX = targetRect.X - 26;
-            double junctionY = targetRect.Y + targetRect.Height / 2;
+            //
+            // ⭐ 접점은 도착 카드의 <b>위 가운데</b>다 (D3 · 2026-10-29 소유자: "위에서 아래로"). 칩에서 나온
+            //    가지는 카드 오른쪽의 제 레인으로 빠져 <b>아래로</b> 내려가고, 접점 줄에서 가로로 들어간다.
+            //    전에는 가로 레인이 도착 카드의 왼쪽 접점으로 들어갔다(흐름이 왼→오이던 때).
+            (double junctionX, double junctionY) = ArrivalJunction(targetRect);
 
             if (!web)
             {
-                _railVisuals.Add(RailLine(cursorX, y, junctionX, y));
+                double dropX = Math.Max(cursorX + RailLaneGap, laneX);
 
-                if (Math.Abs(junctionY - y) > 0.5)
-                {
-                    _railVisuals.Add(RailLine(junctionX, y, junctionX, junctionY));
-                }
+                _railVisuals.Add(RailLine(cursorX, y, dropX, y));
+                _railVisuals.Add(RailLine(dropX, y, dropX, junctionY));
+                _railVisuals.Add(RailLine(dropX, junctionY, junctionX, junctionY));
             }
 
             laneEnd = new Point(junctionX, junctionY);
         }
         else if (edge is not null)
         {
-            // 동기화 전 스텁 — 간선은 있는데 도착 에피소드가 아직 이 판에 없다. 없는 노드로
+            // 카드 없음 스텁 — 간선은 있는데 도착 에피소드의 카드가 아직 이 판에 없다. 없는 노드로
             // 선을 긋는 대신 여기서 멈추고, 어디로 가는 길인지는 문구가 말한다.
             var pending = new TextBlock
             {
-                Text = $"▢ {edge.ToEpisodeId} (동기화 전)",
+                Text = $"▢ {edge.ToEpisodeId} (카드 없음)",
                 FontSize = 10,
                 Opacity = 0.55,
                 Foreground = RailChipBrush
             };
             ToolTip.SetTip(pending,
-                $"도착 에피소드 '{edge.ToEpisodeId}'가 아직 이 판에 없습니다 — " +
-                "챕터 그래프의 동기화로 노드를 만들면 여기로 이어집니다.");
+                $"도착 에피소드 '{edge.ToEpisodeId}'의 카드가 아직 이 판에 없습니다 — " +
+                "프로젝트를 저장하고 다시 열면 빈 카드가 서고 여기로 이어집니다.");
             pending.Measure(Size.Infinity);
 
             _railVisuals.Add(RailLine(cursorX, y, cursorX + 18, y));

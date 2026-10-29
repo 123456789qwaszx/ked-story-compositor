@@ -57,6 +57,19 @@ public sealed class NodePlacementTests
     }
 
     [Fact]
+    public void 합류하는_카드는_가장_아래_부모의_밑에_선다()
+    {
+        // root → a → c,  root → c — c는 root가 아니라 a 밑에 서야 a의 레인이 위로 거슬러 오르지 않는다.
+        StoryProject project = World("root", "a", "c");
+        Edge(project, "root", "c");
+        Edge(project, "a", "c");
+        Place(project, "root", 0, 0);
+        Place(project, "a", 0, NodePlacement.Row);
+
+        Assert.Equal((0, 2 * NodePlacement.Row), NodePlacement.For(project, "ch01", "c"));
+    }
+
+    [Fact]
     public void 사람이_부모를_옮겨_뒀으면_그_아래를_따른다()
     {
         // 자리는 사람이 정하는 것이다 — 새 카드가 저 혼자 원래 자리로 돌아가면 안 된다.
