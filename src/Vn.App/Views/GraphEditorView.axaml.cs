@@ -507,7 +507,7 @@ public partial class GraphEditorView : UserControl
         }
     }
 
-    /// <summary>그 노드가 대신하는 에피소드 — 표식이 먼저고, 없으면 이름이다(대본 탭과 같은 규칙).</summary>
+    /// <summary>그 노드가 대신하는 에피소드 — 표식이 먼저고, 없으면 이름이다(EpisodeNaming 한 벌).</summary>
     private string? EpisodeOf(ExpandedNodeProjection node) =>
         _session?.Project.FindNode(node.NodeId) is DialogueNode dialogue
             ? EpisodeNaming.EpisodeIdOf(dialogue)
@@ -1898,8 +1898,8 @@ public partial class GraphEditorView : UserControl
     /// <summary>
     /// 접힌 판 안의 <b>장면 머리글</b> 한 줄 (R6 S-3).
     ///
-    /// ⚠ 누를 수 없다 — 장면은 담는 자리이고, 고르는 것은 노드다(대본 탭 트리와 같은 규율,
-    /// <c>docs/plans/R6-explorer.md</c> §1). 여기서 누르면 판 끌기가 된다.
+    /// ⚠ 누를 수 없다 — 장면은 담는 자리이고, 고르는 것은 노드다
+    /// (<c>docs/plans/R6-explorer.md</c> §1). 여기서 누르면 판 끌기가 된다.
     /// </summary>
     private static Border BuildProxySceneHeader(CollapsedSceneGroup scene) =>
         new()
@@ -2180,7 +2180,7 @@ public partial class GraphEditorView : UserControl
     private string? _editingSlot;
 
     /// <summary>
-    /// 문구 입력칸 — Enter 확정 · Esc 취소 · 딴 데를 누르면 취소(대본 탭 트리와 같은 손버릇).
+    /// 문구 입력칸 — Enter 확정 · Esc 취소 · 딴 데를 누르면 취소.
     ///
     /// 이미 이어진 길이면 <b>그 간선의 문구를 고치고</b>, 아직 안 이었으면 적어만 둔다.
     /// 어느 쪽이든 <b>챕터의 선택지 사전에 배운다</b> — 문구의 주인은 챕터다(v9).
@@ -3214,7 +3214,7 @@ public partial class GraphEditorView : UserControl
     /// <summary>
     /// 그 노드가 선 자리 — (챕터, 에피소드). 에피소드가 아니면 null.
     ///
-    /// ⚠ 판 이름이 챕터고 표식이 먼저고 없으면 이름이다 — 대본 탭·장면 묶기·슬롯 투영이
+    /// ⚠ 판 이름이 챕터고 표식이 먼저고 없으면 이름이다 — 장면 묶기·슬롯 투영이
     /// 쓰는 그 규칙이다(새 규약을 만들지 않는다).
     /// </summary>
     private (string ChapterId, string EpisodeId)? EpisodeAt(string nodeId)
@@ -3399,7 +3399,7 @@ public partial class GraphEditorView : UserControl
         }
 
         // ⭐ <b>챕터 판의 대사 카드는 에피소드다</b> (R7 P-6 · 결정 ⑤). 그러니 그 카드를
-        //    지우는 것은 <b>에피소드를 지우는 일</b>이고, 챕터 그래프·대본 탭과 같은 길을
+        //    지우는 것은 <b>에피소드를 지우는 일</b>이고, 챕터 그래프와 같은 길을
         //    지나야 한다 — 2026-09-18까지는 카드만 걷어 <b>대본 없는 반쪽 에피소드</b>가
         //    남았다(만들기는 합쳐 놓고 지우기는 안 합친 자리였다).
         //
@@ -3429,8 +3429,8 @@ public partial class GraphEditorView : UserControl
     }
 
     /// <summary>
-    /// 지금 떠 있는 확인 단추 — <b>테스트의 손잡이</b>다([대본] 탭의 <c>ConfirmButton</c>과
-    /// 같은 뜻). 플라이아웃의 팝업은 창 밖에 살아 나무를 타고 내려가 찾을 수 없다.
+    /// 지금 떠 있는 확인 단추 — <b>테스트의 손잡이</b>다. 플라이아웃의 팝업은 창 밖에 살아
+    /// 나무를 타고 내려가 찾을 수 없다.
     /// </summary>
     internal Button? DeleteConfirmButton { get; private set; }
 

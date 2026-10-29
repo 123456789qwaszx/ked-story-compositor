@@ -280,7 +280,7 @@ public static class GraphProjectionBuilder
             yield break;
         }
 
-        // 노드 → 에피소드는 표식이 먼저고 없으면 이름이다 — 대본 탭·장면 묶기와 같은 규칙이다.
+        // 노드 → 에피소드는 표식이 먼저고 없으면 이름이다 — 장면 묶기와 같은 규칙(EpisodeNaming 한 벌)이다.
         string episodeId = EpisodeNaming.EpisodeIdOf(dialogue);
 
         if (!chapter.Episodes.Any(episode =>
@@ -466,7 +466,7 @@ public static class GraphProjectionBuilder
     /// <c>EnsureChapterBoard</c>가 세우는 규약이다.
     ///
     /// ⚠ <b>묶지 않는 경우 둘</b>: ① 챕터를 못 찾는 판(작가의 자유 판) ② 장면ID를 하나도
-    /// 안 적은 챕터. ②는 대본 탭 트리와 <b>같은 규칙</b>이다 — 그대로 묶으면 에피소드 수만큼
+    /// 안 적은 챕터. ②를 그대로 묶으면 에피소드 수만큼
     /// 장면 머리글이 생겨 프록시가 통째로 노이즈가 된다(<c>docs/plans/R6-explorer.md</c> §2).
     ///
     /// ⚠ <b>자유 씬은 장면 밖이다.</b> 에피소드가 아닌 대사노드·설정·연출 노드는 챕터의
@@ -491,8 +491,8 @@ public static class GraphProjectionBuilder
             return [Single(entries)];
         }
 
-        // 노드 → 에피소드는 이름이나 엑셀 표식으로 잇는다 — 대본 탭이 쓰는 규칙과 같아야
-        // 한다(아니면 같은 에피소드를 두 화면이 다르게 짚는다).
+        // 노드 → 에피소드는 표식이 먼저고 없으면 이름이다 — EpisodeNaming 한 벌과 같아야
+        // 한다(아니면 같은 에피소드를 화면마다 다르게 짚는다).
         var sceneOf = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (ChapterScene scene in scenes)

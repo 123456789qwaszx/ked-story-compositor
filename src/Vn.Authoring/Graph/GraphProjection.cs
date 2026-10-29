@@ -49,8 +49,8 @@ public sealed record ExpandedNodeProjection(
 /// </param>
 /// <param name="Scenes">
 /// 장면 묶음 (R6 S-3 · 2026-09-16). 판이 어느 챕터인지 알 때만 갈린다 — 이름이 챕터와 맞는
-/// 판이 아니거나 <b>장면ID를 하나도 안 적은 챕터</b>면 묶음 하나로 온다(대본 탭 트리와 같은
-/// 규칙 — <c>docs/plans/R6-explorer.md</c> §2).
+/// 판이 아니거나 <b>장면ID를 하나도 안 적은 챕터</b>면 묶음 하나로 온다
+/// (<c>docs/plans/R6-explorer.md</c> §2).
 /// </param>
 public sealed record CollapsedFileProjection(
     string FileId,
