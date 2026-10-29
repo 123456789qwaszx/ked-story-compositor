@@ -43,7 +43,6 @@ public class AuthoringSessionTests
 
             Assert.Equal(second.Id, session.ActiveFileId);
             Assert.Equal("nd_b", session.SelectedNodeId);
-            Assert.All(session.Project.Files, file => Assert.True(session.IsFileExpanded(file.Id)));
             Assert.Equal(Path.GetFullPath(path), session.ProjectPath);
             Assert.False(session.IsDirty);
         }
@@ -110,61 +109,6 @@ public class AuthoringSessionTests
 
 
     [Fact]
-    public void 새_프로젝트의_모든_파일은_기본적으로_그래프에_펼쳐진다()
-    {
-        var session = new AuthoringSession();
-        StoryFile first = Assert.Single(session.Project.Files);
-
-        StoryFile second = session.Editor.AddStoryFile("두 번째");
-
-        Assert.True(session.IsFileExpanded(first.Id));
-        Assert.True(session.IsFileExpanded(second.Id));
-        Assert.Equal(
-            new[] { first.Id, second.Id },
-            session.ExpandedFileIds.OrderBy(id => session.Project.Files.FindIndex(file => file.Id == id)));
-    }
-
-    [Fact]
-    public void 파일_선택은_펼침을_접지_않는다_여러_파일을_함께_본다()
-    {
-        // W49 (소유자 판단): W43의 "선택=그 파일만 펼침"은 여러 파일을 오가며 함께
-        // 보는 것을 막아 철회. 선택과 펼침은 독립이고, 접힌 파일을 고르면 펴 주기만 한다.
-        var session = new AuthoringSession();
-        StoryFile first = session.ActiveFile!;
-        StoryFile second = session.Editor.AddStoryFile("두 번째");
-        DialogueNode firstNode = session.Editor.AddDialogueNode(first.Id, name: "첫 파일");
-        DialogueNode secondNode = session.Editor.AddDialogueNode(second.Id, name: "둘째 파일");
-
-        session.SelectFile(second.Id);
-
-        Assert.Equal(second.Id, session.ActiveFileId);
-        Assert.True(session.IsFileExpanded(first.Id));  // 다른 파일은 접히지 않는다
-        Assert.True(session.IsFileExpanded(second.Id));
-        Assert.Equal(
-            new[] { firstNode.Id, secondNode.Id },
-            session.EnumerateExpandedNodes().Select(node => node.Id));
-
-        // 접어 둔 파일을 고르면 펴 주기만 한다 — 고른 파일이 안 보이는 일은 없다.
-        session.SetFileExpanded(first.Id, expanded: false);
-        session.SelectFile(first.Id);
-        Assert.True(session.IsFileExpanded(first.Id));
-        Assert.True(session.IsFileExpanded(second.Id));
-    }
-
-    [Fact]
-    public void 펼침_체크는_프로젝트_dirty와_Undo에_영향을_주지_않는다()
-    {
-        var session = new AuthoringSession();
-        StoryFile file = session.ActiveFile!;
-
-        session.SetFileExpanded(file.Id, expanded: false);
-
-        Assert.False(session.IsDirty);
-        Assert.False(session.Editor.CanUndo);
-        Assert.False(session.IsFileExpanded(file.Id));
-    }
-
-    [Fact]
     public void 새_노드는_ActiveFile의_마지막에_추가된다()
     {
         var session = new AuthoringSession();
@@ -181,32 +125,18 @@ public class AuthoringSessionTests
     }
 
     [Fact]
-    public void 파일_상태_변경_이벤트는_현재_선택과_펼침_변경을_구분한다()
+    public void 파일_선택은_현재_파일_변경으로만_알린다()
     {
         var session = new AuthoringSession();
-        StoryFile first = session.ActiveFile!;
         StoryFile second = session.Editor.AddStoryFile("두 번째");
         var changes = new List<FileGraphStateChangedEventArgs>();
         session.FileGraphStateChanged += (_, e) => changes.Add(e);
 
         session.SelectFile(second.Id);
-        session.SetFileExpanded(first.Id, expanded: false);
 
-        Assert.Collection(
-            changes,
-            active =>
-            {
-                // 이미 펼쳐진 파일의 선택은 펼침을 건드리지 않는다 (W49 — 독립 복원).
-                Assert.True(active.ActiveFileChanged);
-                Assert.False(active.ExpandedFilesChanged);
-                Assert.False(active.FileListChanged);
-            },
-            expanded =>
-            {
-                Assert.False(expanded.ActiveFileChanged);
-                Assert.True(expanded.ExpandedFilesChanged);
-                Assert.False(expanded.FileListChanged);
-            });
+        FileGraphStateChangedEventArgs active = Assert.Single(changes);
+        Assert.True(active.ActiveFileChanged);
+        Assert.False(active.FileListChanged);
     }
 
     [Fact]
@@ -221,43 +151,6 @@ public class AuthoringSessionTests
 
         Assert.Equal(2, changes.Count);
         Assert.All(changes, change => Assert.True(change.FileListChanged));
-        Assert.True(changes[0].ExpandedFilesChanged);
-        Assert.False(changes[1].ExpandedFilesChanged);
-    }
-
-
-    [Fact]
-    public void 접어_둔_파일은_다른_프로젝트_편집_뒤에도_접힌_상태를_유지한다()
-    {
-        var session = new AuthoringSession();
-        StoryFile first = session.ActiveFile!;
-        StoryFile second = session.Editor.AddStoryFile("두 번째");
-        DialogueNode node = session.Editor.AddDialogueNode(first.Id, name: "장면");
-
-        session.SetFileExpanded(second.Id, expanded: false);
-        session.Editor.RenameNode(node.Id, "수정된 장면");
-
-        Assert.False(session.IsFileExpanded(second.Id));
-        Assert.True(session.IsFileExpanded(first.Id));
-    }
-
-    [Fact]
-    public void Undo로_파일이_사라지면_workspace_상태에서_정리되고_Redo시_다시_펼쳐진다()
-    {
-        var session = new AuthoringSession();
-        StoryFile added = session.Editor.AddStoryFile("추가");
-
-        Assert.True(session.IsFileExpanded(added.Id));
-
-        session.Editor.Undo();
-
-        Assert.Null(session.Project.FindFile(added.Id));
-        Assert.DoesNotContain(added.Id, session.ExpandedFileIds);
-
-        session.Editor.Redo();
-
-        Assert.NotNull(session.Project.FindFile(added.Id));
-        Assert.Contains(added.Id, session.ExpandedFileIds);
     }
 
     // ── 튜닝 관리 (W46) ───────────────────────────────────────────────────
@@ -389,47 +282,6 @@ public class AuthoringSessionTests
             // 정의 파일은 예나 지금이나 손대지 않는다 (2026-08-17 — 기획자 전용).
             Assert.DoesNotContain(reopened.Definition.Speakers, speaker =>
                 string.Equals(speaker.Name, "구판화자", StringComparison.Ordinal));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    /// <summary>
-    /// 기획자 어휘가 갈리면 <b>스스로 알린다</b> (2026-08-26 소유자 보고: 챕터 그래프에서
-    /// 화자를 지웠는데 연출 그래프가 옛 목록을 계속 보였다 — "바로바로 반영이 됐으면 해").
-    ///
-    /// 예전에는 <c>SaveSpeakers</c>가 파일을 쓰고 정의를 <b>조용히</b> 다시 읽었고, 이미
-    /// 그려진 화면은 그 사실을 알 길이 없어 제 노드를 다시 고를 때까지 낡은 목록을 들었다.
-    /// <b>지우기가 특히 나빴다</b>: 없는 이름이 드롭다운에 남아 고를 수 있었다.
-    ///
-    /// ⚠ 이 시험이 거는 것은 <b>알림이 온다</b>는 사실 하나다 — 누가 무엇을 다시 그리는지는
-    /// 듣는 쪽의 사정이고, 알림이 없으면 어느 쪽도 알 수가 없다.
-    /// </summary>
-    [Fact]
-    public void 화자를_지우면_정의가_바뀌었다고_알린다()
-    {
-        string directory = TempDirectory();
-
-        try
-        {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
-
-            Assert.True(session.SaveSpeakers([
-                new SpeakerSpec { Name = "라루" },
-                new SpeakerSpec { Name = "윌로우" }
-            ]));
-
-            int notified = 0;
-            session.DefinitionChanged += (_, _) => notified++;
-
-            // 지우는 방식 — 남길 것만 넘긴다(통째로 쓰는 것이 규격이다).
-            Assert.True(session.SaveSpeakers([new SpeakerSpec { Name = "라루" }]));
-
-            Assert.Equal(1, notified);
-            Assert.Equal("라루", Assert.Single(session.Definition.Speakers).Name);
         }
         finally
         {

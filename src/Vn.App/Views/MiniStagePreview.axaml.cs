@@ -302,7 +302,7 @@ public partial class MiniStagePreview : UserControl
     //
     // 전이 규칙 v9①: 에피소드 대본이 끝나면 챕터 `간선`의 선택지가 제시된다(뜨는 순서 =
     // `간선` 시트의 행 순서). 프리뷰 재생은 그 절반이 없어서 노드 끝에서 그냥 멈췄다.
-    // 간선의 원천은 챕터 그래프가 읽은 목록 하나(SupplyChapters)이고, 고르면 씬 선택기와
+    // 간선의 원천은 셸이 공급하는 챕터 목록 하나(SupplyChapters)이고, 고르면 씬 선택기와
     // 같은 길(SceneChosen → EnsurePresentationChannel)로 도착 에피소드가 무대에 오른다.
 
     /// <summary>지금 무대에 선 요청 — 테스트가 제시된 선택지를 들여다보는 창이다.</summary>
@@ -554,7 +554,7 @@ public partial class MiniStagePreview : UserControl
             // 아직 동기화 전인 에피소드 — 판에 카드가 없으니 넘어갈 곳도 없다.
             _session.SetStatus(
                 $"'{edge.ToEpisodeId}' 에피소드는 아직 판에 노드가 없어 이어 재생할 수 없습니다 — " +
-                "챕터 그래프에서 이 챕터를 한 번 고르면 동기화가 세웁니다.");
+                "ked-story-director에서 그 에피소드의 대사 카드를 세워 주세요.");
             return;
         }
 
@@ -575,10 +575,10 @@ public partial class MiniStagePreview : UserControl
     private bool _updatingSceneCombo;
 
     // ── 챕터 고르기 (2026-08-26 소유자: "챕터 그래프, 연출 그래프와 동일하게 챕터
-    //    드롭다운을") — 목록의 원천은 챕터 그래프가 읽은 하나(SupplyChapters, 셸이 건다),
-    //    선택은 ActiveFile 하나를 비춘다. GraphEditorView의 콤보와 같은 규칙이다.
+    //    드롭다운을") — 목록의 원천은 셸이 공급하는 하나(SupplyChapters — 세션이 프로젝트에서 편다),
+    //    선택은 ActiveFile 하나를 비춘다. (두 그래프는 2026-10-29에 ked-story-director에 남았다.)
 
-    /// <summary>챕터 그래프 뷰가 읽은 챕터 목록 — 이 뷰는 챕터를 직접 읽지 않는다.</summary>
+    /// <summary>셸이 공급한 챕터 목록 — 이 뷰는 챕터를 직접 읽지 않는다.</summary>
     private IReadOnlyList<ChapterEntry> _chapters = Array.Empty<ChapterEntry>();
 
     /// <summary>선택을 비추는 동안에는 SelectionChanged가 선택을 바꾸지 않게 한다.</summary>
@@ -592,7 +592,7 @@ public partial class MiniStagePreview : UserControl
 
     /// <summary>
     /// 에셋 탐색기 자리 (2026-08-26 소유자 — 연출 그래프에서 이사). 자리는 이 뷰의 것,
-    /// 내용은 셸의 것이다(챕터 목록 손잡이들과 같은 규칙).
+    /// 내용은 셸의 것이다.
     /// </summary>
     internal ContentControl AssetExplorerHost => AssetHost;
 
@@ -654,7 +654,7 @@ public partial class MiniStagePreview : UserControl
 
         // 고른 챕터의 판을 활성으로 — 씬 선택기가 그 판의 씬만 담는다.
         // ⚠ 콤보를 비추는 중에는 안 돈다(_syncingChapter) — 비추는 일이 바꾸는 일이 되면
-        //    서로를 부른다(GraphEditorView와 같은 빗장).
+        //    서로를 부른다.
         ChapterCombo.SelectionChanged += (_, _) =>
         {
             if (_syncingChapter || _session is null ||

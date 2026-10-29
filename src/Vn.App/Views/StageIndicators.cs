@@ -239,7 +239,7 @@ internal static class StageIndicators
     /// 알림 한 줄. <b>SelectableTextBlock</b>이다 (2026-08-21 소유자: "이런 문구를 복사할
     /// 수 있도록") — 드래그로 집어 간다. 전체를 들고 가던 [진단 복사] 단추는 2026-08-24에
     /// 걷혔고, 이제 이 드래그가 <b>유일한 복사 통로</b>다.
-    /// 챕터 그래프 검증 보고와 같은 문법이다(`ChapterGraphView.DiagnosticLine`).
+    /// ked-story-director의 챕터 그래프 검증 보고와 같은 문법이다.
     /// </summary>
     private static void AddNotice(Panel host, string message, bool warning)
     {

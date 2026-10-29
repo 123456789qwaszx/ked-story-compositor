@@ -12,7 +12,7 @@
                 Padding="12,10"
                 BorderBrush="{DynamicResource ThemeBorderLowBrush}"
                 BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,16,Auto,Auto,16,Auto,Auto,Auto,Auto,16,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,16,Auto,Auto,16,Auto,Auto,Auto,16,*,Auto">
                 <Button Grid.Column="0" x:Name="NewButton" Content="새 프로젝트" />
                 <Button Grid.Column="1" x:Name="OpenButton" Content="열기…" Margin="6,0,0,0" />
                 <Button Grid.Column="2" x:Name="SaveButton" Content="저장" Margin="6,0,0,0" />
@@ -21,24 +21,14 @@
                 <Button Grid.Column="5" x:Name="UndoButton" Content="실행 취소" />
                 <Button Grid.Column="6" x:Name="RedoButton" Content="다시 실행" Margin="6,0,0,0" />
 
-                <!--
-                  진행 JSON은 사람 손을 안 기다리고 저절로 나가므로(2026-08-17), 사람이 할
-                  일은 "가서 꺼내 오는 것"뿐이다. 그 자리를 몰라 못 꺼내 가던 것을 연다
-                  (2026-08-25 소유자 — 비개발자 작가에게 건네는 준비의 일부).
+                <!-- ⛔ [📂 챕터진행](진행 JSON 폴더 열기)은 2026-10-29에 걷혔다 — 진행 JSON은 ked-story-director가 낸다.
+                     ⚠ 셋(내보내기·CSV·양식)은 <b>한 가족</b>이라 붙여 둔다. 지금 CSV·양식은 접혀 있지만(ApplyExportChrome),
+                     되살아날 때 이 무리 안에서 서야 한다. -->
+                <Button Grid.Column="8" x:Name="ExportButton" Content="내보내기…" />
+                <Button Grid.Column="9" x:Name="CsvExportButton" Content="CSV 내보내기…" Margin="6,0,0,0" />
+                <Button Grid.Column="10" x:Name="ExportFormatsButton" Content="양식…" Margin="6,0,0,0" />
 
-                  ⚠ <b>이 무리에서 맨 왼쪽이다</b> (2026-08-26 소유자: "챕터진행이 좌측에
-                  있고 내보내기가 우측으로"). 저절로 나간 것을 꺼내 가는 일이 흔하고,
-                  손으로 내보내는 일이 드물다 — 자주 쓰는 것이 앞이다.
-                  ⚠ 뒤 셋(내보내기·CSV·양식)은 <b>한 가족</b>이라 붙여 둔다. 지금 CSV·양식은
-                  접혀 있지만(ApplyTabChrome), 되살아날 때 이 무리 안에서 서야 한다.
-                -->
-                <Button Grid.Column="8" x:Name="OpenExportFolderButton" Content="📂 챕터진행"
-                        ToolTip.Tip="exported/ 폴더를 엽니다 — 챕터별 진행 JSON이 여기 있습니다." />
-                <Button Grid.Column="9" x:Name="ExportButton" Content="내보내기…" Margin="6,0,0,0" />
-                <Button Grid.Column="10" x:Name="CsvExportButton" Content="CSV 내보내기…" Margin="6,0,0,0" />
-                <Button Grid.Column="11" x:Name="ExportFormatsButton" Content="양식…" Margin="6,0,0,0" />
-
-                <StackPanel Grid.Column="13" VerticalAlignment="Center" Margin="8,0">
+                <StackPanel Grid.Column="12" VerticalAlignment="Center" Margin="8,0">
                     <TextBlock x:Name="ProjectNameText" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="ProjectPathText" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -48,7 +38,7 @@
                      밀려야 한다. `📂 챕터진행`을 더할 때 이름 칸만 12→13으로 옮기고 이쪽을
                      안 옮겨서, 이 글이 <b>이름 위에 겹쳐</b> 섰다(2026-08-26 소유자 보고:
                      "원래 우측상단 끝이였는데"). 열 번호는 둘이 한 쌍이다. -->
-                <TextBlock Grid.Column="14"
+                <TextBlock Grid.Column="13"
                            x:Name="DirtyText"
                            VerticalAlignment="Center"
                            FontWeight="SemiBold" />
@@ -66,28 +56,9 @@
             <TextBlock x:Name="StatusText" FontSize="11" TextWrapping="Wrap" />
         </Border>
 
-        <!-- 창은 이제 탭 하나뿐이다 (2026-08-22 소유자). 곁기둥 둘이 제 화면 안으로
-             들어갔다: <b>챕터 목록</b>은 챕터 그래프로, <b>노드 편집기 + 에셋 탐색기</b>는
-             연출 그래프로. 창이 들고 탭마다 접었다 펴던 시절에는 어느 화면의 것인지가
-             chrome 코드에만 적혀 있었고, 그래서 다른 화면의 발행·프리뷰가 소음으로 남았다.
-             이제 자리가 곧 소속이다 — 무대 프리뷰는 창 전체를 쓴다.
-             탭 순서가 곧 작업 순서다 (2026-08-18 팀장 미팅): ① 챕터 그래프에서 구조와
-             대사를 짜고, ② 연출 그래프에서 그 위에 연출을 얹고, ③ 무대에서 확인한다.
-             두 그래프는 데이터도 편집 경로도 공유하지 않는다 (G-1). -->
-        <TabControl x:Name="MainTabs" Padding="0">
-            <TabItem x:Name="ChapterTabItem" Header="챕터 그래프">
-                <views:ChapterGraphView x:Name="ChapterGraph" />
-            </TabItem>
-            <TabItem x:Name="GraphTabItem" Header="연출 그래프">
-                <views:GraphEditorView x:Name="Graph" />
-            </TabItem>
-            <!-- 무대 프리뷰 승격 (2026-08-20 소유자) — 우측 아래 조그만 패널이 아니라
-                 그래프들과 같은 급의 판이다. 분리 창(창으로 열기)은 이 탭이 대체한다. -->
-            <!-- ⚠ 앞 둘의 순서는 건드리지 않는다 — `MainChromeTests`가 고정하고 있다.
-                 [대본] 탭은 2026-10-29에 걷혔다(docs/design/two-graphs.md §7 D2). -->
-            <TabItem x:Name="StageTabItem" Header="무대 프리뷰">
-                <views:MiniStagePreview x:Name="StagePreview" />
-            </TabItem>
-        </TabControl>
+        <!-- 창은 무대 하나다 (2026-10-29 — ked-story-director에서 갈라지며). 이야기의 뼈대와 대사를 쓰는
+             두 그래프(챕터 그래프 · 연출 그래프)는 director의 것이라 걷혔다. 어느 씬을 연출할지는 무대의
+             챕터 · 씬 선택기가 고른다(docs/plans/compositor-split.md C1). -->
+        <views:MiniStagePreview x:Name="StagePreview" />
     </DockPanel>
 </Window>

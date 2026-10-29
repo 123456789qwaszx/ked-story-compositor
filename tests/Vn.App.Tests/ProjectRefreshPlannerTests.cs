@@ -5,148 +5,33 @@ using Vn.Authoring.Model;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// SetNode의 TextBox가 LostFocus에서 값을 커밋해도 그 TextBox 자체를 다시 만들지 않는다는 계약.
-/// 그래프와 Dialogue 조건 선택지는 새 조건 이름을 읽어야 하므로 조건 정의 변경은
-/// 단순 Content와도, 전체 Structure 변경과도 다르게 처리한다.
+/// 변경 한 번이 화면에 무엇을 다시 하게 하는가 — 다시 만드는 순간 사람이 누르던 칸이 사라지므로,
+/// 꼭 필요한 것만 다시 한다. (⛔ 그래프 · 대사 편집기 쪽 계약은 2026-10-29에 그 화면들과 함께
+/// ked-story-director에 남았다.)
 /// </summary>
 public class ProjectRefreshPlannerTests
 {
     [Fact]
-    public void 조건을_편집_중인_SetNode는_유지하고_그래프만_갱신한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.ConditionDefinition,
-            new SetNode(name: "설정"));
-
-        Assert.True(plan.RebuildGraph);
-        Assert.False(plan.RefreshGraphPositions);
-        Assert.False(plan.RebuildInspector);
-    }
-
-    [Fact]
-    public void Dialogue가_선택되어_있으면_조건_드롭다운도_다시_계산한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.ConditionDefinition,
-            new DialogueNode(name: "장면"));
-
-        Assert.True(plan.RebuildGraph);
-        Assert.True(plan.RebuildInspector);
-    }
-
-    /// <summary>
-    /// 발행은 편집 행을 바꾸지 않는다. 결과 목록과 그래프 뱃지만 새로 읽으면 된다.
-    /// 발행할 때마다 편집기를 통째로 다시 만들면 입력 중이던 칸이 사라진다.
-    /// </summary>
-    [Fact]
-    public void 발행은_그래프와_결과_목록만_갱신한다()
-    {
-        ProjectRefreshPlan dialogue = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Results,
-            new DialogueNode(name: "장면"));
-        ProjectRefreshPlan set = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Results,
-            new SetNode(name: "설정"));
-
-        Assert.True(dialogue.RebuildGraph);
-        Assert.True(dialogue.RebuildInspector);
-
-        // 결과와 무관한 SetNode 편집기는 건드리지 않는다.
-        Assert.True(set.RebuildGraph);
-        Assert.False(set.RebuildInspector);
-    }
-
-    [Fact]
-    public void assignment_내용_변경은_컨트롤을_재생성하지_않는다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Content,
-            new SetNode(name: "설정"));
-
-        Assert.False(plan.RebuildGraph);
-        Assert.False(plan.RefreshGraphPositions);
-        Assert.False(plan.RebuildInspector);
-    }
-
-
-    [Fact]
-    public void Dialogue_내용_변경은_편집기를_재생성하지_않고_Preview만_갱신한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.DialogueContent,
-            new DialogueNode(name: "장면"));
-
-        Assert.False(plan.RebuildGraph);
-        Assert.False(plan.RebuildInspector);
-        Assert.True(plan.RefreshPreview);
-    }
-
-    [Fact]
-    public void 그래프_좌표_이동은_Preview를_다시_합성하지_않는다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Layout,
-            new DialogueNode(name: "장면"));
-
-        Assert.True(plan.RefreshGraphPositions);
-        Assert.False(plan.RefreshPreview);
-    }
-
-    [Fact]
-    public void 구조_변경만_그래프와_Inspector를_모두_다시_만든다()
+    public void 구조_변경은_챕터_목록과_연출_편집기를_다시_만든다()
     {
         ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
             ProjectChangeKind.Structure,
-            new SetNode(name: "설정"));
-
-        Assert.True(plan.RebuildGraph);
-        Assert.True(plan.RebuildInspector);
-    }
-    [Fact]
-    public void Settings_link_변경은_SetNode_편집기를_유지하고_그래프만_갱신한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Connections,
-            new SetNode(name: "설정"));
-
-        Assert.True(plan.RebuildGraph);
-        Assert.False(plan.RefreshGraphPositions);
-        Assert.False(plan.RebuildInspector);
-    }
-
-    [Fact]
-    public void Settings_link_변경은_선택된_Dialogue의_조건_목록을_다시_계산한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Connections,
-            new DialogueNode(name: "장면"));
-
-        Assert.True(plan.RebuildGraph);
-        Assert.False(plan.RefreshGraphPositions);
-        Assert.True(plan.RebuildInspector);
-    }
-
-    [Fact]
-    public void Presentation_link_변경은_선택된_Presentation의_대상과_orphan을_다시_계산한다()
-    {
-        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Connections,
             new PresentationNode(name: "연출"));
 
-        Assert.True(plan.RebuildGraph);
+        Assert.True(plan.RefreshChapters);
         Assert.True(plan.RebuildInspector);
     }
 
     [Fact]
-    public void Presentation_Command_편집은_현재_연출_편집기를_재생성하지_않는다()
+    public void Presentation_Command_편집은_현재_연출_편집기를_재생성하지_않고_무대만_다시_접는다()
     {
         ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
             ProjectChangeKind.PresentationContent,
             new PresentationNode(name: "연출"));
 
-        Assert.False(plan.RebuildGraph);
+        Assert.False(plan.RefreshChapters);
         Assert.False(plan.RebuildInspector);
-        Assert.False(plan.RefreshPreview);
+        Assert.True(plan.RefreshStagePreview);
     }
 
     [Fact]
@@ -157,7 +42,51 @@ public class ProjectRefreshPlannerTests
             new PresentationNode(name: "연출"));
 
         Assert.True(plan.RebuildInspector);
-        Assert.False(plan.RefreshPreview);
+        Assert.False(plan.RefreshStagePreview);
     }
 
+    [Fact]
+    public void Presentation_link_변경은_선택된_Presentation의_대상과_orphan을_다시_계산한다()
+    {
+        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
+            ProjectChangeKind.Connections,
+            new PresentationNode(name: "연출"));
+
+        Assert.True(plan.RebuildInspector);
+    }
+
+    /// <summary>발행은 편집 행을 바꾸지 않는다 — 연출 편집기가 읽는 결과만 새로 읽는다.</summary>
+    [Fact]
+    public void 발행은_연출_편집기만_다시_읽고_챕터_목록은_그대로다()
+    {
+        ProjectRefreshPlan presentation = ProjectRefreshPlanner.Plan(
+            ProjectChangeKind.Results,
+            new PresentationNode(name: "연출"));
+        ProjectRefreshPlan dialogue = ProjectRefreshPlanner.Plan(
+            ProjectChangeKind.Results,
+            new DialogueNode(name: "장면"));
+
+        Assert.True(presentation.RebuildInspector);
+        Assert.False(presentation.RefreshChapters);
+        Assert.False(dialogue.RebuildInspector);
+    }
+
+    [Fact]
+    public void 노드_이름이_바뀌면_씬_선택기가_읽는_목록을_다시_공급한다()
+    {
+        ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(
+            ProjectChangeKind.NodeMetadata,
+            new PresentationNode(name: "연출"));
+
+        Assert.True(plan.RefreshChapters);
+        Assert.False(plan.RebuildInspector);
+    }
+
+    [Fact]
+    public void 좌표_이동은_아무것도_다시_하지_않는다()
+    {
+        Assert.Equal(default, ProjectRefreshPlanner.Plan(
+            ProjectChangeKind.Layout,
+            new PresentationNode(name: "연출")));
+    }
 }

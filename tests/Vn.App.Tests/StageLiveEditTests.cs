@@ -12,7 +12,7 @@ using Vn.Authoring.Script;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// <b>무대 탭에서 넣은 조작이 그 자리에서 무대에 서는가</b> (2026-08-26 소유자 보고:
+/// <b>무대에서 넣은 조작이 그 자리에서 무대에 서는가</b> (2026-08-26 소유자 보고:
 /// "duration을 0으로 설정했는데도 즉각적으로 반영이 안되고 다른 에피소드를 클릭했다
 /// 돌아오면 그제서야 반영이 제대로 되는 버그").
 ///
@@ -22,10 +22,6 @@ namespace Vn.App.Tests;
 /// </summary>
 public sealed class StageLiveEditTests
 {
-    /// <summary>무대 프리뷰 탭의 자리. ⚠ 인덱스는 탭이 늘 때마다 낡는다 — 이름으로 찾는다.</summary>
-    private static TabItem StageTab(Window window) =>
-        window.FindControl<TabItem>("StageTabItem")!;
-
     [Fact]
     public void 무대에서_더한_조작은_씬을_다시_고르지_않아도_무대에_선다() => HeadlessUi.Run(() =>
     {
@@ -40,9 +36,8 @@ public sealed class StageLiveEditTests
         ScriptLine line = session.Editor.InsertScriptLine(dialogue.ScriptId!);
         session.Editor.SetScriptLineText(dialogue.ScriptId!, line.Id, "라루", "첫 줄");
 
-        // 무대 탭 진입 = 씬 선택 (2026-08-22) — 고른 대사의 연출 채널이 선다.
+        // 대사 노드를 고르는 것 = 씬 선택 — 고른 대사의 연출 채널이 선다.
         session.Select(dialogue.Id);
-        window.FindControl<TabControl>("MainTabs")!.SelectedItem = StageTab(window);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         PresentationNode presentation = Assert.IsType<PresentationNode>(session.SelectedNode);

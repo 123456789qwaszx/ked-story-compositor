@@ -7,8 +7,9 @@ using Vn.Authoring.Serialization;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// <b>창 전체의 Ctrl+Z</b> — 되돌리기는 단추만이 아니라 단축키로도 되고, 글을 쓰는 칸에서는
-/// 가로채지 않는다.
+/// <b>창 전체의 Ctrl+Z</b> — 되돌리기는 단추만이 아니라 단축키로도 된다. (글을 쓰는 칸에서는 가로채지
+/// 않는다 — 그 시험은 늘 서 있는 글 칸을 쓰던 화면[챕터 그래프의 화자 탭]과 함께 2026-10-29에 걷혔고,
+/// 규칙은 MainWindow의 Ctrl+Z 처리에 그대로 있다.)
 ///
 /// ⚠ 그래서 이 클래스는 화면 하나가 아니라 <b>창</b>을 띄운다. 단축키는 창이 Tunnel로 받는다 —
 /// 화면 혼자서는 맞아도 둘을 잇는 자리가 비어 있으면 사람은 키를 눌러도 아무 일이 없다.
@@ -49,39 +50,6 @@ public sealed class ShellUndoTests : IDisposable
 
         Assert.Single(window.SessionProbe.Editor.FindChapter("ch01")!.Episodes);
         Assert.NotNull(window.SessionProbe.Project.FindNode(node.Id));
-
-        window.Close();
-    });
-
-    [Fact]
-    public void 글을_쓰는_중에는_Ctrl_Z를_가로채지_않는다() => HeadlessUi.Run(() =>
-    {
-        // ⛔ 입력칸에서 Ctrl+Z는 <b>타이핑</b>을 되돌리는 것이다. 그것을 프로젝트 되돌리기로
-        //    바꾸면 쓰던 문장이 통째로 날아간다 — 지우기를 되돌리려다 글을 잃는 꼴이다.
-        var window = new MainWindow();
-        window.Show();
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-
-        SeedProject(window, _directory);
-
-        // 첫 탭(챕터 그래프)의 [화자] 탭 이름 칸 — 늘 서 있는 글자 칸이다.
-        var chapterGraph = window.FindControl<ChapterGraphView>("ChapterGraph")!;
-        chapterGraph.FindControl<TabControl>("RightTabs")!.SelectedItem =
-            chapterGraph.FindControl<TabItem>("SpeakerTab")!;
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-
-        var box = chapterGraph.FindControl<TextBox>("SpeakerNameBox")!;
-        box.Focus();
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        Assert.Same(box, window.FocusManager?.GetFocusedElement());   // 정말 글 칸에 초점이 있다
-
-        window.SessionProbe.Editor.AddEpisode("ch01", "ep02", title: string.Empty, 0, 0);
-
-        Press(window, Key.Z, KeyModifiers.Control);
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-
-        // 프로젝트는 안 되돌아갔다 — 입력칸이 제 몫을 했다.
-        Assert.Equal(2, window.SessionProbe.Editor.FindChapter("ch01")!.Episodes.Count);
 
         window.Close();
     });

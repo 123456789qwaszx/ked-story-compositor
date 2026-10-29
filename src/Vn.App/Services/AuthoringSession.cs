@@ -19,8 +19,6 @@ namespace Vn.App.Services;
 /// </summary>
 internal sealed class AuthoringSession
 {
-    private readonly HashSet<string> _expandedFileIds = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _knownFileIds = new(StringComparer.Ordinal);
     private string _fileListSignature = string.Empty;
     private string _savedSnapshot;
 
@@ -40,75 +38,29 @@ internal sealed class AuthoringSession
     public string? ProjectPath { get; private set; }
 
     /// <summary>
-    /// `game.definition.json`의 내용 — 기획자가 소유하는 어휘(스탯·조건·화자·연출 카탈로그).
-    ///
-    /// ⚠ <b>바뀌면 스스로 알린다</b> (2026-08-26 소유자 보고: 챕터 그래프에서 화자를 지웠는데
-    /// 연출 그래프가 옛 목록을 계속 보였다). 예전에는 쓰는 자리마다 파일을 다시 읽고
-    /// <b>조용히</b> 이 칸만 갈아 끼웠고, 이미 그려진 화면은 그 사실을 알 길이 없어 제 노드를
-    /// 다시 고를 때까지 낡은 목록을 들고 있었다.
-    ///
-    /// <b>알림을 세터에 둔 이유</b>: 다시 읽는 자리가 다섯이라(열기·저장·화자 저장·변수 등록·
-    /// 새 프로젝트) 부르는 쪽마다 알림을 적으면 언젠가 한 곳이 빠진다. 값이 바뀌는 길이
-    /// 하나면 알림도 하나다.
+    /// `game.definition.json`의 내용 — 기획자가 소유하는 어휘(스탯 · 조건 · 화자 · 연출 카탈로그).
+    /// 열기 · 저장 · 새 프로젝트가 다시 읽는다.
     /// </summary>
-    public GameDefinition Definition
-    {
-        get;
-
-        private set
-        {
-            field = value;
-            DefinitionChanged?.Invoke(this, EventArgs.Empty);
-        }
-    } = GameDefinition.Empty;
+    public GameDefinition Definition { get; private set; } = GameDefinition.Empty;
 
     /// <summary>
-    /// <b>A계층(기획자) 스탯 키</b> — 챕터 `스탯` 시트가 등록한 것들 (2026-08-17 소유자:
-    /// "둘은 서로 완전히 다른 계층이야").
-    ///
-    /// 정의 파일의 `variables`는 두 계층의 변수를 <b>한 목록에</b> 담고 있어서, 작가의 변수
-    /// 후보를 그대로 쓰면 <c>trust</c>에 <c>&lt;&lt;set&gt;&gt;</c>을 걸 수 있게 된다 —
-    /// <b>스탯이 변하는 자리는 간선뿐</b>이라는 규칙이 화면에서 깨진다. 그래서 작가 화면은
-    /// 이 집합을 빼고 후보를 세운다.
-    ///
-    /// 원천은 챕터 그래프가 편 목록 하나다(두 곳이 따로 챕터를 펴지 않는다).
+    /// 프로젝트가 든 챕터를 화면이 쓰는 모양으로 낸다 — 무대의 챕터 · 씬 선택기가 읽는다.
+    /// (⛔ 예전에는 챕터 그래프 뷰가 폈고 셸이 나눠 줬다 — 그 뷰는 2026-10-29에 걷혔다.)
     /// </summary>
-    public IReadOnlySet<string> ChapterStatKeys { get; private set; } =
-        new HashSet<string>(StringComparer.Ordinal);
-
-    // ⚠ `ChapterSpeakerNames`·`ChapterSpeakerCharacterIds`는 2026-08-23에 사라졌다
-    // (소유자: "엑셀 내 어떤 것에서도 화자를 사용하지 않는다 … 화자는 툴 내부에서 직접
-    // 정의해서 쓰는 게 맞는 것이였다"). 챕터 `화자` 시트가 폐지되면서 챕터에서 오는 화자
-    // 어휘라는 것 자체가 없어졌다 — 화자의 유일한 원천은 <see cref="Definition"/>이다.
-
-    /// <summary>챕터 목록을 다시 읽을 때마다 A계층 어휘를 따라잡는다.</summary>
-    public void SupplyChapterVocabulary(IReadOnlyList<ChapterEntry> entries)
-    {
-        ArgumentNullException.ThrowIfNull(entries);
-
-        ChapterStatKeys = entries
-            .SelectMany(entry => entry.Model.Stats.Select(stat => stat.Key))
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .ToHashSet(StringComparer.Ordinal);
-    }
+    public IReadOnlyList<ChapterEntry> ChapterEntries() =>
+        Project.Chapters
+            .Select(chapter => new ChapterEntry(
+                chapter.ChapterId, chapter.ToGraphModel(chapter.ChapterId, Definition)))
+            .OrderBy(entry => entry.ChapterId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     /// <summary>
-    /// 새 노드가 추가될 현재 작업 파일.
-    ///
-    /// 그래프에 펼쳐 보이는 파일 목록과는 독립된 workspace 상태다. 현재 파일을 접어 둔
-    /// 상태에서도 그 파일을 계속 작업 대상으로 유지할 수 있다.
+    /// 지금 고른 챕터의 판 — 무대의 챕터 선택기가 비춘다. 저장 콘텐츠나 되돌리기 대상이 아니라
+    /// 앱 workspace 상태다.
     /// </summary>
     public string? ActiveFileId { get; private set; }
 
     public StoryFile? ActiveFile => Project.FindFile(ActiveFileId);
-
-    /// <summary>
-    /// 그래프에 실제 NodeCard로 펼쳐 보일 StoryFile Id 목록.
-    ///
-    /// 저장 콘텐츠나 Undo 대상이 아니라 앱 workspace 상태다. 파일을 접어도 StoryProject와
-    /// 실행·Settings 연결은 전혀 바뀌지 않는다.
-    /// </summary>
-    public IReadOnlySet<string> ExpandedFileIds => _expandedFileIds;
 
     public string? SelectedNodeId { get; private set; }
 
@@ -549,7 +501,6 @@ internal sealed class AuthoringSession
     /// 바깥에 살고, 저것으로 방송하면 챕터 재읽기·판 재구성이 딸려 온다(2026-08-18
     /// 성능 항목의 그 고리다). 듣는 쪽은 <b>제가 그리는 목록만</b> 다시 세운다.
     /// </summary>
-    public event EventHandler? DefinitionChanged;
 
     /// <summary>
     /// 현재 파일 또는 그래프 펼침 상태가 바뀌었을 때.
@@ -586,7 +537,6 @@ internal sealed class AuthoringSession
         Select(project.EnumerateNodes().FirstOrDefault()?.Id);
         RaiseFileGraphStateChanged(
             activeFileChanged: true,
-            expandedFilesChanged: true,
             fileListChanged: true);
     }
 
@@ -618,7 +568,6 @@ internal sealed class AuthoringSession
         Select(project.StartNodeId ?? project.EnumerateNodes().FirstOrDefault()?.Id);
         RaiseFileGraphStateChanged(
             activeFileChanged: true,
-            expandedFilesChanged: true,
             fileListChanged: true);
     }
 
@@ -847,126 +796,12 @@ internal sealed class AuthoringSession
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    // 작가 화면에서 `game.definition.json`의 speakers를 갈아 끼우던 길은 폐지됐다
-    // (2026-08-17 소유자 — "이게 기획자가 쓰는 전용으로 되어야 하는데, 현재는 시나리오
-    // 작가가 한것까지 저기에 들어간다"). 작가가 더한 화자는 프로젝트에 산다
-    // (`ProjectEditor.SetWriterSpeakers`). 정의 파일에 쓰는 창구는 아래 [등록] 하나뿐이고,
-    // 그것도 기획자 화면(챕터 그래프의 검증 보고)에서만 불린다.
-
-    /// <summary>
-    /// 화자 목록을 <c>game.definition.json</c>에 통째로 쓴다 — 챕터 그래프 [화자] 탭 전용
-    /// (2026-08-23 소유자: "이 화자탭에서 화자 추가 삭제를 하는 것이 구조적으로 옳다.
-    /// 여기서 추가한 화자는 게임 project에 저장되며, 모든 챕터가 공유해서 쓴다").
-    ///
-    /// <b>통째로 쓰는 것이 규격이다</b> — 더하기만 하는 <see cref="RegisterVariables"/>와
-    /// 다르다. 탭에서 지운 이름이 파일에 남으면 목록이 화면과 갈리고, 그 순간부터 어느 쪽이
-    /// 진짜인지 아무도 모른다. 쓰고 나면 정의를 다시 읽어 드롭다운이 같은 목록을 본다.
-    ///
-    /// 초상화 매핑도 같은 배열이 진다(<c>characterId</c>) — 화자의 집이 하나라는 뜻이다.
-    /// </summary>
-    public bool SaveSpeakers(IReadOnlyList<SpeakerSpec> speakers)
-    {
-        ArgumentNullException.ThrowIfNull(speakers);
-
-        if (ProjectPath is null)
-        {
-            SetStatus("화자는 game.definition.json에 저장됩니다. 프로젝트를 먼저 저장해 주세요.");
-            return false;
-        }
-
-        GameDefinitionStore.SaveSpeakers(ProjectPath, speakers);
-        Definition = GameDefinition.LoadBeside(ProjectPath);
-        return true;
-    }
-
-    /// <summary>
-    /// 스탯 키를 <c>game.definition.json</c>의 variables에 더한다 — 검증 보고의 [등록] 단추 전용.
-    /// 존재의 원천은 정의 파일이므로(§3.1) 자동 쓰기가 아니라 사람이 누른 순간에만 쓰고,
-    /// 없는 이름만 더한다. 쓰고 나면 정의를 다시 읽어 챕터 검증이 새 원천을 본다.
-    /// </summary>
-    public bool RegisterVariables(IReadOnlyList<VariableSpec> variables)
-    {
-        if (ProjectPath is null)
-        {
-            SetStatus("스탯은 game.definition.json에 등록됩니다. 프로젝트를 먼저 저장해 주세요.");
-            return false;
-        }
-
-        int added = GameDefinitionStore.AddVariables(ProjectPath, variables);
-        Definition = GameDefinition.LoadBeside(ProjectPath);
-
-        SetStatus(added > 0
-            ? $"{GameDefinition.FileName}에 변수 {added}개를 등록했습니다."
-            : "새로 등록할 변수가 없습니다 — 이미 정의 파일에 있습니다.");
-
-        return added > 0;
-    }
-
-    public bool IsFileExpanded(string fileId)
-    {
-        return _expandedFileIds.Contains(fileId);
-    }
-
-    public IEnumerable<StoryNode> EnumerateExpandedNodes()
-    {
-        return Project.Files
-            .Where(file => _expandedFileIds.Contains(file.Id))
-            .SelectMany(file => file.Nodes);
-    }
-
-    /// <summary>
-    /// 챕터의 판 (챕터 v2, G-1 v2 — 챕터 = 판 1:1). 이름이 챕터 Id와 같은 StoryFile이 그
-    /// 챕터의 판이고, 없으면 만든다. 왼쪽 챕터 목록 클릭과 에피소드 동기화가 같은 이 규칙
-    /// 하나를 쓴다 — 두 곳이 갈리면 노드가 엉뚱한 판에 생긴다.
-    /// </summary>
     /// <summary>
     /// 그 챕터의 판을 보장한다. <b>규칙은 <see cref="ProjectEditor.EnsureChapterBoard"/>가
     /// 갖는다</b> (2026-08-23에 내려갔다 — 세션 상태를 하나도 안 보는 순수 편집 작업이었다).
     /// 여기 남은 것은 부르는 자리 스물여덟을 안 건드리기 위한 이름 하나뿐이다.
     /// </summary>
     internal string EnsureChapterBoard(string chapterId) => Editor.EnsureChapterBoard(chapterId);
-
-    /// <summary>
-    /// <b>챕터 하나를 세운다</b> — 이름을 받고, 스탯을 정의 파일에서 깔고, 판을 만들어 고른다.
-    ///
-    /// ⛔ <b>챕터를 세우는 규칙은 여기 한 벌이다.</b> 두 벌이면 어느 창구로 만들었느냐에 따라 챕터가
-    /// 달라진다 — 실제로 스탯을 한쪽만 깔면 그 챕터는 도달성 증명의 탐색 경계가 없다.
-    ///
-    /// ⚠ 챕터는 프로젝트가 든다 — 만드는 파일은 없다.
-    /// </summary>
-    /// <returns>못 만든 이유. null이면 만들었다.</returns>
-    internal string? CreateChapter(string chapterId)
-    {
-        chapterId = (chapterId ?? string.Empty).Trim();
-
-        if (chapterId.Length == 0)
-        {
-            return "챕터 Id를 적어 주세요.";
-        }
-
-        if (ProjectPath is null)
-        {
-            return "프로젝트를 먼저 저장해 주세요 — 진행 JSON이 나갈 자리가 프로젝트 폴더에서 정해집니다.";
-        }
-
-        if (Editor.FindChapter(chapterId) is not null)
-        {
-            return $"챕터 '{chapterId}'가 이미 있습니다.";
-        }
-
-        // 스탯은 정의 파일의 변수에서 온다.
-        ChapterDocument chapter = Editor.EnsureChapter(chapterId);
-
-        foreach (Vn.Authoring.Definition.VariableSpec variable in Definition.Variables)
-        {
-            chapter.Stats.Add(new ChapterStat(
-                variable.Name, variable.Name, Initial: 0, Minimum: 0, Maximum: 100, SourceRow: 0));
-        }
-
-        SelectFile(EnsureChapterBoard(chapterId));
-
-        return null;
-    }
 
     internal void SelectFile(string? fileId)
     {
@@ -982,64 +817,20 @@ internal sealed class AuthoringSession
 
         ActiveFileId = fileId;
 
-        // 선택과 펼침은 독립이다 — W43의 "선택=그 파일만 펼침" 자동 접힘은 실사용에서
-        // "여러 파일을 오가며 함께 본다"를 막아 헷갈린다는 소유자 판단으로 철회했다 (W49).
-        // 활성 파일이 접혀 있으면 펴 주기만 한다(고른 파일이 안 보이는 일은 없어야 한다).
-        bool expandedChanged = fileId is not null && _expandedFileIds.Add(fileId);
-
         RaiseFileGraphStateChanged(
             activeFileChanged: true,
-            expandedFilesChanged: expandedChanged,
             fileListChanged: false);
-    }
-
-    internal void SetFileExpanded(string fileId, bool expanded)
-    {
-        if (Project.FindFile(fileId) is null)
-        {
-            return;
-        }
-
-        bool changed = expanded
-            ? _expandedFileIds.Add(fileId)
-            : _expandedFileIds.Remove(fileId);
-
-        if (changed)
-        {
-            RaiseFileGraphStateChanged(
-                activeFileChanged: false,
-                expandedFilesChanged: true,
-                fileListChanged: false);
-        }
     }
 
     private void OnEditorChanged(object? sender, ProjectChangedEventArgs e)
     {
         bool activeChanged = false;
-        bool expandedChanged = false;
         bool fileListChanged = false;
-
-        HashSet<string> validFileIds = Project.Files
-            .Select(file => file.Id)
-            .ToHashSet(StringComparer.Ordinal);
 
         if (Project.FindFile(ActiveFileId) is null)
         {
             ActiveFileId = Project.Files.FirstOrDefault()?.Id;
             activeChanged = true;
-        }
-
-        expandedChanged |= _expandedFileIds.RemoveWhere(fileId => !validFileIds.Contains(fileId)) > 0;
-        _knownFileIds.RemoveWhere(fileId => !validFileIds.Contains(fileId));
-
-        // 새로 생긴 파일만 기본적으로 펼친다. 이미 존재하던 파일을 사용자가 접어 둔 상태는
-        // 대사 수정이나 노드 이동 같은 프로젝트 변경 뒤에도 그대로 유지되어야 한다.
-        foreach (string fileId in validFileIds)
-        {
-            if (_knownFileIds.Add(fileId))
-            {
-                expandedChanged |= _expandedFileIds.Add(fileId);
-            }
         }
 
         string nextFileListSignature = BuildFileListSignature(Project);
@@ -1059,39 +850,23 @@ internal sealed class AuthoringSession
 
         Changed?.Invoke(this, e);
 
-        if (activeChanged || expandedChanged || fileListChanged)
+        if (activeChanged || fileListChanged)
         {
-            RaiseFileGraphStateChanged(activeChanged, expandedChanged, fileListChanged);
+            RaiseFileGraphStateChanged(activeChanged, fileListChanged);
         }
     }
 
     private void ResetFileGraphState(StoryProject project, string? activeFileId = null)
     {
         ActiveFileId = activeFileId ?? project.Files.FirstOrDefault()?.Id;
-
-        _expandedFileIds.Clear();
-        _knownFileIds.Clear();
-
-        foreach (StoryFile file in project.Files)
-        {
-            _expandedFileIds.Add(file.Id);
-            _knownFileIds.Add(file.Id);
-        }
-
         _fileListSignature = BuildFileListSignature(project);
     }
 
-    private void RaiseFileGraphStateChanged(
-        bool activeFileChanged,
-        bool expandedFilesChanged,
-        bool fileListChanged)
+    private void RaiseFileGraphStateChanged(bool activeFileChanged, bool fileListChanged)
     {
         FileGraphStateChanged?.Invoke(
             this,
-            new FileGraphStateChangedEventArgs(
-                activeFileChanged,
-                expandedFilesChanged,
-                fileListChanged));
+            new FileGraphStateChangedEventArgs(activeFileChanged, fileListChanged));
     }
 
     private static string BuildFileListSignature(StoryProject project)
@@ -1114,19 +889,13 @@ internal sealed class AuthoringSession
 
 internal sealed class FileGraphStateChangedEventArgs : EventArgs
 {
-    public FileGraphStateChangedEventArgs(
-        bool activeFileChanged,
-        bool expandedFilesChanged,
-        bool fileListChanged)
+    public FileGraphStateChangedEventArgs(bool activeFileChanged, bool fileListChanged)
     {
         ActiveFileChanged = activeFileChanged;
-        ExpandedFilesChanged = expandedFilesChanged;
         FileListChanged = fileListChanged;
     }
 
     public bool ActiveFileChanged { get; }
-
-    public bool ExpandedFilesChanged { get; }
 
     /// <summary>파일 이름·경로·순서 또는 소유 노드 개수가 바뀌어 목록 행을 다시 만들어야 하는가.</summary>
     public bool FileListChanged { get; }

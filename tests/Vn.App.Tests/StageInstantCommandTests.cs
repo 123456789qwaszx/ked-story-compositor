@@ -209,10 +209,12 @@ public sealed class StageInstantCommandTests
         Vn.Authoring.Serialization.ProjectStore.Save(
             manifest, new Vn.Authoring.Model.StoryProject { Title = "화자" });
 
+        // 화자 · 초상 매핑은 정의 파일에 산다 — 열기 전에 적어 두면 세션이 읽는다.
+        GameDefinitionStore.SaveSpeakers(
+            manifest, [new SpeakerSpec { Name = "라루", CharacterId = "parkeunseol" }]);
+
         var session = new Vn.App.Services.AuthoringSession();
         session.Open(manifest);
-        Assert.True(session.SaveSpeakers(
-            [new SpeakerSpec { Name = "라루", CharacterId = "parkeunseol" }]));
 
         var view = new StageSceneView();
         var window = new Window { Content = view, Width = 800, Height = 600 };

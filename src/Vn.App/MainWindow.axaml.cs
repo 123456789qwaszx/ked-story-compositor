@@ -18,10 +18,13 @@ using Vn.Authoring.Serialization;
 namespace Vn.App;
 
 /// <summary>
-/// 앱 셸. 세션을 하나 만들고 그래프 화면과 노드 화면에 같은 것을 물려준다.
+/// 앱 셸. 세션을 하나 만들고 무대와 연출 편집기에 같은 것을 물려준다.
 ///
-/// 두 화면은 서로를 모른다. 둘 다 <see cref="AuthoringSession"/>만 보고 있고,
-/// 편집은 전부 <see cref="ProjectEditor"/>를 지난다. 그래서 여기에는 화면을 잇는 코드가 없다.
+/// 화면들은 서로를 모른다. 모두 <see cref="AuthoringSession"/>만 보고 있고,
+/// 편집은 전부 <see cref="ProjectEditor"/>를 지난다.
+///
+/// ⛔ 창은 무대 하나다(2026-10-29) — 챕터 그래프 · 연출 그래프 · 대사 편집기는 이야기의 뼈대와 대사를 쓰는
+/// 화면이라 ked-story-director에 남았다(docs/plans/compositor-split.md C1).
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -32,29 +35,22 @@ public partial class MainWindow : Window
     /// <summary>검증용 손잡이 — 창이 쓰는 세션 하나. 테스트가 판을 짓고 선택을 옮긴다.</summary>
     internal AuthoringSession SessionProbe => _session;
 
-    // ── 연출 그래프의 곁기둥 (2026-08-22 소유자 — 창의 우측 열에서 그 판 안으로 이사) ──
+    // ── 연출 편집기 ──────────────────────────────────────────────────────────
     //
-    // ⚠ XAML이 아니라 여기서 만든다. 자리는 연출 그래프의 것이지만(SetSidePanel) 배선은
-    // 셸의 것이다 — 이 편집기들은 세션·무대 프리뷰·발행·선택 전환과 얽혀 있어 뷰로
-    // 옮기면 그 배선이 두 벌이 된다. 이름을 XAML 시절 그대로 둔 것은 의도다: 참조하는
-    // 자리가 마흔 군데라 이름이 바뀌면 이사와 무관한 diff가 그만큼 생긴다.
-    private readonly DialogueNodeEditor DialogueEditor = new();
+    // ⚠ 화면에 걸지 않는다. 이 편집기는 고른 연출 노드의 커맨드 행을 들고 있다가 무대에
+    // 작업대(커맨드 하나의 편집 행 + 수치 조절)와 추가 콘솔을 공급한다 — 무대가 그것을
+    // 보여 준다. 예전에 걸려 있던 자리(연출 그래프의 곁기둥)는 그래프와 함께 걷혔다.
+    // 이름을 XAML 시절 그대로 둔 것은 의도다: 참조하는 자리가 여러 군데라 이름이 바뀌면
+    // 이사와 무관한 diff가 그만큼 생긴다.
     private readonly PresentationNodeEditor PresentationEditor = new();
     private readonly AssetExplorerView AssetExplorer = new() { MaxHeight = 300 };
-
-    private readonly TextBlock EmptyText = new()
-    {
-        Text = "노드를 선택하면 여기서 편집합니다.",
-        HorizontalAlignment = HorizontalAlignment.Center,
-        VerticalAlignment = VerticalAlignment.Center,
-        Opacity = 0.5
-    };
 
     private LiveOutputService? _liveOutput;
     private readonly DispatcherTimer _autoSaveTimer;
     private bool _restoredRecent;
-    /// <summary>왼쪽 챕터 목록의 데이터. 원천은 챕터 그래프 뷰의 읽기 하나다.</summary>
-    private IReadOnlyList<ChapterEntry> _chapters = Array.Empty<ChapterEntry>();
+
+    /// <summary>연출 채널을 세우는 중이다 — 채널이 선택을 옮기는 동안 그 선택이 또 채널을 부르지 않게 한다.</summary>
+    private bool _enteringChannel;
 
     public MainWindow()
     {
@@ -74,56 +70,12 @@ public partial class MainWindow : Window
         AudioPreview.Problem = message => _session.SetStatus(message);
         Closed += (_, _) => AudioPreview.StopAll();
 
-        // 곁기둥을 제 화면에 건다 — Attach보다 먼저여야 첫 그리기부터 자리가 서 있다.
-        Graph.SetSidePanel(BuildSidePanel());
         // 에셋 탐색기는 무대 프리뷰 조절창 아래에 산다 (2026-08-26 소유자 — 연출
         // 그래프에서 이사). 자리는 뷰의 것, 배선(Attach·에셋 루트 지정)은 셸의 것이다.
         StagePreview.AssetExplorerHost.Content = AssetExplorer;
 
-        Graph.Attach(_session);
-        // 왼쪽 챕터 목록의 원천은 챕터 그래프 뷰가 읽은 목록 하나다 — 두 곳이 따로 읽으면
-        // 감시·재시도 규칙이 두 벌이 된다. Attach 전에 구독해야 첫 읽기부터 받는다.
-        ChapterGraph.EntriesReloaded += entries =>
-        {
-            _chapters = entries;
-            // A계층 어휘(스탯 키·등록 화자)도 같은 읽기 하나에서 온다 — 작가 화면이
-            // 계층을 가르는 근거다 (2026-08-17).
-            _session.SupplyChapterVocabulary(entries);
-            RebuildFileList();
-            // 연출 그래프의 철도 배선(T1)도 같은 목록 하나를 본다 — 두 곳이 따로 읽지 않는다.
-            Graph.SupplyChapters(entries);
-            // 무대 프리뷰의 챕터 콤보도 같은 목록이다 (2026-08-26 소유자 — 씬 선택기가
-            // 고른 챕터의 씬만 담도록 챕터 드롭다운이 이 탭에도 섰다).
-            StagePreview.SupplyChapters(entries);
-        };
-        // 위 드롭다운으로 골라도 왼쪽 목록의 강조가 따라온다 (2026-08-17 소유자 보고) —
-        // 목록 클릭이 하던 일(판 활성 + 목록 다시 그리기)을 여기서도 똑같이 한다.
-        ChapterGraph.ChapterSelected += chapterId => UiGuard.Run(_session, "챕터 선택", () =>
-        {
-            _session.SelectFile(_session.EnsureChapterBoard(chapterId));
-            RebuildFileList();
-        });
-        MainTabs.SelectionChanged += (_, args) =>
-        {
-            ApplyTabChrome();
-            EnterStageTab();
+        ApplyExportChrome();
 
-            // 무대에서 <b>돌아온</b> 것만 본다 — 챕터 그래프에서 건너온 사람의 화면까지
-            // 옮기면 남의 자리를 빼앗는 짓이다.
-            if (ReferenceEquals(MainTabs.SelectedItem, GraphTabItem) &&
-                args.RemovedItems.Count > 0 &&
-                ReferenceEquals(args.RemovedItems[0], StageTabItem))
-            {
-                UiGuard.Run(_session, "무대에서 돌아오기", ReturnFromStage);
-            }
-        };
-        Graph.NodeActivated += nodeId => UiGuard.Run(_session, "무대에서 보기", () => OpenOnStage(nodeId));
-        // XAML 기본은 펼침이고 SelectionChanged는 이미 정해진 선택에 오지 않는다 —
-        // 여기서 한 번 맞춰 주지 않으면 첫 화면(챕터 그래프)만 어긋난다.
-        ApplyTabChrome();
-
-        ChapterGraph.Attach(_session);
-        DialogueEditor.Attach(_session);
         PresentationEditor.Attach(_session);
         StagePreview.Attach(_session);
         AssetExplorer.Attach(_session);
@@ -134,10 +86,6 @@ public partial class MainWindow : Window
             if (PresentationEditor.IsVisible)
             {
                 PresentationEditor.MoveStageLine(delta);
-            }
-            else if (DialogueEditor.IsVisible)
-            {
-                DialogueEditor.MoveStageLine(delta);
             }
         };
         StagePreview.LineSelectRequested += lineId =>
@@ -158,18 +106,13 @@ public partial class MainWindow : Window
                 PresentationEditor.SelectStageLineById(lineId);
                 PresentationEditor.MoveStageLine(1);
             }
-            else if (DialogueEditor.IsVisible)
-            {
-                DialogueEditor.SelectStageLineById(lineId);
-                DialogueEditor.MoveStageLine(1);
-            }
         };
         StagePreview.SceneChosen += EnterPresentationChannel;
         // 작업대 = Inspector (2026-08-21 소유자: "점의 세부 조절창과 연출 편집창이
         // 합쳐지는 게 맞겠네") — 선택 커맨드 하나의 편집 행(연출 편집기) + 수치 조절
         // (무대 뷰)을 연출 편집기가 한 판으로 조합해 프리뷰 탭에 공급한다. 연출 추가는
         // 터미널 우클릭이 띄우는 콘솔이다(검색·종류별 탭·직접 입력 — 2026-08-21 소유자:
-        // "콘솔을 띄운다는 느낌으로"). 대사 편집기 화면은 발행 결과 뷰라 작업대가 없다.
+        // "콘솔을 띄운다는 느낌으로").
         StagePreview.CommandDetailProvider = commandId =>
             PresentationEditor.IsVisible
                 ? PresentationEditor.BuildCommandInspector(commandId, StagePreview.BuildSceneInspector)
@@ -182,12 +125,7 @@ public partial class MainWindow : Window
         {
             // 문서 끝 도달 (W39) — 활성 편집기가 실행 출구를 따라 다음 노드로 전환하면
             // 재생이 이어진다. 전환된 노드의 편집기가 열리며 첫 라인 프리뷰를 민다.
-            if (PresentationEditor.IsVisible)
-            {
-                return PresentationEditor.TryExitPlaybackNode();
-            }
-
-            return DialogueEditor.IsVisible && DialogueEditor.TryExitPlaybackNode();
+            return PresentationEditor.IsVisible && PresentationEditor.TryExitPlaybackNode();
         };
         StagePreview.ManipulationApplied += () =>
         {
@@ -196,13 +134,7 @@ public partial class MainWindow : Window
             {
                 PresentationEditor.Rebuild();
             }
-            else if (DialogueEditor.IsVisible)
-            {
-                // 대사 편집기에서의 프리뷰 선택지 클릭(갈래 선택)도 즉시 보여야 한다 (W47).
-                DialogueEditor.RefreshBranchView();
-            }
         };
-        DialogueEditor.StagePreview = StagePreview;
         PresentationEditor.StagePreview = StagePreview;
 
         _session.Changed += OnSessionChanged;
@@ -222,15 +154,6 @@ public partial class MainWindow : Window
         _session.SelectionChanged += OnSelectionChanged;
         _session.FileGraphStateChanged += OnFileGraphStateChanged;
 
-        ChapterGraph.ChapterAddButton.Click += (_, _) =>
-            UiGuard.Run(_session, "새 챕터", () => ShowAddChapterFlyout(ChapterGraph.ChapterAddButton));
-        // 챕터가 하나도 없을 때 판 한가운데 서는 [＋ 챕터] — 뜻이 같으니 배선도 같다.
-        // 플라이아웃만 누른 그 단추에 붙는다(화면 반대편에서 열리면 눈이 길을 잃는다).
-        ChapterGraph.ChapterAddCenterButton.Click += (_, _) =>
-            UiGuard.Run(_session, "새 챕터", () => ShowAddChapterFlyout(ChapterGraph.ChapterAddCenterButton));
-        // 프로젝트가 아직 없을 때는 [새 프로젝트]가 먼저다 (2026-08-26 소유자) —
-        // 툴바의 [새로 만들기]와 같은 길 하나를 지난다.
-        ChapterGraph.ProjectNewCenterButton.Click += OnNewClick;
         NewButton.Click += OnNewClick;
         OpenButton.Click += OnOpenClick;
         SaveButton.Click += OnSaveClick;
@@ -241,8 +164,6 @@ public partial class MainWindow : Window
         CsvExportButton.Click += OnCsvExportClick;
         ExportFormatsButton.Click += (_, _) =>
             UiGuard.Run(_session, "내보내기 양식 선택", ShowExportFormatsFlyout);
-        OpenExportFolderButton.Click += (_, _) =>
-            UiGuard.Run(_session, "내보낸 폴더 열기", OpenExportFolder);
 
         Opened += OnOpened;
 
@@ -293,168 +214,71 @@ public partial class MainWindow : Window
         });
         _autoSaveTimer.Start();
 
-        RebuildFileList();
-        Graph.Rebuild();
+        SupplyChapters();
         ShowSelectedNode();
         RefreshShell();
     }
 
     /// <summary>
-    /// 고른 탭에 chrome을 맞춘다 — 챕터 그래프에서는 연출 계층의 우측 열과 Yarn/CSV
-    /// 내보내기가 접힌다. 생성자와 탭 전환이 같은 계산 하나를 부른다: 시작 화면만
-    /// 따로 세우면 두 벌이 되고, 두 벌은 반드시 어긋난다.
+    /// 무대의 챕터 · 씬 선택기에 프로젝트의 챕터를 공급한다. 원천은 프로젝트 하나다
+    /// (⛔ 예전에는 챕터 그래프 뷰가 읽은 목록을 셸이 나눠 줬다 — 그 뷰가 걷혔다).
     /// </summary>
+    private void SupplyChapters()
+    {
+        StagePreview.SupplyChapters(_session.ChapterEntries());
+    }
+
     /// <summary>
     /// 씬 하나를 연출할 수 있는 상태로 만든다 (2026-08-21) — 대사 발행 → 연출 노드 →
     /// 결과 연결 → 연출 발행까지 한 번에(멱등). 소유자: "미리 다 해둔 다음에 무대
     /// 프리뷰측에서 뭘 할지 고르도록".
     ///
-    /// 부르는 곳이 둘이다 — <b>씬 선택기</b>와 <b>무대 프리뷰 탭에 들어오는 것</b>.
-    /// 둘은 같은 뜻이라 같은 함수를 지난다(사본 금지).
+    /// 부르는 곳이 둘이다 — <b>씬 선택기</b>와 <b>대사 노드가 골라진 것</b>(프로젝트를 열면 시작 노드가
+    /// 골라진다). 둘은 같은 뜻이라 같은 함수를 지난다(사본 금지) — 무대는 대사 노드를 그리지 않는다:
+    /// 그것을 고른 채로 두면 발행본이 그려져 <b>잠긴 화면</b>이 된다(2026-08-22 소유자 보고).
     /// </summary>
     private void EnterPresentationChannel(string dialogueNodeId)
     {
-        PresentationChannelOutcome outcome = _session.Editor.EnsurePresentationChannel(
-            dialogueNodeId,
-            _session.Definition);
-
-        if (!outcome.Ready)
+        if (_enteringChannel)
         {
-            // 채널이 못 서도(대사 발행 불가 등) 씬 자체는 보여 준다 — 이유는 상태줄로.
-            _session.SetStatus(outcome.Problem ?? "연출 채널을 세울 수 없습니다.");
-            _session.Select(dialogueNodeId);
             return;
         }
 
-        _session.Select(outcome.Presentation!.Id);
+        _enteringChannel = true;
+
+        try
+        {
+            PresentationChannelOutcome outcome = _session.Editor.EnsurePresentationChannel(
+                dialogueNodeId,
+                _session.Definition);
+
+            if (!outcome.Ready)
+            {
+                // 채널이 못 서면(대사 발행 불가 등) 무대는 비우고 이유는 상태줄로.
+                _session.SetStatus(outcome.Problem ?? "연출 채널을 세울 수 없습니다.");
+                _session.Select(dialogueNodeId);
+                return;
+            }
+
+            _session.Select(outcome.Presentation!.Id);
+        }
+        finally
+        {
+            _enteringChannel = false;
+        }
     }
 
     /// <summary>
-    /// 무대 프리뷰 탭으로 들어왔다 (2026-08-22 소유자 보고: "연출 그래프에서 특정
-    /// 에피소드노드를 클릭한채로 프리뷰에 들어올 시에는, 화면을 클릭해도 콘솔이 안 나옴").
-    ///
-    /// 원인은 화면이 아니라 <b>무엇을 보고 있는가</b>였다: 대사 노드가 선택돼 있으면
-    /// 프리뷰가 <b>공급된 발행 결과</b>를 그리고, 발행본은 불변이라 직접 조작이 잠긴다
-    /// (<c>DisabledReason</c>). 잠긴 화면에서는 무대를 눌러도 조절창이 열리지 않는다.
-    ///
-    /// 그래서 <b>탭에 들어오는 것을 씬 선택과 같은 뜻으로</b> 친다 — 연출의 입구는 이
-    /// 판이고, 여기 들어왔다는 것은 그 씬을 연출하겠다는 것이다. 이미 채널이 서 있으면
-    /// 멱등이라 아무 일도 안 일어난다.
+    /// 내보내기 단추 chrome. ⏸ [CSV 내보내기…]와 [양식…]은 <b>임시로</b> 내렸다 (2026-08-25 소유자).
+    /// 지우지 않고 접어 두는 이유: 뒤의 것(OnCsvExportClick·ShowExportFormatsFlyout·LiveOutputService의
+    /// 양식 선택)은 그대로 살아 있고 라이브 출력이 계속 그 선택을 따르므로, 코드를 걷으면 되살릴 때
+    /// 두 벌이 된다. 되돌리는 것은 아래 두 줄을 <c>true</c>로 하는 것뿐이다.
+    /// (⛔ 예전에는 탭마다 달랐다 — 챕터 그래프에서는 [내보내기…]도 접혔다. 그 탭이 걷혔다.)
     /// </summary>
-    /// <summary>
-    /// 연출 그래프에서 카드를 더블클릭했다 — 그 노드를 <b>무대에 올린다</b>
-    /// (2026-08-25 소유자: "더블클릭한 노드가 선택된채로").
-    ///
-    /// 고르는 것이 먼저이고 탭은 그다음이다. 탭 전환이 <see cref="EnterStageTab"/>를 부르고
-    /// 그것이 <b>지금 고른 것</b>을 보므로, 순서가 뒤집히면 무대는 <b>직전 노드</b>를 연다.
-    ///
-    /// ⚠ 대사 노드는 <see cref="EnterPresentationChannel"/>이 선택을 <b>연출 노드로</b>
-    /// 옮긴다(탭에 들어오는 것과 같은 뜻이라 같은 함수 하나를 지난다 — 사본 금지).
-    /// 그것이 곧 "더블클릭한 노드가 선택된 채"다: 무대가 그리는 것은 그 대사의 씬이고,
-    /// 대사 노드를 고른 채로 두면 발행본이 그려져 <b>잠긴 화면</b>이 된다.
-    ///
-    /// 설정 노드는 무대에 올릴 것이 없다. 조용히 아무 일도 안 하면 더블클릭이 고장 난
-    /// 것처럼 보이므로 사유를 말한다.
-    /// </summary>
-    private void OpenOnStage(string nodeId)
+    private void ApplyExportChrome()
     {
-        if (_session.Project.FindNode(nodeId) is not { } node)
-        {
-            return;
-        }
-
-        if (node is SetNode)
-        {
-            _session.SetStatus("설정 노드는 무대에서 볼 것이 없습니다 — 대사 노드를 눌러 주세요.");
-            return;
-        }
-
-        _session.Select(nodeId);
-        MainTabs.SelectedItem = StageTabItem;
-    }
-
-    /// <summary>
-    /// 무대에서 연출 그래프로 돌아왔다 — 방금 보던 <b>에피소드 노드</b>를 고른 채로,
-    /// 화면 한가운데에 놓는다 (2026-08-25 소유자).
-    ///
-    /// ⚠ 무대의 선택은 <b>연출 노드</b>다(<see cref="EnterPresentationChannel"/>가 그리로
-    /// 옮긴다 — 대사 노드를 고른 채로 두면 발행본이 그려져 잠긴 화면이 되기 때문이다).
-    /// 그런데 사람이 "보고 있던 것"이라고 여기는 것은 그 연출이 얹힌 <b>에피소드 노드</b>다.
-    /// 그래서 공급 연결을 거꾸로 타고 그쪽으로 돌려놓는다 — 안 그러면 돌아온 화면이
-    /// 방금 본 씬이 아니라 그 옆의 🎬 카드를 가리킨다.
-    ///
-    /// 판이 아직 안 재어진 순간이라, 가운데로 옮기는 것은
-    /// <see cref="GraphEditorView.CenterOnNode"/>가 잴 수 있게 된 뒤로 미룬다.
-    /// </summary>
-    private void ReturnFromStage()
-    {
-        if (_session.SelectedNode is not { } node)
-        {
-            return;
-        }
-
-        string target = node is PresentationNode
-            ? DialogueSuppliedBy(node.Id) ?? node.Id
-            : node.Id;
-
-        _session.Select(target);
-        Graph.CenterOnNode(target);
-    }
-
-    /// <summary>이 연출 노드가 공급하는 대사 노드 — 공급 연결(연출 → 대사)을 거꾸로 탄다.</summary>
-    private string? DialogueSuppliedBy(string presentationNodeId) =>
-        _session.Project.Links
-            .FirstOrDefault(link =>
-                link.Kind == NodeLinkKind.PresentationSupply &&
-                link.IsEnabled &&
-                string.Equals(link.SourceNodeId, presentationNodeId, StringComparison.Ordinal))
-            ?.TargetNodeId;
-
-    private void EnterStageTab()
-    {
-        if (!ReferenceEquals(MainTabs.SelectedItem, StageTabItem) ||
-            _session.SelectedNode is not DialogueNode dialogue)
-        {
-            return;
-        }
-
-        UiGuard.Run(_session, "연출 채널", () => EnterPresentationChannel(dialogue.Id));
-    }
-
-    /// <summary>
-    /// 탭마다 다른 상단 chrome. ⚠ <b>곁기둥을 접는 코드는 2026-08-22에 사라졌다</b> —
-    /// 챕터 목록과 노드 편집기·에셋 탐색기가 각자 쓰는 화면 안으로 들어가면서
-    /// "어느 탭에서 보이나"가 자리로 정해졌다. 여기 남은 것은 이름이 겹치는 단추들뿐이다:
-    /// 챕터 툴바의 [내보내기](진행 JSON)와 상단 Yarn/CSV 내보내기가 한 화면에 둘이면
-    /// 어느 쪽인지 헷갈린다.
-    /// </summary>
-    private void ApplyTabChrome()
-    {
-        bool chapterMode = ReferenceEquals(MainTabs.SelectedItem, ChapterTabItem);
-
-        ExportButton.IsVisible = !chapterMode;
-
-        // ⏸ [CSV 내보내기…]와 [양식…]은 <b>임시로</b> 내렸다 (2026-08-25 소유자).
-        //    지우지 않고 접어 두는 이유: 뒤의 것(OnCsvExportClick·ShowExportFormatsFlyout·
-        //    LiveOutputService의 양식 선택)은 그대로 살아 있고 라이브 출력이 계속 그
-        //    선택을 따르므로, 코드를 걷으면 되살릴 때 두 벌이 된다. 되돌리는 것은
-        //    아래 두 줄을 `!chapterMode`로 되돌리는 것뿐이다.
         CsvExportButton.IsVisible = false;
         ExportFormatsButton.IsVisible = false;
-    }
-
-    /// <summary>
-    /// 연출 그래프의 곁기둥 한 판 — 노드 편집기 둘(대사·연출)이 겹쳐 선 자리(선택 하나만 보인다).
-    /// </summary>
-    private Control BuildSidePanel()
-    {
-        // ⛔ 에셋 탐색기는 2026-08-26에 무대 프리뷰로 이사했다 (소유자: "에셋이
-        //    연출그래프에 있는데, 그게 무대프리뷰로 옮겨와줘") — 에셋을 보며 고르는
-        //    화면이 무대라서다. 여기엔 노드 편집기들만 남는다.
-        return new Panel
-        {
-            Children = { DialogueEditor, PresentationEditor, EmptyText }
-        };
     }
 
     /// <summary>
@@ -499,29 +323,14 @@ public partial class MainWindow : Window
         {
             ProjectRefreshPlan plan = ProjectRefreshPlanner.Plan(e.Kind, _session.SelectedNode);
 
-            if (plan.RebuildGraph)
+            if (plan.RefreshChapters)
             {
-                Graph.Rebuild();
-            }
-            else if (plan.RefreshGraphPositions)
-            {
-                // 좌표만 바뀌었다. 카드를 다시 만들면 드래그가 끊긴다.
-                Graph.RefreshPositions();
-            }
-            else if (plan.RefreshCardWriting && _session.SelectedNodeId is { } writtenNodeId)
-            {
-                Graph.RefreshWriting(writtenNodeId);
+                SupplyChapters();
             }
 
             if (plan.RebuildInspector)
             {
                 RebuildInspector();
-            }
-            else if (plan.RefreshPreview)
-            {
-                // 화자·대사 내용 변경은 편집 컨트롤을 유지해야 하지만 Script Preview는
-                // 현재 모델을 곧바로 반영해야 한다. Preview만 다시 합성한다.
-                DialogueEditor.RefreshPreview();
             }
 
             if (plan.RefreshStagePreview)
@@ -545,258 +354,43 @@ public partial class MainWindow : Window
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
         ShowSelectedNode();
-        Graph.HighlightSelection();
         RefreshShell();
+
+        // 무대는 대사 노드를 그리지 않는다 — 대사 노드가 골라지면(프로젝트를 열면 시작 노드가 골라진다)
+        // 그 씬의 연출 채널로 들어간다. 이벤트 안에서 곧장 선택을 또 옮기면 뒤에 선 구독자가 바뀐 순서로
+        // 받으므로 다음 차례로 미룬다. 구조 변경(되돌리기 등)이 부르는 다시 그리기에서는 들어가지 않는다 —
+        // 사람이 고른 순간에만 채널을 세운다.
+        if (_session.SelectedNode is DialogueNode dialogue && !_enteringChannel)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (string.Equals(_session.SelectedNodeId, dialogue.Id, StringComparison.Ordinal))
+                {
+                    UiGuard.Run(_session, "연출 채널", () => EnterPresentationChannel(dialogue.Id));
+                }
+            });
+        }
     }
 
     private void OnFileGraphStateChanged(object? sender, FileGraphStateChangedEventArgs e)
     {
         void Apply()
         {
-            RebuildFileList();
-
-            if (e.ExpandedFilesChanged)
+            // 프로젝트를 열거나 새로 만들면 챕터 목록이 바뀐다 — 무대의 선택기가 새 목록을 읽는다.
+            if (e.FileListChanged || e.ActiveFileChanged)
             {
-                Graph.Rebuild();
+                SupplyChapters();
             }
 
             RefreshShell();
         }
 
-        // 체크박스나 라디오 버튼의 RoutedEvent가 끝나기 전에 파일 목록을 통째로
-        // 교체하면 클릭한 컨트롤을 자기 이벤트 안에서 제거하게 된다. 다음 UI turn에서 갱신한다.
+        // 콤보의 RoutedEvent가 끝나기 전에 목록을 통째로 교체하면 고른 컨트롤을 자기 이벤트
+        // 안에서 바꾸게 된다. 다음 UI turn에서 갱신한다.
         Dispatcher.UIThread.Post(Apply);
     }
 
     // ── 파일 ────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// [＋ 챕터]. ⛔ <b>창구도 규칙도 여기 없다</b> — <see cref="ChapterAddFlyout"/>와
-    /// <see cref="AuthoringSession.CreateChapter"/>가 갖는다 (2026-09-16에 [대본] 탭에도
-    /// 같은 단추가 서면서 한 벌로 모았다). 여기 남은 것은 <b>만든 뒤 이 화면이 할 일</b>뿐이다.
-    /// </summary>
-    private void ShowAddChapterFlyout(Control anchor) =>
-        ChapterAddFlyout.ShowAt(anchor, _session, chapterId =>
-        {
-            ChapterGraph.Refresh();
-            ChapterGraph.SelectChapter(chapterId);
-        });
-
-    /// <summary>
-    /// 왼쪽 챕터 목록 (챕터 v2). 챕터 클릭 = 그 챕터의 판을 활성으로 + 챕터 그래프 선택.
-    /// 챕터가 없는 판은 목록에 없다 — 소유자 확정("완전 교체"). 기존 프로젝트는 챕터를
-    /// 만들어 옮긴다.
-    /// </summary>
-    private void RebuildFileList()
-    {
-        {
-            ChapterGraph.ChapterListHost.Children.Clear();
-
-            foreach (ChapterEntry entry in _chapters)
-            {
-                string chapterId = entry.ChapterId;
-                string? boardId = EpisodeNaming.BoardOf(_session.Project, chapterId)?.Id;
-                bool isActive = boardId is not null &&
-                    string.Equals(_session.ActiveFileId, boardId, StringComparison.Ordinal);
-
-                string subtitle = entry.Model is null
-                    ? "읽기 실패 — 검증 보고 참조"
-                    : $"에피소드 {entry.Model.Episodes.Count}개" +
-                      (entry.HasErrors ? " · ⚠ 오류" : string.Empty);
-
-                var row = new Border
-                {
-                    Padding = new Thickness(8, 6),
-                    CornerRadius = new CornerRadius(5),
-                    Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
-                    Background = isActive
-                        ? new SolidColorBrush(Color.FromArgb(24, 37, 99, 235))
-                        : Brushes.Transparent,
-                    Child = new StackPanel
-                    {
-                        Spacing = 1,
-                        Children =
-                        {
-                            new TextBlock
-                            {
-                                Text = chapterId,
-                                FontWeight = FontWeight.SemiBold,
-                                TextTrimming = TextTrimming.CharacterEllipsis
-                            },
-                            new TextBlock
-                            {
-                                Text = subtitle,
-                                FontSize = 10,
-                                Opacity = 0.55,
-                                Foreground = entry.HasErrors ? Brushes.IndianRed : null,
-                                TextTrimming = TextTrimming.CharacterEllipsis
-                            }
-                        }
-                    }
-                };
-
-                row.PointerPressed += (_, args) =>
-                {
-                    if (args.GetCurrentPoint(row).Properties.IsRightButtonPressed)
-                    {
-                        ShowChapterContextFlyout(row, chapterId);
-                        args.Handled = true;
-                        return;
-                    }
-
-                    // 한 번 클릭 = 선택. (더블클릭이 챕터 엑셀을 열던 배선은 2026-10-29 · D2에
-                    // 엑셀 연동과 함께 걷혔다.)
-                    UiGuard.Run(_session, "챕터 선택", () =>
-                    {
-                        _session.SelectFile(_session.EnsureChapterBoard(chapterId));
-                        ChapterGraph.SelectChapter(chapterId);
-                    });
-                };
-
-                ChapterGraph.ChapterListHost.Children.Add(row);
-            }
-
-            if (_chapters.Count == 0)
-            {
-                ChapterGraph.ChapterListHost.Children.Add(new TextBlock
-                {
-                    Text = "챕터가 없습니다. ＋로 만드세요.",
-                    Margin = new Thickness(6, 10),
-                    Opacity = 0.55,
-                    FontSize = 11,
-                    TextWrapping = TextWrapping.Wrap
-                });
-            }
-        }
-    }
-
-    /// <summary>
-    /// 챕터 행 우클릭 — 이름 바꾸기와 <b>제거</b>. 둘 다 챕터·판·조건 배관을
-    /// 함께 옮기거나 걷는다(<see cref="ChapterRenamer"/> · <see cref="ChapterDeleter"/>).
-    ///
-    /// ⛔ 제거는 2026-08-25에 생겼다. 그전에는 "폴더에서 사람이 지우세요"였는데, 그 길은
-    /// <b>절반만 지운다</b> — 파일은 사라져도 판과 노드가 프로젝트에 남아 이름이 겹치는
-    /// 번들로 뒤늦게 터졌다. 사람이 손으로 못 지우는 쪽이 남는 것이 문제였다.
-    /// </summary>
-    private void ShowChapterContextFlyout(Control anchor, string chapterId)
-    {
-        var panel = new StackPanel { Spacing = 4, MinWidth = 220 };
-
-        var name = new TextBox { Text = chapterId, FontSize = 11 };
-        panel.Children.Add(name);
-
-        var flyout = new Flyout { Content = panel };
-
-        var rename = new Button { Content = "이름 바꾸기", HorizontalAlignment = HorizontalAlignment.Stretch };
-        rename.Click += (_, _) => UiGuard.Run(_session, "챕터 이름 바꾸기", () =>
-        {
-            string newId = name.Text?.Trim() ?? string.Empty;
-
-            if (newId.Length == 0 || string.Equals(newId, chapterId, StringComparison.Ordinal))
-            {
-                flyout.Hide();
-                return;
-            }
-
-            // ⚠ 개명은 <b>여러 자리를 함께</b> 옮기는 한 동작이다(챕터·판·조건 배관). 셸이 그중
-            // 일부만 알던 시절에 나머지가 뒤처졌다 — 그 주인은 이제 ChapterRenamer 하나다
-            // (2026-08-24 소유자 보고).
-            ChapterRenamer.Result result =
-                ChapterRenamer.Rename(_session.Editor, _session.ProjectPath, chapterId, newId);
-
-            if (!result.Renamed)
-            {
-                _session.SetStatus(result.Failure!);
-                return;
-            }
-
-            ChapterGraph.Refresh();
-            ChapterGraph.SelectChapter(newId);
-            flyout.Hide();
-
-            _session.SetStatus(
-                $"챕터 '{chapterId}' → '{newId}'로 바꿨습니다" +
-                (result.SupplyRenamed ? "(조건 노드도 함께)." : ".") +
-                (result.StaleExport is { } stale
-                    ? $" ⚠ 옛 이름의 내보내기 '{stale}'가 남아 있습니다 — 지우고 다시 내보내 주세요."
-                    : " 내보낸 JSON이 있었다면 다시 내보내 주세요."));
-        });
-        panel.Children.Add(rename);
-        panel.Children.Add(MenuSeparator());
-        panel.Children.Add(BuildChapterRemoveButton(flyout, chapterId));
-
-        flyout.ShowAt(anchor);
-        name.SelectAll();
-        name.Focus();
-    }
-
-    /// <summary>
-    /// [챕터 제거] — <b>두 번 눌러야 지워진다</b>. 첫 누름은 무엇이 함께 사라지는지를
-    /// 그 자리에서 말하고, 그 문장을 읽은 손이 한 번 더 누른다.
-    ///
-    /// 확인 창을 따로 띄우지 않는 이유는 창이 사실을 <b>덮기</b> 때문이다 — 이 판에는
-    /// 방금 읽던 챕터 이름과 이름 칸이 함께 있어서, 여기서 묻는 편이 무엇을 지우는지
-    /// 더 분명하다. 되돌릴 자리(되돌리기)도 같은 문장에서 말한다.
-    /// </summary>
-    private Control BuildChapterRemoveButton(Flyout flyout, string chapterId)
-    {
-        var remove = new Button
-        {
-            Content = "챕터 제거…",
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Foreground = new SolidColorBrush(Color.FromRgb(190, 60, 60))
-        };
-
-        var caution = new TextBlock
-        {
-            Text = $"'{chapterId}'의 에피소드와 연출 그래프의 노드가 함께 사라집니다. " +
-                   "되돌리기(Ctrl+Z)로 돌아옵니다.",
-            FontSize = 10,
-            Opacity = 0.75,
-            TextWrapping = TextWrapping.Wrap,
-            IsVisible = false,
-            Margin = new Thickness(0, 2, 0, 0)
-        };
-
-        bool armed = false;
-
-        remove.Click += (_, _) =>
-        {
-            if (!armed)
-            {
-                armed = true;
-                remove.Content = "정말 제거 — 한 번 더";
-                caution.IsVisible = true;
-                return;
-            }
-
-            UiGuard.Run(_session, "챕터 제거", () =>
-            {
-                ChapterDeleter.Result result =
-                    ChapterDeleter.Delete(_session.Editor, _session.ProjectPath, chapterId);
-
-                if (!result.Deleted)
-                {
-                    _session.SetStatus(result.Failure!);
-                    return;
-                }
-
-                ChapterGraph.Refresh();
-                RefreshShell();
-                flyout.Hide();
-
-                _session.SetStatus(
-                    $"챕터 '{chapterId}'를 지웠습니다(연출 노드 {result.NodesRemoved}개도 함께). " +
-                    "되돌리기(Ctrl+Z)로 돌아옵니다." +
-                    (result.StaleExport is { } stale
-                        ? $" ⚠ 내보낸 '{stale}'가 남아 있습니다 — 지우지 않으면 게임이 " +
-                          "없는 챕터를 계속 싣습니다."
-                        : string.Empty));
-            });
-        };
-
-        return new StackPanel { Spacing = 2, Children = { remove, caution } };
-    }
 
     private async void OnNewClick(object? sender, RoutedEventArgs e)
     {
@@ -854,9 +448,6 @@ public partial class MainWindow : Window
     {
         try
         {
-            // 카드 글 칸에 넣지 않은 글이 있으면 먼저 넣는다 — Ctrl+S도 넣는 때다(D4).
-            Graph.FlushWriting();
-
             if (_session.ProjectPath is null)
             {
                 await SaveAsAsync();
@@ -876,7 +467,6 @@ public partial class MainWindow : Window
     {
         try
         {
-            Graph.FlushWriting();
             await SaveAsAsync();
         }
         catch (Exception exception)
@@ -1109,39 +699,6 @@ public partial class MainWindow : Window
         {
             Report("내보내기", exception);
         }
-    }
-
-    /// <summary>
-    /// 진행 JSON이 나가는 <c>exported/</c>를 연다 (2026-08-25).
-    ///
-    /// 이 파일들은 <b>사람 손을 안 기다리고 저절로 나간다</b>(2026-08-17). 그래서 사람이
-    /// 할 일은 만드는 것이 아니라 <b>가서 꺼내 오는 것</b>뿐인데, 그 자리를 몰라 못 꺼내
-    /// 가는 것이 실제 걸림돌이었다 — 비개발자 작가에게 건네는 준비의 일부다.
-    ///
-    /// ⚠ 폴더를 <b>대신 만들지 않는다.</b> 없다는 것은 아직 한 챕터도 안 나갔다는 뜻이고,
-    /// 빈 폴더를 열어 주면 "나갔는데 비었다"로 읽힌다 — 사유를 말하는 편이 낫다.
-    /// </summary>
-    private void OpenExportFolder()
-    {
-        if (_session?.ProjectPath is not { } projectPath)
-        {
-            _session?.SetStatus("프로젝트를 먼저 저장해야 내보낼 자리가 정해집니다.");
-            return;
-        }
-
-        string folder = Path.Combine(
-            Path.GetDirectoryName(projectPath)!, ChapterExportService.ExportFolderName);
-
-        if (!Directory.Exists(folder))
-        {
-            _session.SetStatus(
-                $"아직 나간 진행 JSON이 없습니다 — 검증을 통과한 챕터가 생기면 저절로 " +
-                $"여기 나갑니다: {folder}");
-            return;
-        }
-
-        System.Diagnostics.Process.Start(
-            new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true });
     }
 
     /// <summary>
@@ -1406,26 +963,15 @@ public partial class MainWindow : Window
     {
         StoryNode? node = _session.SelectedNode;
 
-        DialogueEditor.IsVisible = node is DialogueNode;
         PresentationEditor.IsVisible = node is PresentationNode;
-        EmptyText.IsVisible = node is null;
-        EmptyText.Text = "노드를 선택하면 여기서 편집합니다.";
 
-        if (node is DialogueNode)
-        {
-            DialogueEditor.Show(node.Id);
-        }
-        else if (node is SetNode)
-        {
-        }
-        else if (node is PresentationNode)
+        if (node is PresentationNode)
         {
             PresentationEditor.Show(node.Id);
         }
-
-        // 무대 프리뷰는 대사·연출 편집기만 채운다. 다른 노드에서는 빈 상태로 돌린다.
-        if (node is not DialogueNode && node is not PresentationNode)
+        else
         {
+            // 무대는 연출 편집기가 채운다. 다른 노드에서는 빈 상태로 돌린다(대사 노드는 곧 채널로 들어간다).
             StagePreview.Show(null);
         }
 
@@ -1443,18 +989,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 구조가 바뀌었을 때 오른쪽 화면을 다시 만든다.
+    /// 구조가 바뀌었을 때 연출 편집기(와 그것이 채우는 무대)를 다시 만든다.
     /// 선택된 노드가 그대로면 같은 노드를 다시 그리고, 바뀌었으면 그쪽으로 옮긴다.
     /// </summary>
     private void RebuildInspector()
     {
         StoryNode? node = _session.SelectedNode;
-
-        if (node is DialogueNode && DialogueEditor.NodeId == node.Id)
-        {
-            DialogueEditor.Rebuild();
-            return;
-        }
 
         if (node is PresentationNode && PresentationEditor.NodeId == node.Id)
         {
@@ -1473,9 +1013,6 @@ public partial class MainWindow : Window
 
         ProjectNameText.Text = name;
         ProjectPathText.Text = _session.ProjectPath ?? "저장되지 않음";
-        ChapterGraph.ChapterSummaryText.Text = _session.ActiveFile is { } activeFile
-            ? $"현재: {activeFile.Name}"
-            : "현재 작업 파일 없음";
         StatusText.Text = _session.StatusMessage;
 
         bool dirty = _session.IsDirty;
