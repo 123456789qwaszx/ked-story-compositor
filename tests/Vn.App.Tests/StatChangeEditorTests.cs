@@ -106,12 +106,12 @@ public sealed class StatChangeEditorTests
     });
 
     [Fact]
-    public void 스탯이_하나도_선언되지_않았으면_엑셀로_보낸다() => HeadlessUi.Run(() =>
+    public void 스탯이_하나도_선언되지_않았으면_챕터_탭으로_보낸다() => HeadlessUi.Run(() =>
     {
         var editor = new StatChangeEditor();
         editor.Load([], []);
 
-        Assert.Contains("`스탯` 시트", editor.Children.OfType<TextBlock>().Single().Text!);
+        Assert.Contains("[챕터] 탭", editor.Children.OfType<TextBlock>().Single().Text!);
         Assert.Equal(string.Empty, editor.ToSheetText());
     });
 

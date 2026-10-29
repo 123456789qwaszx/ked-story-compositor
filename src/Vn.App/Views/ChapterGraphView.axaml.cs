@@ -11,7 +11,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Vn.App.Services;
 using Vn.Authoring.Chapters;
-using Vn.Authoring.Chapters.Import;
 using Vn.Authoring.Definition;
 using Vn.Authoring.Model;
 
@@ -38,13 +37,8 @@ public partial class ChapterGraphView : UserControl
     private const double CanvasMargin = 60;
 
     private readonly List<ChapterEntry> _entries = new();
-    /// <summary>이번 들여오기가 낸 진단. 거부면 그 사유가 여기 전부 있다.</summary>
-    private readonly List<ChapterDiagnostic> _importDiagnostics = new();
 
-    /// <summary>들여오기를 거부당한 챕터 — 전부 아니면 전무라 챕터 단위다 (§5.2).</summary>
-    private readonly List<string> _importRefusals = new();
-
-    /// <summary>선택된 챕터의 구조 검증 + 도달성 증명 결과 (G7). 워크북을 읽을 때 갱신된다.</summary>
+    /// <summary>선택된 챕터의 구조 검증 + 도달성 증명 결과 (G7). 다시 읽을 때 갱신된다.</summary>
     private ChapterValidationResult? _validation;
 
     /// <summary>`스탯변화` 줄 편집기 둘 — 간선 패널의 것과 에피소드 노드 폼 안의 것.</summary>
@@ -55,32 +49,11 @@ public partial class ChapterGraphView : UserControl
     private string? _selectedChapterId;
     private bool _updatingCombo;
 
-    /// <summary>
-    /// 워크북을 여는 손. 기본은 OS 기본 연결이고, 화면 없는 검증이 실제 엑셀을
-    /// 띄우지 않도록 갈아끼울 수 있다.
-    /// </summary>
-    internal Action<string> OpenWorkbookFile { get; set; } = path =>
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-
-    /// <summary>
-    /// .xlsx 기본 앱의 실행 파일을 묻는 손. OS 연결을 맹신하면 엑셀 없는 기계에서
-    /// 엉뚱한 앱(실사례: 챗지피티)이 뜨므로, 열기 전에 이걸로 확인한다.
-    /// </summary>
-    internal Func<string?> WorkbookHandlerProbe { get; set; } =
-        SpreadsheetAssociation.ResolveXlsxHandler;
-
-    /// <summary>스프레드시트 앱이 없을 때의 대안 — 탐색기에서 파일을 선택해 보여 준다.</summary>
-    internal Action<string> RevealInFolder { get; set; } = path =>
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")
-        {
-            UseShellExecute = true
-        });
-
     /// <summary>챕터 목록이 다시 읽혔다. 왼쪽 패널(MainWindow)이 이걸 듣고 목록을 다시 그린다.</summary>
     internal event Action<IReadOnlyList<ChapterEntry>>? EntriesReloaded;
 
     /// <summary>프로젝트를 다시 읽어 판을 다시 세운다. 새 챕터를 만든 직후 부른다.</summary>
-    internal void RefreshFromDisk() => ImportOnceAndReload();
+    internal void Refresh() => Reload();
 
     /// <summary>
     /// 판을 실제로 다시 만든 횟수. <see cref="ValidationComputeCount"/>와 같은 종류의 창이다 —
@@ -136,7 +109,7 @@ public partial class ChapterGraphView : UserControl
     // ── 챕터 목록 자리 (2026-08-22 소유자 — 창 맨 왼쪽 열에서 이 기둥 위로 이사) ──────
     //
     // 자리만 이 뷰가 내주고 <b>내용은 셸(MainWindow)이 짓는다</b>. 목록의 클릭 하나가
-    // 세션 전환(EnsureChapterBoard)·엑셀 열기·우클릭 메뉴와 얽혀 있어 여기로 옮기면
+    // 세션 전환(EnsureChapterBoard)·우클릭 메뉴와 얽혀 있어 여기로 옮기면
     // 같은 배선이 두 벌이 된다 — 그 사본이야말로 이 코드베이스가 가장 경계하는 것이다.
 
     /// <summary>챕터 줄이 쌓이는 자리.</summary>
@@ -238,9 +211,6 @@ public partial class ChapterGraphView : UserControl
         DeleteEpisodeButton.Click += (_, _) => UiGuard.Run(_session, "에피소드 삭제", DeleteSelectedEpisode);
         AddEpisodeButton.Click += (_, _) => UiGuard.Run(_session, "에피소드 추가", AddEpisodeFromToolbar);
         AutoArrangeButton.Click += (_, _) => UiGuard.Run(_session, "자동 정렬", AutoArrange);
-        ImportEpisodesButton.Click += (_, _) => UiGuard.Run(_session, "대본 가져오기", ImportEpisodes);
-        ImportChaptersButton.Click += (_, _) =>
-            UiGuard.Run(_session, "챕터 가져오기", () => ImportChapters());
         // 빈 판 한가운데의 [＋ 에피소드]도 같은 길이다 — 선택이 없으니 홀로 선다.
         EmptyAddEpisodeButton.Click += (_, _) => UiGuard.Run(_session, "에피소드 추가", AddEpisodeFromToolbar);
         EdgeDeleteButton.Click += (_, _) => UiGuard.Run(_session, "간선 삭제", DeleteSelectedEdge);
@@ -249,8 +219,8 @@ public partial class ChapterGraphView : UserControl
         // 바로 반영되도록"). 에피소드 패널의 개명이 Enter로 확정되는 것과 같은 감각이다 —
         // [적용]이라는 문턱이 하나 더 있으면 "고쳤는데 왜 그대로지"가 생긴다.
         //
-        // 글자 칸만 초점을 잃을 때 낸다. 자판 하나마다 워크북을 열면 엑셀 파일을 쉼 없이
-        // 두드리고, 그 사이에 들어온 파일 사건이 칸을 다시 채워 쓰던 글을 끊는다.
+        // 글자 칸만 초점을 잃을 때 낸다. 자판 하나마다 저장하면 되돌리기가 글자 수만큼 쪼개지고,
+        // 그 사이의 다시 그리기가 칸을 다시 채워 쓰던 글을 끊는다.
         EdgeLabelEditBox.SelectionChanged += (_, _) => AutoSaveEdge();
         EdgeAutoCheck.IsCheckedChanged += (_, _) => AutoSaveEdge();
         EdgeVisibleCombo.SelectionChanged += (_, _) => AutoSaveEdge();
@@ -312,14 +282,14 @@ public partial class ChapterGraphView : UserControl
         _session = session;
         _sessionChanged = (_, _) => QueueReload();
         session.Changed += _sessionChanged;
-        ImportOnceAndReload();
+        Reload();
     }
 
     /// <summary>세션 구독을 끊을 수 있도록 들고 있는다 — 람다를 바로 걸면 뗄 수가 없다.</summary>
     private EventHandler<Vn.Authoring.Editing.ProjectChangedEventArgs>? _sessionChanged;
 
     /// <summary>
-    /// 세션에서 손을 뗀다 — 구독을 끊고 감시자를 닫는다.
+    /// 세션에서 손을 뗀다 — 구독을 끊는다.
     ///
     /// <b>왜 필요한가</b> (2026-08-18): 이 뷰는 붙기만 하고 떨어질 줄을 몰랐다. 앱에서는
     /// 뷰가 프로세스와 수명이 같아 티가 안 나지만, 테스트에서는 한 어셈블리가 <b>디스패처
@@ -352,8 +322,8 @@ public partial class ChapterGraphView : UserControl
     /// 재읽기 예약 — <b>몰려 오는 변경을 한 번으로 합친다</b> (2026-08-18).
     ///
     /// 동기화 한 번이 프로젝트 변경을 수십 개 낸다(에피소드마다 노드·줄이 붙는다).
-    /// 예전에는 그 하나하나가 <see cref="ImportOnceAndReload"/>를 예약했고, 그 한 번이
-    /// 챕터 워크북 전부를 다시 열어 읽고 진행 JSON을 쓰고 판을 통째로 다시 그렸다.
+    /// 예전에는 그 하나하나가 재읽기를 예약했고, 그 한 번이
+    /// 챕터 전부를 다시 읽고 진행 JSON을 쓰고 판을 통째로 다시 그렸다.
     /// 노드 60개에서 <b>123번</b> 돌아 58초가 됐다 — 마지막 한 번 말고는 전부 버려질
     /// 그림이었다.
     ///
@@ -372,313 +342,14 @@ public partial class ChapterGraphView : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             _reloadQueued = false;
-            ImportOnceAndReload();
+            Reload();
         });
     }
 
-    // ── 읽기 ────────────────────────────────────────────────────────────────
-
-    /// <summary>이미 한 번 들여온 프로젝트 — 같은 프로젝트에서 두 번 자동으로 들이지 않는다.</summary>
-    private string? _importedFor;
-
-    /// <summary>
-    /// <b>구판 프로젝트를 위한 최초 1회 들여오기</b> (R-F · 지시서 §5.1).
-    ///
-    /// R-F 전에 만든 프로젝트는 챕터를 <c>chapters/*.xlsx</c>에만 들고 있다. 그 프로젝트를
-    /// 열면 판이 텅 비어 보이므로, <b>프로젝트에 챕터가 하나도 없고 폴더에 파일이 있을 때</b>
-    /// 한 번 들인다.
-    ///
-    /// ⚠ <b>자동은 여기까지다.</b> 들어온 뒤로는 프로젝트에 챕터가 있으므로 다시 안 돈다 —
-    /// 그래야 §5.2의 <i>"임포트 뒤 다시 읽지 않는다"</i>가 산다. 거부됐을 때 다시 시도하는
-    /// 길은 사람이 누르는 [챕터 가져오기]다.
-    ///
-    /// ⚠ 챕터를 전부 지운 프로젝트에서 되살아나지 않는다 — 챕터 삭제가 워크북도 함께 걷으므로
-    /// 들일 파일이 없다.
-    /// </summary>
-    private void ImportChaptersOnce()
-    {
-        if (_session is not { ProjectPath: { } projectPath } session ||
-            session.Project.Chapters.Count > 0 ||
-            string.Equals(_importedFor, projectPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        _importedFor = projectPath;
-        ImportChapters(automatic: true);
-    }
-
-    /// <summary>
-    /// <c>chapters/</c> 폴더를 프로젝트로 들여온다 — [챕터 가져오기]와 최초 1회가 같은 길이다.
-    ///
-    /// ⚠ 거부(§5.2)는 <b>전부 아니면 전무</b>다. 그래서 실패를 조용히 넘기지 않는다 —
-    /// 사람이 보기에는 "눌렀는데 아무 일도 없다"가 되기 때문이다.
-    /// </summary>
-    internal void ImportChapters(bool automatic = false)
-    {
-        if (_session is not { } session)
-        {
-            return;
-        }
-
-        ChapterProjectImport import = ChapterWorkbookImporter.Run(
-            session.Editor, session.ProjectPath, session.Definition);
-
-        foreach (string notice in import.Notices)
-        {
-            session.SetStatus(notice);
-        }
-
-        if (!import.Applied)
-        {
-            session.SetStatus(
-                $"챕터를 들여오지 않았습니다 — {import.Errors.FirstOrDefault()?.Message ?? "읽지 못했습니다."} " +
-                "하나라도 읽지 못하면 아무것도 들여오지 않습니다.");
-            return;
-        }
-
-        AbsorbLegacySpeakers(import.LegacySpeakers);
-
-        if (import.ChapterIds.Count > 0 || !automatic)
-        {
-            session.SetStatus(
-                $"챕터 {import.ChapterIds.Count}개를 들여왔습니다. " +
-                "이제 워크북은 산출물입니다 — 여기서 고친 것이 파일을 채웁니다.");
-        }
-    }
-
-    /// <summary>
-    /// 구판 `화자` 시트의 이름을 정의 파일로 옮긴다 (2026-08-23 폐지분의 이행).
-    ///
-    /// ⚠ <b>지우는 춤이 사라졌다</b> (R-F). 옛 경로는 <i>시트를 지우는 데 성공한 뒤에</i>
-    /// 정의 파일에 저장해야 했다 — 반대로 하면 잠겨서 못 지운 워크북이 다음 <b>재읽기</b>에서
-    /// 지운 이름을 되살렸기 때문이다. 이제 재읽기가 없고, 다음 출력이 워크북을 통째로 갈아
-    /// 끼우며 시트째 사라진다.
-    /// </summary>
-    private void AbsorbLegacySpeakers(IReadOnlyList<ChapterSpeaker> legacy)
-    {
-        if (_session is not { } session || legacy.Count == 0)
-        {
-            return;
-        }
-
-        List<SpeakerSpec> merged = session.Definition.Speakers.ToList();
-        bool changed = false;
-
-        foreach (ChapterSpeaker speaker in legacy)
-        {
-            string name = speaker.Name.Trim();
-
-            if (name.Length == 0 ||
-                merged.Any(item => string.Equals(item.Name, name, StringComparison.Ordinal)))
-            {
-                continue;
-            }
-
-            merged.Add(new SpeakerSpec
-            {
-                Name = name,
-                CharacterId = speaker.CharacterId?.Trim() ?? string.Empty
-            });
-
-            changed = true;
-        }
-
-        if (changed && session.SaveSpeakers(merged))
-        {
-            session.SetStatus(
-                $"챕터 엑셀의 `화자` 시트를 프로젝트 화자 목록으로 옮겼습니다({merged.Count}명) — " +
-                "이제 [화자] 탭에서 편집합니다.");
-        }
-    }
-
-    /// <summary>
-    /// 프로젝트를 다시 읽는다 — 구판 프로젝트라면 그 전에 한 번 들여온다.
-    ///
-    /// ⛔ 여기서 `chapters/`·`episodes/`의 엑셀 잠금을 듣던 감시자 둘은 2026-10-29에 걷혔다
-    /// (docs/design/two-graphs.md §7 D2). 엑셀 연동을 통째로 걷는 첫 걸음이고, 그 감시자의 테스트가
-    /// Windows 러너에서 거듭 흔들린 것이 순서를 앞당겼다. 미룬 출력은 재읽기 · 편집 · 저장 때 다시 나간다.
-    /// </summary>
-    private void ImportOnceAndReload()
-    {
-        // 구판 프로젝트라면 여기서 한 번 들어온다 — 그 뒤로 워크북은 산출물이다 (R-F).
-        ImportChaptersOnce();
-
-        Reload();
-
-        // ⛔ 여기서 "밀린 저장을 따라잡던" 동기화는 2026-09-16에 걷혔다 (R-D).
-        //
-        //    그 호출은 <b>툴이 꺼진 사이 엑셀에 적힌 대사</b>를 켤 때 한 번 주워 오는
-        //    길이었다. 워크북이 원본이던 시절에는 그것이 없으면 글이 영영 안 들어왔지만,
-        //    이제 원본은 프로젝트다 — 주워 올 것이 없고, 켤 때마다 워크북을 다시 읽으면
-        //    사람이 툴에서 고친 것을 옛 엑셀이 덮는다. 들여오기는 사람이 누른다.
-    }
-
-    // ⛔ `ReloadIfDiskChanged`·`IfDiskChanged`·`DiskFingerprint`는 2026-09-16에 걷혔다
-    //    (R-F). 셋 다 <b>"감시자가 깨웠는데 정말 바뀐 것인가"</b>를 묻는 장치였고, 그 물음은
-    //    화면이 <b>디스크를 읽어 서던 시절</b>의 것이다. 이제 판은 프로젝트에서 오므로 파일
-    //    사건은 그릴 이유가 되지 않는다 — 견줄 지문도 필요 없다.
-    //
-    //    함께 `WorkbookFolderFingerprint`도 쓰는 곳이 없어졌다 (지시서 §2의 삭제 목록,
-    //    R-D 인계서가 "R-F와 함께 간다"고 남긴 항목).
-    //
-    //    ⚠ 되살리지 말 것 — 되살리는 순간 워크북이 다시 화면의 원천이 된다.
-
-    /// <summary>
-    /// 대본 워크북을 읽어 대사노드로 세운다 — <b>사람이 [대본 가져오기]를 눌렀을 때만</b>
-    /// 돈다 (R-D · 2026-09-16, §5.2).
-    ///
-    /// ⚠ 예전 이름은 `SyncEpisodes`였고 감시자가 저장마다 불렀다. 이름이 바뀐 것이 곧
-    /// 뜻이 바뀐 것이다: <b>동기화는 양쪽을 맞추는 일이고 임포트는 한쪽에서 가져오는
-    /// 일이다.</b> 맞출 상대가 없어졌으므로 맞춘다는 말도 없앤다.
-    /// </summary>
-    internal void ImportEpisodes()
-    {
-        _importDiagnostics.Clear();
-        _importRefusals.Clear();
-
-        if (_session is null)
-        {
-            return;
-        }
-
-        ChapterEntry? entry = _entries.FirstOrDefault(item => item.ChapterId == _selectedChapterId);
-
-        // ⛔ <b>고른 챕터만 돌면 안 된다</b> (2026-08-24 소유자 보고: "챕터그래프에서
-        // 대사노드의 엑셀을 열어서 고칠 경우, 연출그래프의 동일한 엑셀노드에 반영이 안 되네").
-        //
-        // 연출 그래프는 <b>모든 판의 노드를 함께</b> 보여 준다. 그런데 반영은 고른 챕터
-        // 하나만 돌았으므로, 다른 챕터의 대사노드는 그 챕터를 다시 고르기 전까지 영영
-        // 낡은 글을 들고 있었다. 챕터가 둘 이상인 프로젝트에서는 늘 그랬다.
-        //
-        // ⚠ 이것이 <b>지금 감당되는</b> 이유: 같은 날 워크북 파싱을 내용 해시로 기억하게
-        // 했다(`WorkbookParseCache`). 안 바뀐 대본은 해시만 재고 지나가므로, 챕터를 전부
-        // 도는 값이 예전의 한 챕터보다 싸다. 그 전이었다면 이 고침은 못 했다.
-        foreach (ChapterEntry other in SyncTargets(entry))
-        {
-            RunEpisodeImport(other);
-        }
-
-        // 아래는 <b>화면</b>의 몫이다 — 고른 챕터가 없어도 내보내기·검증·그리기는 돈다.
-        AfterEpisodeSync();
-    }
-
-    /// <summary>
-    /// 이번에 따라잡을 챕터들 — 고른 챕터와 <b>이미 판이 선</b> 챕터 전부.
-    ///
-    /// 판이 없는 챕터는 대사노드도 없으므로 낡을 것이 없다. 그런 챕터까지 돌면
-    /// <see cref="ProjectEditor.EnsureChapterBoard"/>가 <b>판을 미리 만들어</b> 아무도
-    /// 안 연 챕터의 판이 프로젝트에 쌓인다 — 고치려던 것보다 큰 변화다.
-    /// </summary>
-    private IEnumerable<ChapterEntry> SyncTargets(ChapterEntry? selected)
-    {
-        if (selected is not null)
-        {
-            yield return selected;
-        }
-
-        if (_session is null)
-        {
-            yield break;
-        }
-
-        foreach (ChapterEntry candidate in _entries)
-        {
-            if (candidate.ChapterId == selected?.ChapterId || candidate.Model is null)
-            {
-                continue;
-            }
-
-            // 판 이름 = ChapterId (챕터=판 1:1, G-1 v2).
-            if (_session.Project.Files.Any(file =>
-                    string.Equals(file.Name, candidate.ChapterId, StringComparison.Ordinal)))
-            {
-                yield return candidate;
-            }
-        }
-    }
-
-    /// <summary>챕터 하나를 들여오고 그 결과를 보고 더미에 쌓는다.</summary>
-    private void RunEpisodeImport(ChapterEntry entry)
-    {
-        if (_session is null ||
-            entry.Model is not { } model ||
-            EpisodeLibrary.FolderFor(_session.ProjectPath, entry.ChapterId) is not { } folder)
-        {
-            return;
-        }
-
-        // 프로젝트가 실제로 바뀌었는지 재는 눈금 (2026-08-24 성능) — 아래 방송의 근거다.
-        long revisionBefore = _session.Editor.Revision;
-
-        // 새 노드가 들어갈 판 = 그 챕터의 판 (챕터=판 1:1, G-1 v2).
-        string fileId = _session.Editor.EnsureChapterBoard(entry.ChapterId);
-
-        EpisodeImport import = EpisodeWorkbookImporter.Run(
-            _session.Editor, _session.Definition, fileId, folder, model);
-
-        _importDiagnostics.AddRange(import.Diagnostics);
-
-        if (!import.Applied)
-        {
-            _importRefusals.Add(entry.ChapterId);
-        }
-
-        foreach (string notice in import.Notices)
-        {
-            _session.SetStatus(notice);
-        }
-
-        // 챕터 조건을 판의 모든 대사 노드에 공급한다 — 작가가 조건 드롭다운에서 A 계층
-        // 라벨을 바로 고른다. 멱등이라 매번 불러도 안전하다.
-        ChapterBoardSupply.SupplyChapterConditionsToBoard(
-            _session.Editor, _session.Definition, fileId, model);
-
-        // 판에 남은 옛 자유 씬을 에피소드로 올린다 (같은 결정 ⑤). ⚠ 위의 펴기 <b>다음</b>이다 —
-        // 간선에 매달렸던 씬은 거기서 진짜 간선을 받으므로 `도달불가 허용`이 필요 없다.
-        if (_session.Editor.LiftFreeScenes(entry.ChapterId) is { Count: > 0 } raised)
-        {
-            _session.SetStatus(
-                $"자유 씬 {raised.Count}개를 에피소드로 올렸습니다 — {string.Join(", ", raised)}.");
-        }
-
-        // 무언가 <b>실제로 바뀌었으면</b> 열려 있는 편집 화면(줄 목록·그래프)을 다시
-        // 만들게 알린다 — 대사 수정은 "타이핑 보호" 경로로 전달되어 화면이 옛 줄을 그대로
-        // 들고 있었다(실사례).
-        if (_session.Editor.Revision != revisionBefore)
-        {
-            _session.NotifyExternalScriptChange();
-        }
-
-        if (!import.Applied)
-        {
-            _session.SetStatus(
-                $"'{entry.ChapterId}'의 대본을 들여오지 못했습니다 — 아래 검증 보고를 확인하세요.");
-        }
-    }
-
-    /// <summary>
-    /// 챕터를 <b>전부 돈 뒤</b> 한 번만 하는 일 — 내보내기·증명·그리기·지문.
-    ///
-    /// ⚠ 챕터마다 하면 안 된다. 내보내기와 증명은 <see cref="ChapterExportService"/>가
-    /// 이미 전 챕터를 도는 일이고, 그리기는 화면 하나를 다시 만드는 일이다 — 챕터 수만큼
-    /// 되풀이하면 그 값이 그대로 곱해진다.
-    /// </summary>
-    private void AfterEpisodeSync()
-    {
-        // ⚠ 반영이 판을 바꿨으면 **다시 내보낸다** (2026-08-23). `Reload()` 안의
-        // `AutoExport()`는 동기화보다 먼저 돌므로, 엑셀에서 방금 더한 에피소드의 대사노드는
-        // 그때 아직 없다 — 저작 관문(`DialogueEntryNodeMissing`)이 그것을 옳게 거부하고,
-        // 여기서 다시 내지 않으면 **노드가 선 뒤에도 거부가 남는다.**
-        //
-        // 되돌이는 없다: 감시자는 `chapters/`와 `episodes/`를 보고 내보내기는 `exported/`에
-        // 쓴다. 값도 잔잔하다 — 증명은 캐시가 받고, 글이 같은 파일은 다시 쓰지 않는다.
-        AutoExport();
-
-        // 에피소드가 바뀌면 스탯 증감량도 바뀐다 — 도달성을 다시 증명한다.
-        Validate();
-        Draw();
-    }
+    // ⛔ 여기 있던 「읽기」 묶음 — [챕터 가져오기]·[대본 가져오기]·구판 프로젝트의 최초 1회 들여오기 ·
+    //    구판 `화자` 시트 옮기기 — 은 2026-10-29(D2)에 엑셀 연동과 함께 걷혔다. 그 안에 숨어 있던
+    //    엑셀 아닌 몫(빈 카드 · 조건 공급 · 착지 카드 출구 경고)은 그보다 먼저 제자리로 갔다
+    //    (`ProjectEditor.AlignBoardsWithChapters` · 조건 편집 명령 · `BoardWarnings`).
 
     // ── [화자] 탭 = 프로젝트의 캐스트 (2026-08-23) ──────────────────────────
     //
@@ -827,9 +498,8 @@ public partial class ChapterGraphView : UserControl
     }
 
     /// <summary>
-    /// 화자 개명을 <b>이미 쓰인 곳까지</b> 끌고 간다 — 프로젝트 대본의 줄들, 그리고 그 줄을 가진
-    /// 에피소드의 워크북(다시 낸다) (2026-08-24 소유자: "화자의 이름을 편집한 경우도 연결이 계속
-    /// 이어지도록").
+    /// 화자 개명을 <b>이미 쓰인 곳까지</b> 끌고 간다 — 프로젝트 대본의 줄들 (2026-08-24 소유자:
+    /// "화자의 이름을 편집한 경우도 연결이 계속 이어지도록").
     ///
     /// 등록부만 갈면 그 이름을 쓰던 줄이 전부 <b>미등록</b>이 된다: 드롭다운에서 사라지고,
     /// 초상화 매핑이 끊기고, 공백 있는 이름은 파서가 산문으로 읽어 대사와 합쳐진다.
@@ -845,23 +515,19 @@ public partial class ChapterGraphView : UserControl
             return null;
         }
 
-        SpeakerRenameOutcome outcome = SpeakerRenamer.Rename(
-            _session.Editor, _session.WorkbookOutput, _session.ProjectPath, previous, renamed);
+        string from = previous.Trim();
+        string to = renamed.Trim();
 
-        if (outcome.ScriptLines == 0)
+        if (from.Length == 0 || to.Length == 0 || string.Equals(from, to, StringComparison.Ordinal))
         {
             return null;
         }
 
-        string carried =
-            $"화자 '{previous}' → '{renamed}' — 줄 {outcome.ScriptLines}개가 따라갔습니다. " +
-            $"대본 워크북 {outcome.WorkbooksWritten}개를 다시 냈습니다.";
+        int lines = _session.Editor.RenameSpeaker(from, to);
 
-        // 못 낸 워크북은 조용히 넘어가지 않는다 — 다음 저장이 다시 낸다.
-        return outcome.Deferred.Count == 0
-            ? carried
-            : carried + $" ⚠ {outcome.Deferred[0]}" +
-              (outcome.Deferred.Count > 1 ? $" (외 {outcome.Deferred.Count - 1}건)" : string.Empty);
+        return lines == 0
+            ? null
+            : $"화자 '{previous}' → '{renamed}' — 줄 {lines}개가 따라갔습니다.";
     }
 
     private static void CommitOnEnter(Avalonia.Input.KeyEventArgs args, Action commit)
@@ -912,13 +578,7 @@ public partial class ChapterGraphView : UserControl
         }
     }
 
-    /// <summary>
-    /// 목록을 정의 파일에 통째로 쓰고, 그 결과를 <b>대본 워크북까지</b> 밀어 넣는다.
-    ///
-    /// 여기서 미는 것이 중요하다 — 저장만 하면 툴 화면은 새 목록을 보는데 엑셀 드롭다운은
-    /// 옛 목록을 들고 있다. 그 어긋남이 2026-08-23 소유자 보고("엑셀에 화자가 동기화가 잘
-    /// 안되네")의 절반이었다.
-    /// </summary>
+    /// <summary>목록을 정의 파일에 통째로 쓰고 [화자] 탭을 다시 그린다.</summary>
     private bool SaveSpeakers(IReadOnlyList<SpeakerSpec> speakers)
     {
         if (_session is null || !_session.SaveSpeakers(speakers))
@@ -931,129 +591,9 @@ public partial class ChapterGraphView : UserControl
         return true;
     }
 
-    // ⛔ `ImportLegacySpeakerSheets`는 2026-09-16에 걷혔다 (R-F). 구판 `화자` 시트를 정의
-    //    파일로 옮기고 <b>그 시트를 지우던</b> 길인데, 둘 다 자리가 바뀌었다: 옮기는 일은
-    //    워크북을 읽는 그 한 번(임포터)의 것이 됐고, 지우는 일은 <b>안 해도 된다</b> —
-    //    다음 출력이 워크북을 통째로 갈아 끼우며 시트째 사라진다.
-    //
-    //    옛 규율("시트를 지운 뒤에 정의 파일에 저장한다")도 함께 사라졌다. 그것이 지키던
-    //    것은 <em>다음 재읽기</em>가 지운 이름을 되살리는 일이었는데, 재읽기가 없다.
-
-    // ⛔ `PushVocabularyToEpisodes`와 그 지문(`_pushedVocabularySignature`)은 2026-09-16에
-    //    걷혔다 (R-D, 지시서 §2: "읽기 전용 산출물엔 드롭다운이 없다").
-    //
-    //    챕터의 화자 목록이 바뀔 때마다 <b>대본 워크북을 전부 열어</b> 숨김 시트를 갈아
-    //    끼우던 길이다. 워크북이 원본이던 시절에는 사람이 그 드롭다운에서 골랐으니 값을
-    //    치를 이유가 있었지만, 이제 사람은 툴에서 고른다 — 산출물에 조언을 심을 이유가 없다.
-    //    (새로 만드는 워크북은 만들 때 목록을 받는다: `EpisodeLibrary.EnsureWorkbook`.)
-
-    /// <summary>
-    /// 새 대본이 받을 화자 — 챕터를 가리지 않는 프로젝트 목록 하나다.
-    /// 규칙은 <see cref="EpisodeLibrary.SpeakerNames"/>가 갖는다(동기화가 새 워크북을
-    /// 만들 때 쓰는 것과 <b>같은 목록</b>이어야 한다).
-    /// </summary>
-    private List<string> ProjectSpeakerNames() =>
-        _session is null ? [] : EpisodeLibrary.SpeakerNames(_session.Definition);
-
-    /// <summary>
-    /// 왼쪽 목록의 챕터 클릭 → 챕터 엑셀 열기 (2026-08-16 소유자 — 기본 동작이 "엑셀에서
-    /// 만진다"이므로 클릭이 곧 편집 창구를 연다). 스프레드시트 앱이 없으면 폴더에서 보여 준다.
-    /// </summary>
-    internal void OpenChapterWorkbook(string chapterId)
-    {
-        string? folder = ChapterLibrary.FolderFor(_session?.ProjectPath);
-
-        if (folder is null)
-        {
-            return;
-        }
-
-        string target = IoPath.Combine(folder, chapterId + ".xlsx");
-
-        // .xlsm으로 개명된 챕터(구글 시트)도 그 파일이 원본이다.
-        if (!File.Exists(target) && File.Exists(IoPath.Combine(folder, chapterId + ".xlsm")))
-        {
-            target = IoPath.Combine(folder, chapterId + ".xlsm");
-        }
-
-        if (!File.Exists(target))
-        {
-            return; // 목록에 있는데 파일이 없다 — 읽기 실패 챕터. 검증 보고가 사유를 든다.
-        }
-
-        if (!SpreadsheetAssociation.IsSpreadsheetHandler(WorkbookHandlerProbe()))
-        {
-            RevealInFolder(target);
-            _session?.SetStatus(".xlsx에 연결된 스프레드시트 앱이 없어 폴더에서 파일을 보여 줍니다.");
-            return;
-        }
-
-        OpenWorkbookFile(target);
-    }
-
-    /// <summary>
-    /// 노드 클릭 → 에피소드 엑셀 열기 (G5). 워크북이 없으면 §3.2 규격대로 만들어서 연다 —
-    /// 기획자가 머리글 11개를 손으로 칠 이유가 없다.
-    /// </summary>
-    internal void OpenEpisode(string episodeId)
-    {
-        // 대본은 그 챕터의 폴더에 산다 (2026-08-16) — 다른 챕터의 같은 이름과 섞이지 않는다.
-        string? folder = SelectedEpisodesFolder;
-
-        if (folder is null)
-        {
-            _session?.SetStatus("프로젝트를 먼저 저장하고 챕터를 골라야 대본 폴더 자리가 정해집니다.");
-            return;
-        }
-
-        // .xlsx는 없는데 같은 이름의 .xlsm·.ods가 있다면, 사람이 쓴 원고가 그리로 옮겨 간
-        // 것이다(구글 시트로 열어 저장하면 형식이 바뀌기도 한다). 그 위에 빈 워크북을 새로
-        // 만들면 원고가 화면에서 사라진 것처럼 보인다 — 만들지 않고 그 파일을 열어 준다.
-        if (EpisodeLibrary.FindExisting(folder, episodeId) is null &&
-            EpisodeLibrary.FindOtherFormat(folder, episodeId) is { } other)
-        {
-            _session?.SetStatus(
-                $"'{IoPath.GetFileName(other)}'가 있어 새 워크북을 만들지 않았습니다. " +
-                "툴은 .xlsx만 읽습니다 — 그 파일을 .xlsx로 저장(또는 이름 변경)해 주세요.");
-            OpenWorkbookFile(other);
-            return;
-        }
-
-        if (EpisodeLibrary.EnsureWorkbook(
-                folder,
-                episodeId,
-                ProjectSpeakerNames()))
-        {
-            _session?.SetStatus($"에피소드 워크북을 새로 만들었습니다: {EpisodeLibrary.PathFor(folder, episodeId)}");
-        }
-
-        // 이미 있는 파일이면 그 파일을 연다 — 이름이 정규화만 다른 경우에도 같은 파일이다.
-        string target = EpisodeLibrary.FindExisting(folder, episodeId)
-            ?? EpisodeLibrary.PathFor(folder, episodeId);
-        string? handler = WorkbookHandlerProbe();
-
-        if (!SpreadsheetAssociation.IsSpreadsheetHandler(handler))
-        {
-            // 편집할 수 없는 앱에 워크북을 던지지 않는다 — 폴더에서 보여 주고 사유를 말한다.
-            RevealInFolder(target);
-            _session?.SetStatus(handler is null
-                ? ".xlsx에 연결된 앱이 없어 폴더에서 파일을 보여 줍니다. 엑셀이나 LibreOffice Calc로 열어 주세요."
-                : $".xlsx의 기본 앱({IoPath.GetFileName(handler)})이 스프레드시트가 아니라서 폴더에서 보여 줍니다. " +
-                  "우클릭 → 연결 프로그램에서 스프레드시트 앱을 고르세요.");
-            return;
-        }
-
-        OpenWorkbookFile(target);
-    }
-
     private void Reload()
     {
-        // ⛔ <b>여기가 R-F의 뒤집힌 자리다</b> (2026-09-16). 예전에는 이 줄이
-        //    `ChapterImportService.Run(...)`이었다 — 다시 그릴 때마다 `chapters/` 폴더를
-        //    열어 읽었고, 그것이 곧 <b>워크북이 원본</b>이라는 전제였다.
-        //
-        //    이제 판은 프로젝트에서 온다. 워크북을 읽는 길은 [챕터 가져오기] 하나뿐이고
-        //    (§5.2), 그 뒤로 파일은 산출물이다.
+        // 판은 프로젝트에서 온다 — 파일을 읽지 않는다 (R-F · 2026-09-16, 엑셀 연동은 2026-10-29에 걷혔다).
         _entries.Clear();
         _entries.AddRange(ChapterEntries());
 
@@ -1069,31 +609,16 @@ public partial class ChapterGraphView : UserControl
         ChapterCombo.SelectedItem = _selectedChapterId;
         _updatingCombo = false;
 
-        // ⛔ 구판 `화자` 시트 이행은 2026-09-16에 임포트 쪽으로 옮겼다 (R-F). 매번 부를 이유가
-        //    사라졌기 때문이다 — 그 시트를 볼 수 있는 것은 워크북을 읽는 그 한 번뿐이다.
-
         RebuildSpeakerTab();
 
         AutoExport();        // 진행 JSON은 사람 손을 기다리지 않는다 (2026-08-17)
         Validate();
         Draw();              // 못 나갔으면 그 결론이 검증 보고 맨 위에 선다
-        RetryDeferredOutput();
-
-        // ⛔ 디스크 지문(`_diskFingerprint`)은 2026-09-16에 걷혔다 (R-F). "파일이 정말
-        //    바뀌었나"는 <b>파일을 다시 읽던 시절</b>의 물음이고, 이제 판은 프로젝트에서 온다.
 
         EntriesReloaded?.Invoke(_entries);
     }
 
-    /// <summary>
-    /// 프로젝트가 든 챕터를 화면이 쓰는 모양으로 낸다.
-    ///
-    /// ⚠ <see cref="ChapterEntry.Path"/>는 이제 <b>읽은 자리가 아니라 낼 자리</b>다 —
-    /// 출력·잠금 확인이 이 경로를 본다.
-    ///
-    /// ⚠ <c>OpenFailure</c>는 늘 null이다. 열지 못할 파일이 없기 때문이다 — 못 여는 일은
-    /// 임포트에서만 일어나고, 그때는 <b>아무것도</b> 안 들여온다(§5.2).
-    /// </summary>
+    /// <summary>프로젝트가 든 챕터를 화면이 쓰는 모양으로 낸다.</summary>
     private IReadOnlyList<ChapterEntry> ChapterEntries()
     {
         if (_session is null)
@@ -1101,18 +626,9 @@ public partial class ChapterGraphView : UserControl
             return Array.Empty<ChapterEntry>();
         }
 
-        string? folder = ChapterLibrary.FolderFor(_session.ProjectPath);
-
         return _session.Project.Chapters
-            .Select(chapter =>
-            {
-                string path = folder is null
-                    ? chapter.ChapterId + ".xlsx"
-                    : IoPath.Combine(folder, chapter.ChapterId + ".xlsx");
-
-                return new ChapterEntry(
-                    chapter.ChapterId, path, chapter.ToGraphModel(path, _session.Definition), null);
-            })
+            .Select(chapter => new ChapterEntry(
+                chapter.ChapterId, chapter.ToGraphModel(chapter.ChapterId, _session.Definition)))
             .OrderBy(entry => entry.ChapterId, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -1127,7 +643,7 @@ public partial class ChapterGraphView : UserControl
 
         ChapterEntry? entry = _entries.FirstOrDefault(item => item.ChapterId == _selectedChapterId);
 
-        if (entry?.Model is null)
+        if (entry is null)
         {
             return;
         }
@@ -1289,19 +805,19 @@ public partial class ChapterGraphView : UserControl
 
         if (entry is null)
         {
-            string? folder = ChapterLibrary.FolderFor(_session?.ProjectPath);
+            bool saved = _session?.ProjectPath is not null;
 
             EmptyText.IsVisible = true;
-            EmptyText.Text = folder is null
-                ? "아직 프로젝트가 없습니다.\n새 프로젝트를 만들고 저장하면 여기에 챕터 판이 섭니다."
-                : $"챕터 워크북이 없습니다.\n{folder} 에 {{ChapterId}}.xlsx 를 넣으면 여기에 그려집니다.";
+            EmptyText.Text = saved
+                ? "아직 챕터가 없습니다.\n[＋ 챕터]로 첫 챕터를 만들면 여기에 판이 섭니다."
+                : "아직 프로젝트가 없습니다.\n새 프로젝트를 만들고 저장하면 여기에 챕터 판이 섭니다.";
 
             // 빈 판의 첫걸음은 둘 중 하나만 선다 (2026-08-26 소유자: "새 프로젝트를
             // 만들지도 않았는데 +챕터버튼부터 나오니 오히려 헷갈려") — 순서가 곧 안내다:
             // 프로젝트가 먼저고 챕터는 그 다음이다. 챕터 단추는 챕터가 하나도 없을 때만이다.
             // 목록에는 있는데 아직 안 고른 경우는 아니다: 그때 할 일은 만들기가 아니라 고르기다.
-            EmptyNewProjectButton.IsVisible = folder is null;
-            EmptyAddChapterButton.IsVisible = folder is not null && _entries.Count == 0;
+            EmptyNewProjectButton.IsVisible = !saved;
+            EmptyAddChapterButton.IsVisible = saved && _entries.Count == 0;
             EmptyAddEpisodeButton.IsVisible = false;
 
             DiagnosticsExpander.Header = "검증 보고";
@@ -1312,14 +828,6 @@ public partial class ChapterGraphView : UserControl
         EmptyNewProjectButton.IsVisible = false;
         EmptyAddChapterButton.IsVisible = false;
         EmptyAddEpisodeButton.IsVisible = false;
-
-        if (entry.Model is null)
-        {
-            EmptyText.IsVisible = true;
-            EmptyText.Text = $"'{entry.ChapterId}'을 읽지 못했습니다.\n{entry.OpenFailure}";
-            DiagnosticsExpander.Header = "검증 보고 — 읽기 실패";
-            return;
-        }
 
         ChapterGraphModel model = entry.Model;
 
@@ -1831,7 +1339,7 @@ public partial class ChapterGraphView : UserControl
             }
         };
         ToolTip.SetTip(scene, string.IsNullOrWhiteSpace(episode.SceneId)
-            ? "장면: 에피소드별 기본 장면(기존 워크북 호환)"
+            ? "장면: 에피소드별 기본 장면"
             : $"장면: {episode.SceneId.Trim()} — 같은 장면ID끼리 저장·롤백 구간을 공유합니다.");
         header.Children.Add(scene);
 
@@ -2163,10 +1671,6 @@ public partial class ChapterGraphView : UserControl
     /// </summary>
     private bool _dragRedrawQueued;
 
-    /// <summary>선택된 챕터의 워크북 경로. 편집이 쓰는 대상이다.</summary>
-    private string? SelectedChapterPath =>
-        _entries.FirstOrDefault(item => item.ChapterId == _selectedChapterId)?.Path;
-
     private ChapterGraphModel? SelectedModel =>
         _entries.FirstOrDefault(item => item.ChapterId == _selectedChapterId)?.Model;
 
@@ -2186,15 +1690,6 @@ public partial class ChapterGraphView : UserControl
     private ChapterGraphModel? LiveSheetModel =>
         _selectedChapterId is { } id && _session?.Editor.FindChapter(id) is { } chapter
             ? chapter.ToGraphModel(id, _session.Definition)
-            : null;
-
-    /// <summary>
-    /// 선택된 챕터의 대본 폴더 <c>episodes/{ChapterId}/</c> (2026-08-16 — 챕터별 격리).
-    /// EpisodeId는 챕터 안에서만 유일하므로, 파일을 찾는 모든 길이 이 범위를 지난다.
-    /// </summary>
-    private string? SelectedEpisodesFolder =>
-        _selectedChapterId is { } chapterId
-            ? EpisodeLibrary.FolderFor(_session?.ProjectPath, chapterId)
             : null;
 
     private void WireCardInteraction(Border card, ChapterEpisode episode)
@@ -2220,11 +1715,7 @@ public partial class ChapterGraphView : UserControl
             _dragMoved = false;
         };
 
-        card.DoubleTapped += (_, e) =>
-        {
-            e.Handled = true;
-            UiGuard.Run(_session, "에피소드 열기", () => OpenEpisode(episode.EpisodeId));
-        };
+        // ⛔ 카드 더블클릭이 대본 엑셀을 열던 배선은 2026-10-29(D2)에 엑셀 연동과 함께 걷혔다.
     }
 
     /// <summary>
@@ -2610,28 +2101,6 @@ public partial class ChapterGraphView : UserControl
     /// <summary>콤보·목록을 프로그램이 채우는 중 — 자동 저장 억제.</summary>
     private bool _fillingPanel;
 
-    /// <summary>
-    /// 미룬 출력을 다시 민다 — 재읽기와 편집 뒤에 부른다.
-    ///
-    /// ⛔ <b>미룬 것을 잊지 않는다</b> (§5.3). 엑셀이 잡고 있어 못 낸 워크북은 조정자가 들고 있다가
-    /// 여기서 다시 낸다. 미룬 것이 없으면 파일을 열지 않으므로 값이 없다. (2026-10-29까지는 엑셀 잠금
-    /// 감시자가 이 자리를 불렀다 — 걷혔다.)
-    /// </summary>
-    private void RetryDeferredOutput()
-    {
-        if (_session is { } session)
-        {
-            WorkbookEmitRun caught = session.WorkbookOutput.Retry(
-                session.Project, session.ProjectPath, session.Definition);
-
-            if (caught.Written.Count > 0)
-            {
-                session.SetStatus(
-                    $"미뤄 둔 워크북 {caught.Written.Count}개를 다시 냈습니다.");
-            }
-        }
-    }
-
     /// <summary>표시·해금 콤보의 자동 저장 — 고르는 순간 그 셀 하나가 써진다.</summary>
     private void AutoSaveGates()
     {
@@ -2659,9 +2128,10 @@ public partial class ChapterGraphView : UserControl
     }
 
     /// <summary>
-    /// [대사] 탭 — 선택된 에피소드의 대사를 워크북에서 바로 읽어 세운다. 연출 그래프까지
-    /// 안 가도 챕터 그래프에서 방금 쓴 대사를 확인한다(소유자 요청). 읽기 전용이고 고치는
-    /// 곳은 엑셀이다. 선택이 없거나 대본이 비면 그 사실을 말한다.
+    /// [대사] 탭 — 선택된 에피소드 카드의 대사를 프로젝트에서 읽어 세운다. 연출 그래프까지
+    /// 안 가도 챕터 그래프에서 방금 쓴 대사를 확인한다(소유자 요청). 읽기 전용이다.
+    ///
+    /// ⚠ 2026-10-29(D2)까지는 대본 엑셀을 읽었다. 엑셀 연동이 걷혀 원천은 카드의 대본 하나다.
     /// </summary>
     private void FillDialoguePreview(string? episodeId)
     {
@@ -2672,40 +2142,31 @@ public partial class ChapterGraphView : UserControl
             return;
         }
 
-        string preview = string.Empty;
-        string? folder = SelectedEpisodesFolder;
-
-        if (folder is not null && EpisodeLibrary.FindExisting(folder, episodeId) is { } path)
-        {
-            try
-            {
-                preview = PreviewText(EpisodeWorkbookReader.Read(path).Rows);
-            }
-            catch (XlsxReadException exception)
-            {
-                preview = $"대본을 읽지 못했습니다: {exception.Message}";
-            }
-        }
+        string preview = DialogueOf(episodeId);
 
         DialoguePreviewHeader.Text = preview.Length > 0
-            ? "읽기 전용 · 고치는 곳은 엑셀 (노드 더블클릭)"
-            : "아직 적힌 대사가 없습니다 — 노드를 더블클릭해 엑셀에서 쓰세요";
+            ? "읽기 전용 · 고치는 곳은 연출 그래프의 카드"
+            : "아직 적힌 대사가 없습니다 — 연출 그래프의 카드에서 쓰세요";
         DialoguePreviewText.Text = preview;
     }
 
-    /// <summary>
-    /// 대본을 읽는 눈 기준으로 편다 (v10) — 조건 블록은 들여쓰기로 보인다. 시트에서는
-    /// IF와 END가 각자 한 행이지만, 읽을 때 중요한 것은 <b>어디까지가 조건 안인가</b>다.
-    /// </summary>
-    private static string PreviewText(IReadOnlyList<EpisodeRow> rows)
+    /// <summary>그 에피소드 카드의 대사를 「화자: 대사」 줄로 편다. 카드나 대본이 없으면 빈 글이다.</summary>
+    private string DialogueOf(string episodeId)
     {
-        // v15 (2026-09-16 — R-C) — 대본에는 조건이 없다. 들여쓰기도 깊이도 사라지고,
-        // 미리보기는 줄을 순서대로 적는 일이 됐다.
+        if (_session is null ||
+            _selectedChapterId is not { } chapterId ||
+            EpisodeNaming.CardFor(_session.Project, chapterId, episodeId) is not { } card ||
+            _session.Project.FindScript(card.ScriptId) is not { } script)
+        {
+            return string.Empty;
+        }
+
         var lines = new List<string>();
 
-        foreach (EpisodeRow row in rows.Where(row => !row.IsBlank))
+        foreach (Vn.Authoring.Script.ScriptLine line in script.ActiveLines)
         {
-            string body = row.Speaker.Length > 0 ? $"{row.Speaker}: {row.Text}" : row.Text;
+            Vn.Authoring.Script.LocalizedLine text = script.Text(line.Id);
+            string body = text.Speaker.Length > 0 ? $"{text.Speaker}: {text.Text}" : text.Text;
 
             if (body.Length > 0)
             {
@@ -2752,7 +2213,7 @@ public partial class ChapterGraphView : UserControl
     /// <summary>[＋] — 빈 폼을 목록 끝에 연다. 문구와 도착을 고르면 그때 길이 생긴다.</summary>
     private void AddChoiceSlotFromPanel()
     {
-        if (_selectedEpisodeId is null || SelectedChapterPath is null)
+        if (_selectedEpisodeId is null || SelectedModel is null)
         {
             _session?.SetStatus("에피소드를 먼저 골라 주세요.");
             return;
@@ -3762,8 +3223,8 @@ public partial class ChapterGraphView : UserControl
     /// 속성 패널의 [적용] — 에피소드 개명.
     ///
     /// ⛔ <b>규율은 여기 없다</b> — <see cref="EpisodeRenamer"/>가 갖는다 (2026-09-16에
-    /// [대본] 탭 탐색기에서도 이름을 고치게 되면서 한 벌로 모았다). 여기 남은 것은
-    /// <b>이 화면이 그 뒤에 할 일</b>뿐이다: 선택을 새 이름으로 옮기고, 챕터를 다시 낸다.
+    /// 부르는 자리가 둘이 되면서 한 벌로 모았다). 여기 남은 것은
+    /// <b>이 화면이 그 뒤에 할 일</b>뿐이다: 선택을 새 이름으로 옮긴다.
     /// </summary>
     internal void RenameSelectedEpisode()
     {
@@ -3776,7 +3237,7 @@ public partial class ChapterGraphView : UserControl
         }
 
         EpisodeRenamer.Result result =
-            EpisodeRenamer.Rename(_session.Editor, _session.ProjectPath, chapterId, oldId, newId);
+            EpisodeRenamer.Rename(_session.Editor, chapterId, oldId, newId);
 
         if (!result.Renamed)
         {
@@ -3791,11 +3252,8 @@ public partial class ChapterGraphView : UserControl
 
         _selectedEpisodeId = newId;
 
-        WorkbookEmitRun emitted = EmitSelectedChapter();
-
         _session.SetStatus(
-            $"'{oldId}' → '{newId}' 개명했습니다. 간선·픽스처·대본 파일·대사 노드가 함께 따라갔습니다." +
-            emitted.Notice());
+            $"'{oldId}' → '{newId}' 개명했습니다. 간선·픽스처·대사 노드가 함께 따라갔습니다.");
     }
 
     /// <summary>도착만 주고 잇기 — 문구 없는 길(보이지 않는 기본)이 선다.</summary>
@@ -3819,7 +3277,7 @@ public partial class ChapterGraphView : UserControl
     /// [에피소드 삭제] — 규율은 <see cref="EpisodeDeleter"/> 하나다.
     ///
     /// ⛔ <b>2026-09-18까지 그 규율이 여기 살았다</b>(원고 밀기·행 지우기·카드 거두기
-    /// 100여 줄). [대본] 탭에 같은 기능을 붙이려면 사본을 뜨는 수밖에 없었고, 사본은
+    /// 100여 줄). 다른 화면에 같은 기능을 붙이려면 사본을 뜨는 수밖에 없었고, 사본은
     /// 갈린다 — 바로 앞의 「에피소드 만들기」가 그렇게 갈려 있었다. 화면에 남는 것은
     /// <b>무엇을 골랐는가</b>와 <b>결과를 어떻게 말하는가</b>뿐이다.
     /// </summary>
@@ -3832,8 +3290,7 @@ public partial class ChapterGraphView : UserControl
             return;
         }
 
-        EpisodeDeleter.Result result = EpisodeDeleter.Delete(
-            _session!.Editor, _session.ProjectPath, chapterId, episodeId);
+        EpisodeDeleter.Result result = EpisodeDeleter.Delete(_session!.Editor, chapterId, episodeId);
 
         if (!result.Ok)
         {
@@ -3843,14 +3300,13 @@ public partial class ChapterGraphView : UserControl
 
         _selectedEpisodeId = null;
 
-        WorkbookEmitRun emitted = EmitSelectedChapter();
-        _session.SetStatus(result.Describe(episodeId) + emitted.Notice());
+        _session.SetStatus(result.Describe(episodeId));
     }
 
     /// <summary>
     /// [＋ 에피소드] — 에피소드가 선택돼 있으면 <b>그 자식으로</b> 만들어 간선까지 잇는다
     /// (자리 = 부모 깊이 + 1 열, v3 소유자 지시). 선택이 없으면 홀로 선 노드다.
-    /// Id는 자동 발명하지 않되 빈 워크북을 부를 수는 없으니, 겹치지 않는 자리표시 Id를 주고
+    /// Id는 자동 발명하지 않되 빈 이름으로 둘 수는 없으니, 겹치지 않는 자리표시 Id를 주고
     /// 사람이 패널의 [이름] 칸에서 고쳐 정하게 한다(Enter로 확정).
     /// </summary>
     internal void AddEpisodeFromToolbar()
@@ -3893,70 +3349,24 @@ public partial class ChapterGraphView : UserControl
         //    이제 `AddEpisode`·`AddNextEpisode`가 카드까지 함께 만든다 — 창구가 잊을
         //    자리 자체가 없어졌다.
 
-        WorkbookEmitRun emitted = EmitSelectedChapter();
-
-        // 대본 워크북도 지금 낸다 — 카드가 섰으니 낼 것(첫 줄)이 프로젝트에 있다. 2026-10-29까지는
-        // 여기서 빈 템플릿을 만들고 첫 대사 문구를 셀에 심었다(C5에서 걷힘) — 그 문구는 프로젝트에
-        // 없는 글이라 워크북과 원본이 처음부터 갈렸다. 옛 빌드의 빈 유물이 남아 있어도 덮는다(.bak).
-        WorkbookEmitRun script = EpisodeNaming.CardFor(_session!.Project, chapterId, episodeId) is { } card
-            ? _session.WorkbookOutput.EmitScript(_session.Project, _session.ProjectPath, card)
-            : WorkbookEmitRun.Empty;
-
-        _session?.SetStatus(
-            $"'{episodeId}'을 더했습니다. Id와 대사엔트리를 패널에서 채워 주세요." +
-            emitted.Notice() + script.Notice());
+        _session?.SetStatus($"'{episodeId}'을 더했습니다. Id와 대사엔트리를 패널에서 채워 주세요.");
     }
 
     /// <summary>
-    /// 쓰기 결과를 상태줄로 + 성공이면 판을 다시 읽는다. 챕터 워크북을 바꾸는 길은
-    /// 전부 여기로 모인다 — 갱신을 한 자리에서 챙기려고 모아 둔 길목이다.
-    /// </summary>
-    /// <summary>
-    /// <b>챕터 편집 하나</b> — 프로젝트를 고치고 워크북을 다시 낸다 (R-F · 지시서 §4.1).
-    ///
-    /// ⛔ <b>순서가 규격이다.</b> 고치기가 먼저이고 출력이 나중이다 — 원본이 프로젝트이므로
-    /// 편집은 이미 안전하고, 못 낸 것은 <b>그 파일을 지금 갱신하는 일</b>뿐이다(§5.3).
-    /// 예전에는 반대였다: 셀에 쓰는 것이 곧 편집이라 파일이 잠기면 편집 자체가 없던 일이 됐다.
+    /// <b>챕터 편집 하나</b> — 프로젝트를 고치고 상태줄에 말한다 (R-F · 지시서 §4.1).
     ///
     /// ⚠ <b>다시 그리라고 여기서 말하지 않는다.</b> 편집이 프로젝트를 바꿨으므로 세션의
     /// 변경 알림이 <see cref="QueueReload"/>를 부른다 — 쓴 자리가 곧 아는 자리다.
     ///
-    /// ⚠ 고치기가 던지면(같은 Id·없는 간선·못 읽는 스탯변화) 출력까지 안 간다. 부르는 쪽의
+    /// ⚠ 고치기가 던지면(같은 Id·없는 간선·못 읽는 스탯변화) 부르는 쪽의
     /// <c>UiGuard</c>가 받아 상태줄에 말한다.
+    ///
+    /// (2026-10-29 · D2: 그 뒤에 따라 하던 챕터 워크북 재출력은 엑셀 연동과 함께 걷혔다.)
     /// </summary>
     private void ChapterEdit(Action change, string success)
     {
         change();
-
-        // 잘된 일은 조용하다 — 못 냈을 때만 그 사실이 성공 문구 뒤에 붙는다.
-        _session?.SetStatus(success + EmitSelectedChapter().Notice());
-
-        RetryDeferredOutput();
-    }
-
-    /// <summary>
-    /// 고른 챕터를 워크북으로 <b>통째로</b> 낸다 (§4.1·§4.2).
-    ///
-    /// ⚠ 셀 하나를 고치지 않는다 — 전체를 새로 쓰므로 행 삽입·삭제와 인덱스 충돌이라는
-    /// 난제가 이 경계에서 사라진다.
-    ///
-    /// ⚠ 내는 장치는 <b>세션의 것</b>이다 — 미룬 목록(§5.3)이 화면마다 갈리면 안 되고,
-    /// 화면을 지나지 않는 편집(되돌리기)도 같은 자리를 지나야 한다.
-    /// </summary>
-    private WorkbookEmitRun EmitSelectedChapter() =>
-        _session is { } session && _selectedChapterId is { } chapterId
-            ? session.WorkbookOutput.Emit(
-                session.Project, session.ProjectPath, chapterId, session.Definition)
-            : WorkbookEmitRun.Empty;
-
-    /// <summary>
-    /// 옛 <c>Report</c> — 워크북에 <b>직접</b> 쓰던 시절의 창구다. 아직 파일을 직접 만지는
-    /// 자리(워크북 만들기·개명)만 여기를 지난다.
-    /// </summary>
-    private void Report(ChapterWriteResult result, string success)
-    {
-        _session?.SetStatus(result.Written ? success : result.Failure!);
-        RetryDeferredOutput();
+        _session?.SetStatus(success);
     }
 
     /// <summary>간선 하나를 가리키는 표식. 화면 검증이 이 이름으로 간선을 찾는다.</summary>
@@ -4051,7 +3461,6 @@ public partial class ChapterGraphView : UserControl
 
         int errors = all.Count(item => item.Severity == ChapterDiagnosticSeverity.Error);
         int warnings = all.Count(item => item.Severity == ChapterDiagnosticSeverity.Warning);
-        int rejected = _importRefusals.Count;
 
         string? exportNotice = ExportNotice();
 
@@ -4065,15 +3474,6 @@ public partial class ChapterGraphView : UserControl
         if (warnings > 0)
         {
             header.Append($" · {WarningMark} 경고 {warnings}");
-        }
-
-        // ⚠ "동기화 N건 반영"은 <b>더 이상 적지 않는다</b> (2026-08-24 소유자: "동기화가
-        // 몇개 반영됬는지 표기할 필요는 없어"). 여기는 <em>검증 보고</em>이고, 잘된 일의
-        // 개수는 검증할 것이 아니다 — 문제만 적힌 목록이라야 문제가 눈에 띈다.
-        // 거부·경고는 그대로 든다: 조용한 무반영이 최악이다(G3-1).
-        if (rejected > 0)
-        {
-            header.Append($" · {WarningMark} 대본 가져오기 거부 {rejected}건");
         }
 
         if (exportNotice is not null)
@@ -4132,7 +3532,7 @@ public partial class ChapterGraphView : UserControl
         // ⚠ 세는 것은 <b>말할 것이 있는</b> 보고뿐이다 (2026-08-24). 예전에는 보고가
         // 하나라도 있으면 여기를 지나쳤는데, 이제 대부분의 보고가 아무 줄도 내지 않으므로
         // 그대로 두면 <b>텅 빈 상자</b>가 선다("보고할 것이 없습니다"조차 없이).
-        if (all.Count == 0 && _importRefusals.Count == 0 && _importDiagnostics.Count == 0 &&
+        if (all.Count == 0 &&
             !(_selectedChapterId is { } id && _exportRun.Checksums?.ContainsKey(id) == true))
         {
             DiagnosticsPanel.Children.Add(new TextBlock
@@ -4144,8 +3544,6 @@ public partial class ChapterGraphView : UserControl
 
             return;
         }
-
-        DrawImportReport();
 
         foreach (ChapterDiagnostic diagnostic in all
                      .OrderByDescending(item => item.Severity)
@@ -4246,39 +3644,6 @@ public partial class ChapterGraphView : UserControl
 
         await clipboard.SetTextAsync(string.Join(Environment.NewLine, lines));
         _session?.SetStatus($"검증 보고 {lines.Count}줄을 복사했습니다.");
-    }
-
-    /// <summary>
-    /// 대본 들여오기 결과. 거부와 그 사유를 <b>목록으로</b> 보인다 —
-    /// 조용한 무반영이 최악이다(G3-1).
-    ///
-    /// ⚠ <b>잘된 것은 아무 말도 하지 않는다</b> (2026-08-24 소유자: "몇개 반영됬는지
-    /// 표기할 필요는 없어"). 잘된 일의 개수가 목록을 채우면 정작 봐야 할 줄이 그 사이에
-    /// 묻힌다 — 이 상자의 존재 이유가 그 반대다("숫자는 2개라는데 볼 방법이 없어").
-    ///
-    /// ⚠ 거부가 <b>챕터 단위</b>인 것은 들여오기가 전부 아니면 전무이기 때문이다(§5.2).
-    /// 에피소드마다 성패가 갈리던 동기화 시절의 보고와 모양이 다른 이유가 그것이다.
-    /// </summary>
-    private void DrawImportReport()
-    {
-        foreach (string chapterId in _importRefusals)
-        {
-            DiagnosticsPanel.Children.Add(DiagnosticLine(
-                $"대본 가져오기 거부 — {chapterId} (아무것도 들여오지 않았습니다)",
-                Brushes.IndianRed, dim: false, bold: true));
-        }
-
-        foreach (ChapterDiagnostic diagnostic in _importDiagnostics
-                     .Where(item => item.Severity != ChapterDiagnosticSeverity.Info)
-                     .Distinct())
-        {
-            DiagnosticsPanel.Children.Add(DiagnosticLine(
-                $"  {diagnostic.Describe()}",
-                diagnostic.Severity == ChapterDiagnosticSeverity.Error
-                    ? Brushes.IndianRed
-                    : Brushes.DarkGoldenrod,
-                dim: false));
-        }
     }
 
     // SelectableTextBlock — [보고 복사]가 전체를 들고 가고, 드래그는 한 줄만 집어 간다.

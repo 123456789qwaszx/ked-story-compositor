@@ -71,7 +71,7 @@ public sealed class ChapterDocument
         ChoiceOptions);
 
     /// <summary>
-    /// 스탯에 대한 <b>모델 검사</b> — 옛 <see cref="ChapterWorkbookReader"/>가 `스탯` 시트를
+    /// 스탯에 대한 <b>모델 검사</b> — 옛 <c>ChapterWorkbookReader</c>가 `스탯` 시트를
     /// 읽으며 하던 그 검사다 (R-F · 2026-09-16에 여기로 옮겨 왔다).
     ///
     /// ⚠ <b>왜 따라와야 했나</b>: 리더에 있었던 것은 <i>거기가 유일한 문이어서</i>였지 파일의
@@ -137,7 +137,7 @@ public sealed class ChapterDocument
     /// (2026-09-17에 뒤늦게 옮겨 왔다).
     ///
     /// ⛔ <b>R-F가 스탯에서 겪은 일이 조건에서 한 번 더 있었다.</b> 이 검사는
-    /// <see cref="ChapterWorkbookReader"/>에만 있었고, 거기 있었던 것은 <i>그때 그것이 유일한
+    /// <c>ChapterWorkbookReader</c>에만 있었고, 거기 있었던 것은 <i>그때 그것이 유일한
     /// 문이어서</i>였다. 모델이 정본이 된 뒤로 <b>툴에서 만들거나 고친 조건의 흠은 아무도
     /// 안 봤다</b> — 식을 비워도, 모르는 스탯키를 적어도 검증 보고가 조용했다.
     ///

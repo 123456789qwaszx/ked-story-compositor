@@ -8,7 +8,7 @@ namespace Vn.Authoring.Chapters;
 /// 챕터의 에피소드가 <b>판의 어느 대사 노드로 재생되는가</b>를 잇는다.
 ///
 /// ⚠ <b>그 챕터의 판만 본다</b> (2026-10-29 · `docs/plans/excel-boundary.md` C1). EpisodeId는
-/// 챕터 안에서만 유일하다(<see cref="EpisodeLibrary"/>) — 2026-10-29까지 여기만 <b>프로젝트 전체</b>의
+/// 챕터 안에서만 유일하다(<c>EpisodeLibrary</c>) — 2026-10-29까지 여기만 <b>프로젝트 전체</b>의
 /// 대사 노드를 EpisodeId 하나로 사전에 넣고 먼저 만난 것을 집었다. 다른 챕터의 같은 Id가 그 챕터의
 /// 노드 대신 잡혀 진행 JSON이 엉뚱한 대사를 부를 자리였다. 판은 <see cref="EpisodeNaming.BoardOf"/>로
 /// 찾는다 — 챕터 = 판 1:1(G-1 v2)이고, 판이 아직 없으면 노드도 없다.

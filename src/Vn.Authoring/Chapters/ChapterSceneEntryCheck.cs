@@ -1,4 +1,3 @@
-using ClosedXML.Excel;
 
 namespace Vn.Authoring.Chapters;
 
@@ -129,7 +128,7 @@ public static class ChapterSceneEntryCheck
                 path,
                 ChapterSheetNames.Edges,
                 edge is { SourceRow: > 0 } ? edge.SourceRow : null,
-                edge is null ? null : XLHelper.GetColumnLetterFromNumber(2),
+                null,
                 $"장면 '{sceneId}'에 밖에서 들어오는 자리가 {entries.Count}개입니다: " +
                 $"{string.Join(", ", entries)}. 장면은 한 자리에서만 시작해야 합니다 — " +
                 "롤백이 되돌아갈 곳과 이어하기가 재개할 곳이 그 자리입니다. " +

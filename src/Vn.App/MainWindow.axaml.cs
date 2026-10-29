@@ -574,7 +574,7 @@ public partial class MainWindow : Window
     private void ShowAddChapterFlyout(Control anchor) =>
         ChapterAddFlyout.ShowAt(anchor, _session, chapterId =>
         {
-            ChapterGraph.RefreshFromDisk();
+            ChapterGraph.Refresh();
             ChapterGraph.SelectChapter(chapterId);
         });
 
@@ -640,21 +640,13 @@ public partial class MainWindow : Window
                         return;
                     }
 
-                    // 한 번 클릭 = 선택만. 엑셀은 더블클릭으로 연다 (2026-08-16 소유자) —
-                    // 챕터를 훑어보는 것과 편집하러 여는 것은 다른 동작이고, 클릭마다
-                    // 엑셀이 뜨면 판을 옮겨 다닐 수가 없다. 노드(에피소드)와 같은 규칙이다.
+                    // 한 번 클릭 = 선택. (더블클릭이 챕터 엑셀을 열던 배선은 2026-10-29 · D2에
+                    // 엑셀 연동과 함께 걷혔다.)
                     UiGuard.Run(_session, "챕터 선택", () =>
                     {
                         _session.SelectFile(_session.EnsureChapterBoard(chapterId));
                         ChapterGraph.SelectChapter(chapterId);
                     });
-                };
-
-                row.DoubleTapped += (_, args) =>
-                {
-                    args.Handled = true;
-                    UiGuard.Run(_session, "챕터 엑셀 열기",
-                        () => ChapterGraph.OpenChapterWorkbook(chapterId));
                 };
 
                 ChapterGraph.ChapterListHost.Children.Add(row);
@@ -664,7 +656,7 @@ public partial class MainWindow : Window
             {
                 ChapterGraph.ChapterListHost.Children.Add(new TextBlock
                 {
-                    Text = "챕터가 없습니다. ＋로 만들거나 chapters/ 폴더에 워크북을 넣으세요.",
+                    Text = "챕터가 없습니다. ＋로 만드세요.",
                     Margin = new Thickness(6, 10),
                     Opacity = 0.55,
                     FontSize = 11,
@@ -675,7 +667,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 챕터 행 우클릭 — 이름 바꾸기와 <b>제거</b>. 둘 다 워크북·대본 폴더·판·조건 배관을
+    /// 챕터 행 우클릭 — 이름 바꾸기와 <b>제거</b>. 둘 다 챕터·판·조건 배관을
     /// 함께 옮기거나 걷는다(<see cref="ChapterRenamer"/> · <see cref="ChapterDeleter"/>).
     ///
     /// ⛔ 제거는 2026-08-25에 생겼다. 그전에는 "폴더에서 사람이 지우세요"였는데, 그 길은
@@ -702,9 +694,9 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // ⚠ 개명은 <b>네 자리를 함께</b> 옮기는 한 동작이다(워크북·대본 폴더·판·조건
-            // 배관). 셸이 그중 둘만 알던 시절에 나머지 둘이 뒤처졌다 — 그 주인은 이제
-            // ChapterRenamer 하나다(2026-08-24 소유자 보고).
+            // ⚠ 개명은 <b>여러 자리를 함께</b> 옮기는 한 동작이다(챕터·판·조건 배관). 셸이 그중
+            // 일부만 알던 시절에 나머지가 뒤처졌다 — 그 주인은 이제 ChapterRenamer 하나다
+            // (2026-08-24 소유자 보고).
             ChapterRenamer.Result result =
                 ChapterRenamer.Rename(_session.Editor, _session.ProjectPath, chapterId, newId);
 
@@ -714,23 +706,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            ChapterGraph.RefreshFromDisk();
+            ChapterGraph.Refresh();
             ChapterGraph.SelectChapter(newId);
             flyout.Hide();
 
-            // 무엇이 함께 옮겨졌는지 말한다 — 개명이 파일을 옮기는 일이라, 조용하면
-            // 사람이 폴더를 열어 확인하게 된다.
-            string carried = string.Join(" · ",
-                new[]
-                {
-                    result.EpisodesMoved ? "대본 폴더" : null,
-                    result.SupplyRenamed ? "조건 노드" : null
-                }.Where(item => item is not null));
-
             _session.SetStatus(
                 $"챕터 '{chapterId}' → '{newId}'로 바꿨습니다" +
-                (carried.Length > 0 ? $"({carried}도 함께)." : ".") +
-                (result.FilesNotMoved is { } notMoved ? $" ⚠ {notMoved}" : string.Empty) +
+                (result.SupplyRenamed ? "(조건 노드도 함께)." : ".") +
                 (result.StaleExport is { } stale
                     ? $" ⚠ 옛 이름의 내보내기 '{stale}'가 남아 있습니다 — 지우고 다시 내보내 주세요."
                     : " 내보낸 JSON이 있었다면 다시 내보내 주세요."));
@@ -750,7 +732,7 @@ public partial class MainWindow : Window
     ///
     /// 확인 창을 따로 띄우지 않는 이유는 창이 사실을 <b>덮기</b> 때문이다 — 이 판에는
     /// 방금 읽던 챕터 이름과 이름 칸이 함께 있어서, 여기서 묻는 편이 무엇을 지우는지
-    /// 더 분명하다. 되돌릴 자리(<c>.bak</c>·되돌리기)도 같은 문장에서 말한다.
+    /// 더 분명하다. 되돌릴 자리(되돌리기)도 같은 문장에서 말한다.
     /// </summary>
     private Control BuildChapterRemoveButton(Flyout flyout, string chapterId)
     {
@@ -763,8 +745,8 @@ public partial class MainWindow : Window
 
         var caution = new TextBlock
         {
-            Text = $"'{chapterId}'의 대본과 연출 그래프의 노드가 함께 사라집니다. " +
-                   "원고는 .bak으로 남고, 판은 되돌리기로 돌아옵니다.",
+            Text = $"'{chapterId}'의 에피소드와 연출 그래프의 노드가 함께 사라집니다. " +
+                   "되돌리기(Ctrl+Z)로 돌아옵니다.",
             FontSize = 10,
             Opacity = 0.75,
             TextWrapping = TextWrapping.Wrap,
@@ -795,19 +777,13 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                ChapterGraph.RefreshFromDisk();
+                ChapterGraph.Refresh();
                 RefreshShell();
                 flyout.Hide();
 
-                // 되돌릴 자리를 <b>이름으로</b> 말한다 — "지웠습니다"만 오면 사람은 원고가
-                // 사라진 줄 알고, 그 오해는 폴더를 열어 봐야만 풀린다.
-                string kept = string.Join(" · ",
-                    new[] { result.WorkbookBackup, result.EpisodesBackup }
-                        .Where(item => item is not null));
-
                 _session.SetStatus(
-                    $"챕터 '{chapterId}'를 지웠습니다(연출 노드 {result.NodesRemoved}개도 함께)." +
-                    (kept.Length > 0 ? $" 원고는 남겨 뒀습니다: {kept}" : string.Empty) +
+                    $"챕터 '{chapterId}'를 지웠습니다(연출 노드 {result.NodesRemoved}개도 함께). " +
+                    "되돌리기(Ctrl+Z)로 돌아옵니다." +
                     (result.StaleExport is { } stale
                         ? $" ⚠ 내보낸 '{stale}'가 남아 있습니다 — 지우지 않으면 게임이 " +
                           "없는 챕터를 계속 싣습니다."

@@ -34,14 +34,6 @@ internal sealed class AuthoringSession
 
     public ProjectEditor Editor { get; }
 
-    /// <summary>
-    /// 챕터·대본 워크북을 내는 자리 (R-F · 2026-09-16, 대본은 2026-10-29 C5부터).
-    ///
-    /// ⚠ <b>세션이 든다.</b> 화면이 들면 화면을 지나지 않는 편집에서 파일이 낡는다 —
-    /// 되돌리기가 실제 사례다. 미룬 목록(§5.3)도 여기 함께 산다.
-    /// </summary>
-    public WorkbookOutput WorkbookOutput { get; } = new();
-
     public StoryProject Project => Editor.Project;
 
     /// <summary>현재 프로젝트 manifest 경로. 아직 저장하지 않았으면 null이다.</summary>
@@ -79,7 +71,7 @@ internal sealed class AuthoringSession
     /// <b>스탯이 변하는 자리는 간선뿐</b>이라는 규칙이 화면에서 깨진다. 그래서 작가 화면은
     /// 이 집합을 빼고 후보를 세운다.
     ///
-    /// 원천은 챕터 그래프가 읽은 목록 하나다(두 곳이 따로 xlsx를 읽지 않는다).
+    /// 원천은 챕터 그래프가 편 목록 하나다(두 곳이 따로 챕터를 펴지 않는다).
     /// </summary>
     public IReadOnlySet<string> ChapterStatKeys { get; private set; } =
         new HashSet<string>(StringComparer.Ordinal);
@@ -95,8 +87,7 @@ internal sealed class AuthoringSession
         ArgumentNullException.ThrowIfNull(entries);
 
         ChapterStatKeys = entries
-            .Where(entry => entry.Model is not null)
-            .SelectMany(entry => entry.Model!.Stats.Select(stat => stat.Key))
+            .SelectMany(entry => entry.Model.Stats.Select(stat => stat.Key))
             .Where(key => !string.IsNullOrWhiteSpace(key))
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -704,31 +695,22 @@ internal sealed class AuthoringSession
 
         bool provisioned = EnsureProjectFolders();
 
-        // ⛔ <b>저장 = 프로젝트에 저장 + 워크북 재출력</b> (지시서 §6.2 · R-F).
-        //
-        //    편집마다 내는 빠른 길이 따로 있지만, 그것만으로는 <b>화면을 지나지 않는
-        //    편집</b>에서 파일이 낡는다 — 되돌리기가 그렇다. 저장 때 전부 내는 것이
-        //    어느 길로 고쳤든 파일이 따라오게 하는 그물이다.
-        WorkbookEmitRun emitted = WorkbookOutput.EmitAll(Project, ProjectPath, Definition);
-
+        // ⛔ 2026-10-29(D2)까지는 저장이 챕터·대본 워크북까지 다시 냈다. 엑셀 연동이 걷혀 저장은
+        //    프로젝트에 쓰는 일 하나다.
         StatusMessage = $"{Path.GetFileName(ProjectPath)}에 저장했습니다." +
-            (carried > 0 ? $" 이전 폴더의 챕터·대본·정의·에셋 {carried}개 파일을 함께 복사했습니다." : string.Empty) +
-            (provisioned ? " 없던 에셋 폴더·기본 튜닝을 준비했습니다." : string.Empty) +
-            emitted.Notice();
+            (carried > 0 ? $" 이전 폴더의 정의·에셋 {carried}개 파일을 함께 복사했습니다." : string.Empty) +
+            (provisioned ? " 없던 에셋 폴더·기본 튜닝을 준비했습니다." : string.Empty);
         Changed?.Invoke(this, new ProjectChangedEventArgs(ProjectChangeKind.Content));
     }
 
     /// <summary>
     /// 다른 폴더로 저장 = 프로젝트 이사 (2026-08-21 소유자 보고). 매니페스트만 옮기면
-    /// 프로젝트가 찢어진다: 판(StoryFile)·대본·작가 화자는 매니페스트에 실려 따라오는데,
-    /// 챕터 워크북·에피소드 대본·정의 파일·에셋은 <b>폴더 규약</b>이라 옛 집에 남는다.
-    /// 그 반쪽 상태가 "새 프로젝트인데 연출 그래프에 이전 프로젝트의 챕터가 보인다"의
-    /// 정체였다 — 챕터 목록은 새(빈) chapters/를 읽어 비어 있는데, 옛 챕터의 판은 설정
-    /// 노드(조건·아이템·화자)까지 달고 그대로 서 있었다.
+    /// 프로젝트가 찢어진다: 챕터·판(StoryFile)·대본·작가 화자는 매니페스트에 실려 따라오는데,
+    /// 정의 파일·에셋은 <b>폴더 규약</b>이라 옛 집에 남는다.
     ///
     /// 복사이지 이동이 아니다(옛 매니페스트는 계속 그 폴더에서 산다). 새 자리에 이미 있는
-    /// 파일은 불가침이고, 엑셀 잠금 임시 파일(~$)은 데이터가 아니라 거른다. `exported/`는
-    /// 산출물이라 안 옮긴다 — 다음 재읽기의 자동 내보내기가 새로 만든다.
+    /// 파일은 불가침이다. `exported/`는 산출물이라 안 옮긴다 — 다음 재읽기의 자동 내보내기가
+    /// 새로 만든다. (2026-10-29 · D2: 챕터 워크북·대본 폴더를 함께 옮기던 몫은 엑셀 연동과 함께 걷혔다.)
     /// </summary>
     /// <returns>실제로 복사한 파일 수. 같은 폴더 재저장·첫 저장은 0이다.</returns>
     private int CarryProjectData(string? previousManifestPath, string targetManifestPath)
@@ -749,10 +731,6 @@ internal sealed class AuthoringSession
 
         int copied = 0;
 
-        copied += CopyMissing(
-            ChapterLibrary.FolderFor(previousManifestPath), ChapterLibrary.FolderFor(targetManifestPath));
-        copied += CopyMissing(
-            EpisodeLibrary.FolderFor(previousManifestPath), EpisodeLibrary.FolderFor(targetManifestPath));
         copied += CopyMissingFile(
             GameDefinition.PathFor(previousManifestPath), GameDefinition.PathFor(targetManifestPath));
 
@@ -792,11 +770,6 @@ internal sealed class AuthoringSession
 
         foreach (string file in Directory.EnumerateFiles(sourceFolder, "*", SearchOption.AllDirectories))
         {
-            if (Path.GetFileName(file).StartsWith("~$", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
             copied += CopyMissingFile(
                 file, Path.Combine(destinationFolder, Path.GetRelativePath(sourceFolder, file)));
         }
@@ -873,16 +846,6 @@ internal sealed class AuthoringSession
         StatusMessage = message;
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
-
-    /// <summary>
-    /// 엑셀 동기화가 대본을 바꿨다 — 열려 있는 편집 화면(줄 목록·그래프)을 다시 만든다.
-    ///
-    /// 툴 안 타이핑은 편집 컨트롤을 보존해야 하지만(포커스가 날아간다), 바깥에서 온 변경은
-    /// 반대다: 보존하면 화면이 파일과 다른 거짓말을 한다 — "시트에서 고쳤는데 툴에
-    /// 반영이 안 된다"(실사례). 그래서 구조 변경으로 격상해 알린다.
-    /// </summary>
-    public void NotifyExternalScriptChange() =>
-        Changed?.Invoke(this, new ProjectChangedEventArgs(ProjectChangeKind.Structure));
 
     // 작가 화면에서 `game.definition.json`의 speakers를 갈아 끼우던 길은 폐지됐다
     // (2026-08-17 소유자 — "이게 기획자가 쓰는 전용으로 되어야 하는데, 현재는 시나리오
@@ -969,7 +932,7 @@ internal sealed class AuthoringSession
     /// ⛔ <b>챕터를 세우는 규칙은 여기 한 벌이다.</b> 두 벌이면 어느 창구로 만들었느냐에 따라 챕터가
     /// 달라진다 — 실제로 스탯을 한쪽만 깔면 그 챕터는 도달성 증명의 탐색 경계가 없다.
     ///
-    /// ⚠ <b>워크북을 만들지 않는다</b>(R-F). 챕터는 프로젝트가 들고, 파일은 첫 출력이 낸다.
+    /// ⚠ 챕터는 프로젝트가 든다 — 만드는 파일은 없다.
     /// </summary>
     /// <returns>못 만든 이유. null이면 만들었다.</returns>
     internal string? CreateChapter(string chapterId)
@@ -983,7 +946,7 @@ internal sealed class AuthoringSession
 
         if (ProjectPath is null)
         {
-            return "프로젝트를 먼저 저장해야 챕터 폴더 자리가 정해집니다.";
+            return "프로젝트를 먼저 저장해 주세요 — 진행 JSON이 나갈 자리가 프로젝트 폴더에서 정해집니다.";
         }
 
         if (Editor.FindChapter(chapterId) is not null)
@@ -991,7 +954,7 @@ internal sealed class AuthoringSession
             return $"챕터 '{chapterId}'가 이미 있습니다.";
         }
 
-        // 스탯은 정의 파일의 변수에서 온다 — 옛 워크북 생성이 `스탯` 시트를 채우던 자리다.
+        // 스탯은 정의 파일의 변수에서 온다.
         ChapterDocument chapter = Editor.EnsureChapter(chapterId);
 
         foreach (Vn.Authoring.Definition.VariableSpec variable in Definition.Variables)

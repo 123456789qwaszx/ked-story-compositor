@@ -1,4 +1,3 @@
-using ClosedXML.Excel;
 
 namespace Vn.Authoring.Chapters;
 
@@ -9,7 +8,7 @@ namespace Vn.Authoring.Chapters;
 /// 에피소드로 잇는 길이다. 그러려면 갈릴 데가 없어야 한다: 유일한 간선 · 조건 없음 ·
 /// 스탯변화 없음 · 같은 장면 · 문구 없음.
 ///
-/// ⛔ <b>왜 따로 떼어 냈나</b>: 이 다섯이 <see cref="ChapterWorkbookReader"/> 안에만 있었다.
+/// ⛔ <b>왜 따로 떼어 냈나</b>: 이 다섯이 <c>ChapterWorkbookReader</c> 안에만 있었다.
 /// R-F로 판의 주인이 워크북에서 프로젝트로 넘어가자 읽는 길이 사라졌고, 그와 함께
 /// <b>툴이 소유한 챕터에서는 이 검사가 조용히 안 돌게 됐다</b>. 내보내기 관문은 코어가
 /// 여전히 거부하므로 잘못된 것이 나가지는 않지만, 기획자는 <b>고치는 중에</b> 못 본다 —
@@ -55,28 +54,27 @@ public static class ChapterAutoEdgeCheck
 
         foreach (ChapterEdge edge in edges.Where(item => item.Auto))
         {
-            void Error(ChapterDiagnosticCode code, int column, string message) =>
+            void Error(ChapterDiagnosticCode code, string message) =>
                 diagnostics.Add(new ChapterDiagnostic(
                     ChapterDiagnosticSeverity.Error, code, path, ChapterSheetNames.Edges,
-                    edge.SourceRow > 0 ? edge.SourceRow : null,
-                    column > 0 ? XLHelper.GetColumnLetterFromNumber(column) : "?",
+                    edge.SourceRow > 0 ? edge.SourceRow : null, null,
                     message));
 
             if (outgoing.GetValueOrDefault(edge.FromEpisodeId) != 1)
             {
-                Error(ChapterDiagnosticCode.AutoEdgeHasSiblings, 8,
+                Error(ChapterDiagnosticCode.AutoEdgeHasSiblings,
                     $"자동 길 '{edge.FromEpisodeId}'→'{edge.ToEpisodeId}'은 그 에피소드의 유일한 간선이어야 합니다.");
             }
 
             if (edge.HasGate)
             {
-                Error(ChapterDiagnosticCode.AutoEdgeHasConditions, 8,
+                Error(ChapterDiagnosticCode.AutoEdgeHasConditions,
                     "자동 길에는 표시조건·해금조건을 둘 수 없습니다. 자동 진행은 언제나 같은 결과여야 합니다.");
             }
 
             if (edge.StatChanges.Count > 0)
             {
-                Error(ChapterDiagnosticCode.AutoEdgeHasStatChanges, 8,
+                Error(ChapterDiagnosticCode.AutoEdgeHasStatChanges,
                     "자동 길에는 스탯변화를 둘 수 없습니다. 효과가 필요하면 일반 선택지로 바꾸세요.");
             }
 
@@ -84,13 +82,13 @@ public static class ChapterAutoEdgeCheck
                 episodeById.TryGetValue(edge.ToEpisodeId, out ChapterEpisode? to) &&
                 !string.Equals(from.EffectiveSceneId, to.EffectiveSceneId, StringComparison.Ordinal))
             {
-                Error(ChapterDiagnosticCode.AutoEdgeCrossesScene, 8,
+                Error(ChapterDiagnosticCode.AutoEdgeCrossesScene,
                     $"자동 길은 같은 장면 안에서만 이어집니다. 출발은 '{from.EffectiveSceneId}', 도착은 '{to.EffectiveSceneId}'입니다.");
             }
 
             if (!edge.HasNoOptionLabel)
             {
-                Error(ChapterDiagnosticCode.AutoEdgeHasChoiceLabel, 4,
+                Error(ChapterDiagnosticCode.AutoEdgeHasChoiceLabel,
                     "자동 길의 선택지 문구는 비워야 합니다. 문구가 있으면 플레이어 선택과 자동 진행의 뜻이 충돌합니다.");
             }
         }

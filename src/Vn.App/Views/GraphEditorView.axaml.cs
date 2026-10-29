@@ -253,7 +253,7 @@ public partial class GraphEditorView : UserControl
     /// 지울 것의 이름을 <b>단추에 적는다</b> (2026-09-18).
     ///
     /// ⛔ 챕터 판의 카드를 고른 채로 「노드 삭제」라고 적혀 있으면 <b>단추가 거짓말</b>이다 —
-    /// 그것을 누르면 에피소드가, 그러니까 간선과 원고까지 함께 사라진다. 누르기 <b>전에</b>
+    /// 그것을 누르면 에피소드가, 그러니까 간선까지 함께 사라진다. 누르기 <b>전에</b>
     /// 보이는 것이 확인 한 걸음보다 먼저다.
     /// </summary>
     private void RefreshDeleteButton()
@@ -267,7 +267,7 @@ public partial class GraphEditorView : UserControl
             DeleteNodeButton,
             episode
                 ? "이 카드는 챕터의 에피소드입니다 — 간선·픽스처 참조까지 함께 지웁니다. " +
-                  "원고는 .bak으로 남지만 되돌리기로는 안 돌아옵니다."
+                  "되돌리기(Ctrl+Z)로 돌아옵니다."
                 : "이 판의 카드 하나를 지웁니다. 되돌리기 한 번으로 돌아옵니다.");
     }
 
@@ -3404,8 +3404,8 @@ public partial class GraphEditorView : UserControl
         //    남았다(만들기는 합쳐 놓고 지우기는 안 합친 자리였다).
         //
         // ⚠ <b>여기서만 묻는다.</b> 챕터 그래프의 [에피소드 삭제]는 이름이 이미 무엇을
-        //    지우는지 말하지만, 여기서 사람은 <b>카드를 지운다고 생각하고</b> 누른다.
-        //    그리고 이 길은 원고를 `.bak`으로 미므로 <b>되돌리기가 못 되돌린다</b>.
+        //    지우는지 말하지만, 여기서 사람은 <b>카드를 지운다고 생각하고</b> 누른다 —
+        //    지워지는 것은 카드 하나가 아니라 에피소드와 그 간선이다.
         if (_session.Project.FindNode(nodeId) is DialogueNode card &&
             EpisodeNaming.ChapterOf(_session.Project, card) is { } chapter)
         {
@@ -3415,8 +3415,7 @@ public partial class GraphEditorView : UserControl
                 DeleteNodeButton,
                 _session,
                 $"'{episodeId}'은 챕터 '{chapter.ChapterId}'의 에피소드입니다. " +
-                "간선·픽스처 참조까지 함께 지웁니다 — 원고는 .bak으로 남지만 " +
-                "되돌리기로는 안 돌아옵니다.",
+                "간선·픽스처 참조까지 함께 지웁니다 — 되돌리기(Ctrl+Z)로 돌아옵니다.",
                 "에피소드 지우기",
                 () => DeleteEpisodeOfCard(chapter.ChapterId, episodeId),
                 closed: () => DeleteConfirmButton = null);
@@ -3436,8 +3435,7 @@ public partial class GraphEditorView : UserControl
 
     private void DeleteEpisodeOfCard(string chapterId, string episodeId)
     {
-        EpisodeDeleter.Result result = EpisodeDeleter.Delete(
-            _session!.Editor, _session.ProjectPath, chapterId, episodeId);
+        EpisodeDeleter.Result result = EpisodeDeleter.Delete(_session!.Editor, chapterId, episodeId);
 
         _session.SetStatus(result.Ok ? result.Describe(episodeId) : result.Failure!);
     }

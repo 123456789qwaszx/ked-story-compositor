@@ -1,48 +1,35 @@
-# VnTool
+# ked-story-director
 
-> **이 저장소는 연출 툴 `ked-story-director`다.** 2026-10-29에 VnTool(`VNStoryEditor_avalonia` `dev` @ `f2a7bdc`)에서
-> 이력째 갈라졌고, 2026-10-29에 VnTool `dev`(`dd2d5be`)의 연출 제거 뒤 변경을 반입했다(무대 프리뷰 · 에셋 탐색기는 남는다).
-> 지금 하는 일은 대본 탭 · 엑셀 연동을 걷고, 연출 그래프를 위→아래로 세우고, 대사를 노드 안에서 직접 쓰게 하는 것이다.
-> 계획과 단계는 [`docs/plans/director-split.md`](docs/plans/director-split.md), 두 그래프의 설계 정리는
-> [`docs/design/two-graphs.md`](docs/design/two-graphs.md). 아래 본문은 아직 VnTool 시절 그대로다 — 단계마다 고친다.
+> **연출 툴.** 2026-10-29에 VnTool(`VNStoryEditor_avalonia` `dev` @ `f2a7bdc`)에서 이력째 갈라졌고, 같은 날 VnTool `dev`(`dd2d5be`)의
+> 연출 제거 뒤 변경을 반입했다(무대 프리뷰 · 에셋 탐색기는 남는다). **대본 탭과 엑셀 연동은 걷었다**(D2). 다음은 연출 그래프를
+> 위→아래로 세우고(D3), 대사를 카드 안에서 직접 쓰게 하는 것(D4)이다. 계획과 단계는
+> [`docs/plans/director-split.md`](docs/plans/director-split.md), 두 그래프의 설계 정리는 [`docs/design/two-graphs.md`](docs/design/two-graphs.md).
+> 아래 "문서" 표의 안내서 중 일부는 아직 VnTool 시절(엑셀 워크플로)을 설명한다 — 지금 동작의 정본은 `two-graphs.md`다.
 
 비주얼 노벨 저작 도구. C#/.NET 10 + Avalonia, 한국어 코드베이스.
-
-**세 사람이 서로를 막지 않고 동시에 일하게 하는 것**이 이 도구의 목적입니다. 기획자는
-챕터 구조를, 작가는 대사를, 연출자는 무대를 각자 자기 자리에서 만들고, 도구는 그것들이
-어긋나지 않는지 지킵니다.
 
 만들어 내는 것은 유니티 런타임(별도 저장소)이 먹는 데이터입니다 —
 `exported/{챕터}.progression.json` + Yarn 번들.
 
-## 두 계층, 두 화면
+## 두 그래프
 
-작업 순서가 곧 탭 순서입니다. 왼쪽에서 오른쪽으로 밟으면 챕터가 완성됩니다.
-
-| | **① 챕터 그래프** (기획자) | **② 연출 그래프** (연출) |
+| | **① 챕터 그래프** (기획) | **② 연출 그래프** (대사 · 연출) |
 |---|---|---|
-| 만드는 것 | 에피소드 구조 · 선택지 · 조건 · 스탯 | 커맨드 · 무대 · 초상화 |
-| 값이 사는 곳 | **프로젝트** (`chapters/`·`episodes/` 워크북은 산출물) | 프로젝트의 연출 노드 |
+| 만드는 것 | 에피소드 구조 · 선택지 · 조건 · 스탯 | 에피소드마다 대사 카드 · 분기 · 커맨드 · 무대 · 초상화 |
+| 값이 사는 곳 | 프로젝트 | 프로젝트 |
 | 도구의 역할 | 편집하고 검증하고 낸다 | 편집한다 |
 
-기획자가 사실상 시나리오 작가여서 **스토리는 챕터 그래프에서 끝납니다.** 연출 그래프에
-남는 일은 연출뿐이고, 그래서 그 판은 기능을 더 늘리지 않습니다(2026-08-18 결정).
+## 원본은 프로젝트 하나
 
-## 원본은 프로젝트, 엑셀은 들어오는 것과 나가는 것
+모든 값의 원본은 **프로젝트 파일**입니다. 엑셀 워크북을 들여오고 내던 연동과 [대본] 탭은 2026-10-29(D2)에
+걷었습니다 — 나중에 다시 붙일 수 있지만 지금은 복잡하기만 하다는 판단입니다.
 
-대사·구조의 **원본은 프로젝트 파일**이고, 엑셀 워크북은 **명시적으로 들여오는 입력**이자 편집·저장 때
-**다시 나가는 출력**입니다(2026-09-16 R-A~R-F, 2026-10-29 1단계 —
-[`docs/plans/excel-boundary.md`](docs/plans/excel-boundary.md)).
-
-- **대사 본문·화자** → `episodes/{챕터}/{Id}.xlsx` — [대본] 탭에서 쓰면 그 워크북이 다시 나옵니다.
-  엑셀에서 고친 글은 **[대본 가져오기]**로만 들어옵니다. 도구가 엑셀의 셀을 고치는 일은 없습니다.
-- **에피소드 구조·간선·조건·스탯** → `chapters/{Id}.xlsx` — 편집은 프로젝트에 들어가고 그 챕터의
-  워크북이 다시 나옵니다. ⚠ **간선은 [연출 그래프]에서도 긋습니다**(2026-09-17, R7): 카드 아래 3칸에
-  문구를 적어 다른 카드로 끌면 그것이 간선입니다. **창구가 둘이지 값이 사는 곳은 하나**라, 어느 쪽에서
-  만들어도 [챕터 그래프]에 같은 간선으로 보이고 내보내기·검증도 그대로입니다.
-- **저장**은 프로젝트를 쓰고 챕터·대본 워크북을 **전부 다시 냅니다**(같은 내용이면 건드리지 않습니다).
-- ⚠ **엑셀이 그 파일을 열고 있으면** 호박색 배너가 서고, 편집은 계속됩니다 — 고친 값은
-  프로젝트에 들어가고 **그 파일의 갱신만 엑셀에서 닫힐 때 따라갑니다**. 잠그는 체크도 관문도 없습니다.
+- **대사 본문·화자** → 연출 그래프의 **대사 카드**(카드마다 대본 하나). 카드 안에서 직접 쓰는 것이 D4의 목표입니다.
+- **에피소드 구조·간선·조건·스탯** → 챕터 그래프. 간선은 연출 그래프에서도 긋습니다(2026-09-17, R7): 카드 아래 칸에
+  문구를 적어 다른 카드로 끌면 그것이 간선입니다. **창구가 둘이지 값이 사는 곳은 하나**입니다.
+- 챕터 조건은 판의 공급 노드로 저절로 건너가 대사 카드의 조건 목록에 뜹니다.
+- **진행 JSON**은 검증을 통과하면 저절로 나갑니다. 저장은 프로젝트를 씁니다.
+- 프로젝트를 열 때 **카드 없는 에피소드에는 빈 카드가 섭니다**(엑셀에서 들여온 옛 프로젝트를 위한 맞추기).
 
 **각 값의 주인은 한 곳뿐**이라는 것이 설계 전체를 관통하는 규칙입니다. 같은 사실이 두 곳에
 있으면 어긋나고, 어긋남은 최종 출력에서야 드러납니다.
@@ -51,21 +38,15 @@
 
 ```text
 MyStory/
-├─ 예제.vnproject.json         목차 · 결과 조합
-├─ game.definition.json        초상화 매핑 · 연출 커맨드 어휘 (기획자 전용)
-├─ chapters/
-│  └─ ch01.xlsx                에피소드 · 간선 · 선택지 · 조건 · 스탯 (산출물)
-├─ episodes/
-│  └─ ch01/                    챕터별로 갈린다 (EpisodeId는 챕터 안에서만 유일)
-│     ├─ 시작.xlsx             인덱스 · LineId · 화자 · 내용 (산출물)
-│     └─ 끝.xlsx
+├─ 예제.vnproject.json         목차 · 챕터 · 파일을 넘나드는 관계
+├─ game.definition.json        초상화 매핑 · 연출 커맨드 어휘 · 스탯 · 화자
+├─ script/                     카드의 대본 (줄 신원 + 본문)
+├─ story/                      판(챕터마다 하나)과 그 위의 카드·노드
+├─ results.vnresults.json      발행된 결과
 ├─ exported/
 │  └─ ch01.progression.json    런타임 수입물 — 검증을 통과하면 자동으로 나간다
-├─ story/                      연출 노드
 └─ assets/                     backgrounds · portraits · bgm · sfx
 ```
-
-구판 워크북은 **열 때 자동으로 이행**됩니다(`.bak`을 남깁니다).
 
 ## 실행
 
@@ -95,6 +76,7 @@ R0~R5의 순서·체크리스트·완료 근거는 [`docs/plans/PLAN.md`](docs/p
 
 | 문서 | 무엇이 있나 |
 |---|---|
+| [`docs/design/two-graphs.md`](docs/design/two-graphs.md) | **지금 동작의 정본.** 두 그래프의 기능 · 사용자 동작 · 다시 쓸 때 지킬 것 · D2~D4 설계 |
 | [`docs/external-overview.md`](docs/external-overview.md) | **외부 진입점.** 도구의 책임 · 데이터 흐름 · 런타임 영향 · 자체 점검과 다음 작업 |
 | [`docs/plans/PLAN.md`](docs/plans/PLAN.md) | **런타임 정렬 계획.** R0~R5 순서 · 결정 지점 · 단계별 완료 기준 |
 | [`docs/handoff/current-state.md`](docs/handoff/current-state.md) | **진입점.** 계층 규칙 · 화면 · 코드 지도 · 진행 상태 |
@@ -103,7 +85,7 @@ R0~R5의 순서·체크리스트·완료 근거는 [`docs/plans/PLAN.md`](docs/p
 | [`docs/handoff/architecture-decisions.md`](docs/handoff/architecture-decisions.md) | 확정된 설계와 **그 이유** |
 | [`docs/runtime-contract.md`](docs/runtime-contract.md) | 유니티 런타임과의 계약 (Gate D) |
 | [`docs/progression-handoff.md`](docs/progression-handoff.md) | 진행 코어 교환 이력·현행 상대·표본 JSON 안내 |
-| [`docs/ch01.contract-sample.xlsx`](docs/ch01.contract-sample.xlsx) | Scene·Auto·조건·스탯·EventKey를 담은 계약 표본 (⚠ `Via` 열은 2026-09-17에 폐지 — 표본은 그 전 것이다) |
+| [`tests/fixtures/chapter-samples/`](tests/fixtures/chapter-samples/) | 견본 챕터 둘 — `ch05`(복도) · `ch01`(Scene·Auto·조건·스탯·EventKey를 담은 계약 표본). 2026-10-29까지 `docs/*.xlsx`였다 |
 | [`docs/work-orders/chapter-graph-orders.md`](docs/work-orders/chapter-graph-orders.md) | 챕터 계층 규격 원본 |
 | [`docs/chapter-layer-guide.md`](docs/chapter-layer-guide.md) | 기획자용 사용 안내 |
 | [`docs/writer-guide.md`](docs/writer-guide.md) | 작가용 사용 안내 |
