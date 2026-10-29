@@ -453,8 +453,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 연출 그래프의 곁기둥 한 판 — 위는 노드 편집기 넷이 겹쳐 선 자리(선택 하나만
-    /// 보인다), 아래는 에셋 탐색기다. 탐색기는 제 머리에 접기 토글을 이미 갖고 있다.
+    /// 연출 그래프의 곁기둥 한 판 — 노드 편집기 둘(대사·연출)이 겹쳐 선 자리(선택 하나만 보인다).
     /// </summary>
     private Control BuildSidePanel()
     {
@@ -740,6 +739,7 @@ public partial class MainWindow : Window
             _session.SetStatus(
                 $"챕터 '{chapterId}' → '{newId}'로 바꿨습니다" +
                 (carried.Length > 0 ? $"({carried}도 함께)." : ".") +
+                (result.FilesNotMoved is { } notMoved ? $" ⚠ {notMoved}" : string.Empty) +
                 (result.StaleExport is { } stale
                     ? $" ⚠ 옛 이름의 내보내기 '{stale}'가 남아 있습니다 — 지우고 다시 내보내 주세요."
                     : " 내보낸 JSON이 있었다면 다시 내보내 주세요."));

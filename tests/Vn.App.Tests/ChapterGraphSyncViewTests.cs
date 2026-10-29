@@ -438,6 +438,11 @@ public sealed class ChapterGraphSyncViewTests
 
         (ChapterGraphView view, AuthoringSession session) = Show(project);
 
+        // 둘째 챕터도 <b>한 번은 연</b> 챕터다 — 판이 서 있어야 들여오기가 그 챕터도 돈다
+        // (SyncTargets). 2026-10-29까지는 판 없이도 나갔는데, 그것은 검증이 ch05 판의 같은
+        // EpisodeId 노드를 집는 누수였다(excel-boundary C1). 안 연 챕터는 거부가 맞다.
+        session.Editor.EnsureChapterBoard("ch99");
+
         // 대본은 이제 사람이 들여온다 (R-D) — 노드가 서야 검증이 통과한다.
         view.ImportEpisodes();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -455,8 +460,7 @@ public sealed class ChapterGraphSyncViewTests
             Path.Combine(Path.GetDirectoryName(project.ChapterPath)!, chapterId + ".xlsx"));
 
         // ⚠ 내보내기까지 돌린다 — 검증만 보면 코어 관문(CoreRefusals)이 낸 거부가 안 보인다.
-        ChapterExportResult result = ChapterProgressionExporter.Export(
-            model, Path.Combine(Path.GetDirectoryName(project.EpisodesFolder)!, chapterId), board);
+        ChapterExportResult result = ChapterProgressionExporter.Export(model, board);
 
         string errors = string.Join(" || ", result.Validation.All
             .Where(item => item.Severity == ChapterDiagnosticSeverity.Error)

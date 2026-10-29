@@ -120,11 +120,10 @@ public partial class ChapterGraphView : UserControl
         _selectedEdgeKey = null;
         HideEdgeForm();
 
-        // 잠금도 이전 챕터의 것이 아니다 (2026-08-24) — 엑셀이 A를 잡고 있을 때 B로
-        // 옮기면 B는 잠기지 않은 채로 보여야 한다. ⚠ 그 물음을 여기 두지 않는다:
-        // 바로 아래 Draw()의 마지막 줄이 이미 묻는다
-        // (RefreshPropertyPanel → ApplyEditability → RefreshLockBanner). 한 줄 더 두면
-        // 같은 물음이 두 곳에 산다. 대신 규칙을 테스트가 붙든다
+        // 잠금 배너도 이전 챕터의 것이 아니다 (2026-08-24) — 엑셀이 A를 잡고 있을 때 B로
+        // 옮기면 B의 배너는 내려가 있어야 한다. ⚠ 그 물음을 여기 두지 않는다:
+        // 바로 아래 Draw()의 마지막 줄이 이미 묻는다 (RefreshPropertyPanel → RefreshLockBanner).
+        // 한 줄 더 두면 같은 물음이 두 곳에 산다. 대신 규칙을 테스트가 붙든다
         // (`ChapterEditGateTests.다른_챕터로_옮기면_그_챕터의_잠금을_다시_묻는다`) —
         // Draw()의 그 줄이 사라지면 여기가 아니라 그 테스트가 먼저 말한다.
         Validate();
@@ -520,6 +519,12 @@ public partial class ChapterGraphView : UserControl
             StartWatching(folder);
         }
 
+        // 대본 워크북도 세션의 조정자가 낸다 (C5) — 엑셀이 대본을 놓는 순간도 들어야 미룬 대본을 다시 낸다.
+        if (!string.Equals(_episodeWatcher?.Folder, episodes, StringComparison.OrdinalIgnoreCase))
+        {
+            StartWatchingEpisodes(episodes);
+        }
+
         // 구판 프로젝트라면 여기서 한 번 들어온다 — 그 뒤로 워크북은 산출물이다 (R-F).
         ImportChaptersOnce();
 
@@ -568,11 +573,29 @@ public partial class ChapterGraphView : UserControl
                 () => UiGuard.Run(_session, "엑셀 잠금 확인", RefreshLockState)));
     }
 
-    // ⛔ `StartWatchingEpisodes`·`SyncEpisodesIfDiskChanged`는 2026-09-16에 걷혔다 (R-D).
-    //    `episodes/`를 감시해 저장을 0.25초 안에 따라가던 길인데, 그것이 곧 <b>워크북이
-    //    원본이라는 전제</b>였다. 이제 대본은 [대본 가져오기] 한 번으로 들어온다(§5.2:
-    //    "임포트는 명시적 동작이다. 파일 감시가 부르지 않는다").
-    //    되살리지 말 것 — 되살리는 순간 툴과 엑셀이 다시 서로를 덮어쓴다.
+    /// <summary>
+    /// `episodes/`의 <b>잠금만</b> 듣는다 (C5 · 2026-10-29). 저장은 듣지 않는다 — 2026-09-16(R-D)에 걷힌
+    /// `SyncEpisodesIfDiskChanged`가 그것이었고, 그것이 곧 <b>워크북이 원본이라는 전제</b>였다. 대본은
+    /// [대본 가져오기] 한 번으로 들어온다(§5.2). 되살리지 말 것 — 되살리는 순간 툴과 엑셀이 다시 서로를
+    /// 덮어쓴다. 여기서 듣는 것은 "엑셀이 대본 파일을 놓았으니 미룬 출력을 다시 내라"뿐이다.
+    /// </summary>
+    private void StartWatchingEpisodes(string? folder)
+    {
+        _episodeWatcher?.Dispose();
+        _episodeWatcher = null;
+
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        {
+            return;
+        }
+
+        _episodeWatcher = new ChapterFolderWatcher(
+            folder,
+            onChanged: null,
+            debounce: null,
+            onLockChanged: () => Dispatcher.UIThread.Post(
+                () => UiGuard.Run(_session, "엑셀 잠금 확인", RefreshLockState)));
+    }
 
     // ⛔ `ReloadIfDiskChanged`·`IfDiskChanged`·`DiskFingerprint`는 2026-09-16에 걷혔다
     //    (R-F). 셋 다 <b>"감시자가 깨웠는데 정말 바뀐 것인가"</b>를 묻는 장치였고, 그 물음은
@@ -836,17 +859,12 @@ public partial class ChapterGraphView : UserControl
                 return;
             }
 
-            // ⛔ 개명이 먼저다 (2026-08-24) — 이미 쓰인 이름을 못 끌고 가면 등록부도 갈지
-            //    않는다. 순서를 뒤집으면 엑셀이 잡고 있던 워크북이 다음 동기화에서 사람이
-            //    방금 바꾼 이름을 "미등록 화자"로 되살린다.
-            string? report = null;
-
-            if (!string.Equals(previous, typed, StringComparison.Ordinal) &&
-                !TryCarrySpeakerRename(previous, typed, out report))
-            {
-                name.Text = previous;
-                return;
-            }
+            // 개명이 먼저다 (2026-08-24) — 이미 쓰인 이름을 끌고 간 뒤 등록부를 간다.
+            // 2026-10-29부터 끌고 가는 것은 <b>프로젝트의 줄</b>이고 워크북은 다시 낸다 — 잠긴
+            // 워크북은 막는 이유가 아니라 미룸이다(excel-boundary C4).
+            string? report = string.Equals(previous, typed, StringComparison.Ordinal)
+                ? null
+                : CarrySpeakerRename(previous, typed);
 
             edited[index] = new SpeakerSpec
             {
@@ -899,47 +917,41 @@ public partial class ChapterGraphView : UserControl
     }
 
     /// <summary>
-    /// 화자 개명을 <b>이미 쓰인 곳까지</b> 끌고 간다 — 대본 워크북의 화자 칸과 프로젝트
-    /// 대본의 줄들 (2026-08-24 소유자: "화자의 이름을 편집한 경우도 연결이 계속 이어지도록").
+    /// 화자 개명을 <b>이미 쓰인 곳까지</b> 끌고 간다 — 프로젝트 대본의 줄들, 그리고 그 줄을 가진
+    /// 에피소드의 워크북(다시 낸다) (2026-08-24 소유자: "화자의 이름을 편집한 경우도 연결이 계속
+    /// 이어지도록").
     ///
     /// 등록부만 갈면 그 이름을 쓰던 줄이 전부 <b>미등록</b>이 된다: 드롭다운에서 사라지고,
     /// 초상화 매핑이 끊기고, 공백 있는 이름은 파서가 산문으로 읽어 대사와 합쳐진다.
     /// </summary>
-    /// <param name="report">
+    /// <returns>
     /// 저장 뒤에 세울 상태 줄. 여기서 바로 쓰면 이어지는 어휘 밀기의 메시지가 덮는다.
-    /// </param>
-    /// <returns>등록부를 갈아도 되는가. false면 아무것도 바뀌지 않았다(사유는 상태 줄에).</returns>
-    private bool TryCarrySpeakerRename(string previous, string renamed, out string? report)
+    /// 말할 것이 없으면 null.
+    /// </returns>
+    private string? CarrySpeakerRename(string previous, string renamed)
     {
-        report = null;
-
         if (_session is null)
         {
-            return false;
+            return null;
         }
 
         SpeakerRenameOutcome outcome = SpeakerRenamer.Rename(
-            _session.Editor, _session.ProjectPath, _entries, previous, renamed);
+            _session.Editor, _session.WorkbookOutput, _session.ProjectPath, previous, renamed);
 
-        string Blocked() => outcome.Blocked[0] +
-            (outcome.Blocked.Count > 1 ? $" (외 {outcome.Blocked.Count - 1}건)" : string.Empty);
-
-        if (!outcome.Applied)
+        if (outcome.ScriptLines == 0)
         {
-            _session.SetStatus(outcome.Blocked.Count > 0 ? Blocked() : "화자 이름을 바꾸지 못했습니다.");
-            return false;
+            return null;
         }
 
-        // 빗장을 지난 뒤에 잠긴 파일이 있으면 나머지는 갔고 그 파일만 옛 이름이다.
-        // 조용히 넘어가지 않는다: 다음 동기화가 "미등록 화자"로 짚을 자리다.
-        report = outcome.Blocked.Count > 0
-            ? Blocked()
-            : outcome.WorkbookCells > 0 || outcome.ScriptLines > 0
-                ? $"화자 '{previous}' → '{renamed}' — 대본 {outcome.WorkbookFiles}개의 " +
-                  $"{outcome.WorkbookCells}칸, 줄 {outcome.ScriptLines}개가 따라갔습니다."
-                : null;
+        string carried =
+            $"화자 '{previous}' → '{renamed}' — 줄 {outcome.ScriptLines}개가 따라갔습니다. " +
+            $"대본 워크북 {outcome.WorkbooksWritten}개를 다시 냈습니다.";
 
-        return true;
+        // 못 낸 워크북은 조용히 넘어가지 않는다 — 다음 저장이 다시 낸다.
+        return outcome.Deferred.Count == 0
+            ? carried
+            : carried + $" ⚠ {outcome.Deferred[0]}" +
+              (outcome.Deferred.Count > 1 ? $" (외 {outcome.Deferred.Count - 1}건)" : string.Empty);
     }
 
     private static void CommitOnEnter(Avalonia.Input.KeyEventArgs args, Action commit)
@@ -2607,7 +2619,7 @@ public partial class ChapterGraphView : UserControl
         EdgePanel.IsVisible = edge is not null;
         BranchPanel.IsVisible = branch is not null;
         NoSelectionText.IsVisible = episode is null && edge is null && branch is null;
-        ApplyEditability();
+        RefreshLockBanner();
 
         if (branch is not null)
         {
@@ -2692,23 +2704,20 @@ public partial class ChapterGraphView : UserControl
     private bool _fillingPanel;
 
     /// <summary>
-    /// 엑셀이 이 챕터를 잡고 있는가. <b>이 한 칸이 편집 가능 여부의 전부다</b> —
-    /// 사람이 돌릴 스위치는 없다. 답의 주인은 파일이고 이 칸은 마지막으로 물어본 답이다.
-    /// </summary>
-    private bool _excelHoldsChapter;
-
-    private bool ToolEditable => !_excelHoldsChapter;
-
-    /// <summary>
-    /// 엑셀이 잡고 있는지 묻는 손. 진짜 잠긴 파일은 <b>쓸 수도 없어서</b>, "잠기기 직전에
-    /// 낸다"를 실제 잠금으로는 검증할 수 없다 — 검증이 이 손을 갈아끼운다.
+    /// 엑셀이 잡고 있는지 묻는 손. 진짜 잠긴 파일은 <b>쓸 수도 없어서</b>, 배너의 규칙을 실제
+    /// 잠금으로는 검증하기 어렵다 — 검증이 이 손을 갈아끼운다.
     /// </summary>
     internal Func<string?, bool> LockProbe { get; set; } = ChapterWorkbookWriter.IsLockedByAnotherApp;
 
     /// <summary>
-    /// 엑셀이 이 챕터를 열고 있으면 배너로 말한다 (2026-08-16 실사례) — 그 상태에서는
-    /// 툴의 모든 쓰기가 거부되므로, 누르고 나서가 아니라 <b>누르기 전에</b> 보여야 한다.
-    /// 2026-08-24부터는 <b>말하는 데서 그치지 않는다</b>: 이 답이 곧 편집 가능 여부다.
+    /// 엑셀이 이 챕터를 열고 있으면 배너로 말한다 (2026-08-16 실사례) — 그동안 그 파일은
+    /// 갱신되지 않으므로, 쓰고 나서가 아니라 <b>쓰기 전에</b> 보여야 한다.
+    ///
+    /// ⛔ <b>말하는 데서 그친다</b> (2026-10-29 · `docs/plans/excel-boundary.md` C6 · R1). 2026-08-24부터
+    /// 이 답이 곧 편집 가능 여부였다(<c>ToolEditable</c>) — 원본이 엑셀이던 시절의 규칙이다. 원본이
+    /// 프로젝트가 된 뒤로 엑셀이 잡은 것은 <b>산출물</b>이고, 편집은 프로젝트에 들어가며 그 파일의
+    /// 갱신만 미뤄졌다가 닫힐 때 따라간다(<see cref="WorkbookOutput.Retry"/>). 잠근 채 편집을 막으면
+    /// 산출물의 상태가 원본의 편집 권한을 정하는 꼴이다.
     /// </summary>
     private void RefreshLockBanner()
     {
@@ -2716,39 +2725,22 @@ public partial class ChapterGraphView : UserControl
 
         LockBanner.IsVisible = locked;
         LockBannerText.Text = locked
-            ? $"⚠ 엑셀이 '{_selectedChapterId}.xlsx'를 열고 있습니다 — 그동안 툴 편집은 잠깁니다. " +
-              "엑셀에서 그 파일을 닫으면 저절로 풀립니다."
+            ? $"⚠ 엑셀이 '{_selectedChapterId}.xlsx'를 열고 있습니다 — 편집은 계속되고, " +
+              "이 파일의 갱신은 엑셀에서 닫힐 때 따라갑니다."
             : string.Empty;
-
-        ApplyLockGate(locked);
     }
 
     /// <summary>
-    /// 잠금을 다시 묻고, <b>답이 바뀌었으면 패널까지 그 답에 맞춘다</b>.
-    ///
-    /// <see cref="RefreshLockBanner"/>와 나눠 둔 이유가 있다: 저쪽은
-    /// <see cref="ApplyEditability"/>가 값을 읽기 <em>직전에</em> 부르는 자리라 되짚어
-    /// 부르면 스스로를 다시 부른다. 밖에서 들어오는 길(다시 읽기·쓰기 결과·감시자)은
-    /// 이쪽으로 온다 — 그때는 화면 전체가 따라와야 한다.
+    /// 밖에서 들어오는 길(다시 읽기·쓰기 결과·감시자) — 미룬 출력을 먼저 밀고 배너를 다시 묻는다.
     /// </summary>
     private void RefreshLockState()
     {
-        bool before = _excelHoldsChapter;
-
-        RefreshLockBanner();
-
-        if (_excelHoldsChapter == before)
+        // ⛔ <b>미룬 것을 잊지 않는다</b> (§5.3). 잠금이 움직였다는 신호마다 미룬 출력을 다시 민다 —
+        //    고른 챕터의 잠금이 그대로여도 다른 챕터·대본 파일을 엑셀이 놓았을 수 있다(C5).
+        //    미룬 것이 없으면 파일을 열지 않으므로 값이 없다.
+        if (_session is { } session)
         {
-            return;
-        }
-
-        RefreshPropertyPanel(preserveTyping: true);
-
-        // ⛔ <b>미룬 것을 잊지 않는다</b> (§5.3). 엑셀이 파일을 놓은 그 순간이 다시 낼
-        //    자리다 — 사람이 아무것도 안 눌러도 파일이 프로젝트를 따라잡는다.
-        if (!_excelHoldsChapter && _session is { } session)
-        {
-            ChapterEmitRun caught = session.ChapterOutput.Retry(
+            WorkbookEmitRun caught = session.WorkbookOutput.Retry(
                 session.Project, session.ProjectPath, session.Definition);
 
             if (caught.Written.Count > 0)
@@ -2757,129 +2749,16 @@ public partial class ChapterGraphView : UserControl
                     $"엑셀이 닫혀 미뤄 둔 워크북 {caught.Written.Count}개를 다시 냈습니다.");
             }
         }
-    }
 
-    /// <summary>
-    /// 잠금 상태를 <b>받아 적는다</b>. 이 메서드는 판단하지 않는다 — 판단은
-    /// <see cref="LockProbe"/>가 파일에 물어 이미 끝냈고, 여기서는 그 답이 <em>바뀌었을 때</em>
-    /// 해야 할 일만 한다.
-    ///
-    /// 편집 중에 엑셀이 열리면 <b>아직 단추를 안 누른 값을 먼저 낸다</b> (2026-08-17 소유자:
-    /// "하는 중에 엑셀이 열리면 현재까지된걸 저장한 뒤에 잠그고"). 엑셀이 먼저 파일을
-    /// 잡았으면 그 쓰기는 거부되지만, 값은 패널에 그대로 남는다 — 엑셀을 닫고 다시 고르면
-    /// 된다. 낡은 값을 나중에 몰래 밀어 넣지는 않는다: 그 사이 엑셀에서 고쳤을 수 있고,
-    /// 그러면 사람이 방금 한 편집을 툴이 덮는다.
-    ///
-    /// ⚠ <b>바뀔 때만 움직인다.</b> 이 자리는 다시 그리기·쓰기·감시자 알림마다 불리므로,
-    /// 매번 상태줄에 말하면 "엑셀이 닫혔습니다"가 끝없이 흐른다.
-    /// </summary>
-    private void ApplyLockGate(bool locked)
-    {
-        // ⛔ 이 빗장을 빼면 <b>스택이 넘친다</b> — 지운 적이 있고 그 자리에서 확인했다
-        // (2026-08-24). 길은 이렇다: 여기서 부르는 FlushPendingEdits가 워크북을 쓰고,
-        // 쓰기 결과는 Report로 가고, Report는 "거부됐다면 대개 엑셀이 잡은 것"이라며
-        // 잠금을 다시 묻는다 — 그래서 여기로 돌아온다. 값이 아직 안 바뀐 채로.
-        if (_applyingLockGate || locked == _excelHoldsChapter)
-        {
-            return;
-        }
-
-        _applyingLockGate = true;
-
-        try
-        {
-            if (locked)
-            {
-                // 순서가 곧 규칙이다 — 잠갔다고 적기 <b>전에</b> 내야 그 쓰기가 열린
-                // 문으로 나간다. 뒤집으면 툴이 자기 관문에 스스로 막힌다.
-                FlushPendingEdits();
-                _excelHoldsChapter = true;
-                return;
-            }
-
-            _excelHoldsChapter = false;
-            _session?.SetStatus("엑셀이 닫혔습니다 — 툴 편집이 다시 열렸습니다.");
-        }
-        finally
-        {
-            _applyingLockGate = false;
-        }
-    }
-
-    /// <summary>잠금 반영이 자기 자신을 다시 부르지 않게 하는 빗장 — 위 ⛔ 참조.</summary>
-    private bool _applyingLockGate;
-
-    /// <summary>
-    /// 열려 있는 폼의 값을 낸다 — 잠기기 직전의 마지막 저장. 개명(IdBox)은 일부러 빼둔다:
-    /// Enter가 곧 확정인 칸이라, 치다 만 이름을 여기서 확정하면 사람이 안 시킨 개명이 된다.
-    /// </summary>
-    private void FlushPendingEdits()
-    {
-        if (_edgeFormIndex >= 0 && _edgeFormEdge is not null && EdgeTargetCombo.SelectedItem is string)
-        {
-            SubmitEdgeForm();
-            return;
-        }
-
-        if (EdgePanel.IsVisible && _selectedEdgeKey is not null)
-        {
-            ApplyEdgeFromPanel();
-        }
-    }
-
-    private void ApplyEditability()
-    {
-        // ⚠ 여기서는 배너 쪽만 부른다 — RefreshLockState는 되짚어 이 메서드를 부른다.
+        // ⚠ 잠금이 그대로면 아무 말도 하지 않는다 — 이 자리는 다시 그리기·쓰기 결과·감시자
+        //    알림마다 불리므로, 매번 말하면 같은 말이 끝없이 흐른다.
         RefreshLockBanner();
-
-        bool editable = ToolEditable;
-
-        IdBox.IsEnabled = editable;
-        SceneIdBox.IsEnabled = editable;
-        ApplySceneGroupButton.IsEnabled = editable;
-
-        // 잠겨 있으면 **그 자리에서** 이유를 말한다 (2026-08-24). 비활성 칸이 아무 말도
-        // 없으면 "이 기능이 없다"로 읽힌다 — 실제로 그렇게 읽혔다.
-        //
-        // ⚠ 열려 있을 때는 <b>아무 말도 안 한다</b>(같은 날 소유자 — 상시 안내 제거).
-        // 잠금은 사람이 안 한 일이라 말해 줘야 하지만, 열린 것은 기본값이라 말할 것이 없다.
-        IdBoxHint.IsVisible = !editable;
-        IdBoxHint.Text = editable
-            ? string.Empty
-            : "이름 — 엑셀이 이 챕터를 열고 있어 잠겼습니다";
-        VisibleCombo.IsEnabled = editable;
-        UnlockCombo.IsEnabled = editable;
-        AddNextEdgeButton.IsVisible = editable;
-        // 삭제는 <b>늘 같은 자리에</b> 있고 상태만 바뀐다 (2026-08-16 소유자 보고) —
-        // 체크를 푸는 순간 단추가 튀어나오면 그 자리를 누르던 손이 삭제를 누른다.
-        // 평소엔 회색·비활성, 편집이 열리면 빨갛게 살아난다.
-        DeleteEpisodeButton.IsEnabled = editable;
-        DeleteEpisodeButton.Background = editable
-            ? new SolidColorBrush(Color.Parse("#C0392B"))
-            : new SolidColorBrush(Color.Parse("#E0E0E0"));
-        DeleteEpisodeButton.Foreground = editable ? Brushes.White : new SolidColorBrush(Color.Parse("#9A9A9A"));
-        AddEpisodeButton.IsEnabled = editable;
-
-        // 간선 패널(그래프에서 간선 클릭)도 같은 스위치를 탄다.
-        EdgeLabelEditBox.IsEnabled = editable;
-        EdgeVisibleCombo.IsEnabled = editable;
-        EdgeConditionCombo.IsEnabled = editable;
-
-        EdgeLockedMsgBox.IsEnabled = editable;
-        _edgeStats.Editable = editable;
-        _formStats.Editable = editable;
-        EdgeDeleteButton.IsVisible = editable;
-
-        if (!editable)
-        {
-            HideEdgeForm();
-        }
     }
 
     /// <summary>표시·해금 콤보의 자동 저장 — 고르는 순간 그 셀 하나가 써진다.</summary>
     private void AutoSaveGates()
     {
-        if (_fillingPanel || !ToolEditable)
+        if (_fillingPanel)
         {
             return;
         }
@@ -2889,12 +2768,12 @@ public partial class ChapterGraphView : UserControl
 
     /// <summary>
     /// 간선 패널의 자동 저장 (2026-08-17) — 고치는 순간 그 셀이 써진다. 패널을 채우는
-    /// 중(<see cref="_fillingPanel"/>)이나 읽기 전용일 때는 울리지 않는다: 화면을 채우는
-    /// 일이 저장을 부르면 아무것도 안 고쳤는데 파일이 계속 써진다.
+    /// 중(<see cref="_fillingPanel"/>)에는 울리지 않는다: 화면을 채우는 일이 저장을 부르면
+    /// 아무것도 안 고쳤는데 파일이 계속 써진다.
     /// </summary>
     private void AutoSaveEdge()
     {
-        if (_fillingPanel || !ToolEditable || _selectedEdgeKey is null)
+        if (_fillingPanel || _selectedEdgeKey is null)
         {
             return;
         }
@@ -3035,7 +2914,6 @@ public partial class ChapterGraphView : UserControl
             EdgeFormAutoCheck.IsChecked = edge?.Auto == true;
 
             // 스탯변화도 여기서 만진다 (2026-08-17) — 새 길이면 빈 목록에서 시작한다.
-            _formStats.Editable = ToolEditable;
             _formStats.Load(SelectedModel?.Stats ?? [], edge?.StatChanges ?? []);
         }
         finally
@@ -3113,7 +2991,6 @@ public partial class ChapterGraphView : UserControl
         // 아래에서 원하는 자리에 다시 꽂는다.
         EdgeListPanel.Children.Clear();
 
-        bool editable = ToolEditable;
         List<ChapterEdge> edges = model.Edges
             .Where(candidate =>
                 string.Equals(candidate.FromEpisodeId, episode.EpisodeId, StringComparison.Ordinal))
@@ -3122,7 +2999,7 @@ public partial class ChapterGraphView : UserControl
 
         for (int rowIndex = 0; rowIndex < edges.Count; rowIndex++)
         {
-            EdgeListPanel.Children.Add(BuildEdgeRow(edges[rowIndex], rowIndex, editable));
+            EdgeListPanel.Children.Add(BuildEdgeRow(edges[rowIndex], rowIndex));
         }
 
         if (edges.Count == 0)
@@ -3137,7 +3014,7 @@ public partial class ChapterGraphView : UserControl
         }
 
         // 폼을 제자리에 꽂는다 — 누른 줄 바로 아래(새 선택지면 목록 끝).
-        bool formOpen = editable && _edgeFormIndex >= 0;
+        bool formOpen = _edgeFormIndex >= 0;
         EdgeFormHost.IsVisible = formOpen;
         EdgeFormPanel.IsVisible = formOpen;
 
@@ -3173,7 +3050,7 @@ public partial class ChapterGraphView : UserControl
     /// 선택지 한 줄 — `문구 → 도착 [조건]`. 문구가 없으면 "(기본 · 보이지 않음)"이다.
     /// 클릭 = 그 줄 아래에서 문구·도착 고치기, 다시 클릭 = 접기.
     /// </summary>
-    private Control BuildEdgeRow(ChapterEdge edge, int rowIndex, bool editable)
+    private Control BuildEdgeRow(ChapterEdge edge, int rowIndex)
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
 
@@ -3210,7 +3087,6 @@ public partial class ChapterGraphView : UserControl
         Grid.SetColumn(text, 1);
 
         // 툴팁 없음 (2026-08-16 소유자) — 목록 위에 뜨는 설명 상자가 화면을 가렸다.
-        if (editable)
         {
             (string To, string Label) key = (edge.ToEpisodeId, EdgeLabelKey(edge));
             ChapterEdge captured = edge;
@@ -3232,7 +3108,6 @@ public partial class ChapterGraphView : UserControl
 
         row.Children.Add(text);
 
-        if (editable)
         {
             string from = edge.FromEpisodeId;
             string to = edge.ToEpisodeId;
@@ -3275,7 +3150,6 @@ public partial class ChapterGraphView : UserControl
         {
             EdgeAutoCheck.IsChecked = edge.Auto;
             EdgeLockedMsgBox.Text = edge.LockedMessage ?? string.Empty;
-            _edgeStats.Editable = ToolEditable;
             _edgeStats.Load(model.Stats, edge.StatChanges);
         }
 
@@ -3329,7 +3203,7 @@ public partial class ChapterGraphView : UserControl
 
         BranchBlockedText.Text = state.Blocked ?? string.Empty;
         BranchBlockedText.IsVisible = state.Blocked is not null;
-        BranchConditionCombo.IsEnabled = state.Editable && ToolEditable;
+        BranchConditionCombo.IsEnabled = state.Editable;
 
         var labels = new List<string> { BranchAlwaysItem };
         labels.AddRange(model?.Conditions.Select(condition => condition.Label) ?? []);
@@ -4040,7 +3914,7 @@ public partial class ChapterGraphView : UserControl
 
         _selectedEpisodeId = newId;
 
-        ChapterEmitRun emitted = EmitSelectedChapter();
+        WorkbookEmitRun emitted = EmitSelectedChapter();
 
         _session.SetStatus(
             $"'{oldId}' → '{newId}' 개명했습니다. 간선·픽스처·대본 파일·대사 노드가 함께 따라갔습니다." +
@@ -4092,7 +3966,7 @@ public partial class ChapterGraphView : UserControl
 
         _selectedEpisodeId = null;
 
-        ChapterEmitRun emitted = EmitSelectedChapter();
+        WorkbookEmitRun emitted = EmitSelectedChapter();
         _session.SetStatus(result.Describe(episodeId) + emitted.Notice());
     }
 
@@ -4134,53 +4008,26 @@ public partial class ChapterGraphView : UserControl
             _session!.Editor.AddEpisode(chapterId, episodeId, title: string.Empty, x, 0);
         }
 
-        {
-            _selectedEpisodeId = episodeId;
+        _selectedEpisodeId = episodeId;
 
-            // 대본 워크북도 지금 만든다 (v4) — "노드를 클릭해야 생긴다"는 느슨함을 없앤다.
-            // 생성은 없던 파일을 만드는 것이라 단일 writer 원칙과 충돌하지 않고,
-            // 이후 툴은 이 파일을 다시는 쓰지 않는다.
-            //
-            // 첫 대사도 함께 심는다 (2026-08-26 소유자) — 빈 대본은 검증이 오류로 막으므로,
-            // 방금 더한 에피소드가 그 오류부터 들고 시작하지 않게 한다. 동기화가 만드는
-            // 워크북(엑셀에서 더한 에피소드)은 안 심는다 — 그쪽 기획자는 시트에서 적는다.
-            if (SelectedEpisodesFolder is { } episodesFolder)
-            {
-                if (EpisodeLibrary.EnsureWorkbook(
-                        episodesFolder,
-                        episodeId,
-                        ProjectSpeakerNames(),
-                        firstLine: EpisodeLibrary.DefaultFirstLine))
-                {
-                    // 만들기만 한다 — 감시는 더 서지 않는다 (R-D).
-                }
-                // 워크북이 이미 있었다 — 에피소드 삭제가 대본 파일을 남기므로, 지운 Id를
-                // 다시 더하면 빈 유물이 재사용된다. 완전히 비어 있을 때만 심는다(사람이
-                // 쓰다 만 대본에는 손대지 않는다).
-                else if (EpisodeLibrary.FindExisting(episodesFolder, episodeId) is { } existing)
-                {
-                    (ChapterWriteResult seed, _) = EpisodeWorkbookWriter.SeedFirstLineIfEmpty(
-                        existing, EpisodeLibrary.DefaultFirstLine);
+        // ⛔ 여기 있던 `EnsureDialogueNodeFor`는 2026-09-18에 걷혔다. 화면이 에피소드를
+        //    만든 <b>뒤에</b> 카드를 한 줄 더 세우던 자리인데, 그 한 줄을 대본 탭이
+        //    잊어서 <b>작가의 탭에서 만든 에피소드만 쓸 자리가 없었다</b>.
+        //    이제 `AddEpisode`·`AddNextEpisode`가 카드까지 함께 만든다 — 창구가 잊을
+        //    자리 자체가 없어졌다.
 
-                    if (seed.Failure is { } failure)
-                    {
-                        _session?.SetStatus(failure);
-                    }
-                }
-            }
+        WorkbookEmitRun emitted = EmitSelectedChapter();
 
-            // ⛔ 여기 있던 `EnsureDialogueNodeFor`는 2026-09-18에 걷혔다. 화면이 에피소드를
-            //    만든 <b>뒤에</b> 카드를 한 줄 더 세우던 자리인데, 그 한 줄을 대본 탭이
-            //    잊어서 <b>작가의 탭에서 만든 에피소드만 쓸 자리가 없었다</b>.
-            //    이제 `AddEpisode`·`AddNextEpisode`가 카드까지 함께 만든다 — 창구가 잊을
-            //    자리 자체가 없어졌다.
-        }
-
-        ChapterEmitRun emitted = EmitSelectedChapter();
+        // 대본 워크북도 지금 낸다 — 카드가 섰으니 낼 것(첫 줄)이 프로젝트에 있다. 2026-10-29까지는
+        // 여기서 빈 템플릿을 만들고 첫 대사 문구를 셀에 심었다(C5에서 걷힘) — 그 문구는 프로젝트에
+        // 없는 글이라 워크북과 원본이 처음부터 갈렸다. 옛 빌드의 빈 유물이 남아 있어도 덮는다(.bak).
+        WorkbookEmitRun script = EpisodeNaming.CardFor(_session!.Project, chapterId, episodeId) is { } card
+            ? _session.WorkbookOutput.EmitScript(_session.Project, _session.ProjectPath, card)
+            : WorkbookEmitRun.Empty;
 
         _session?.SetStatus(
             $"'{episodeId}'을 더했습니다. Id와 대사엔트리를 패널에서 채워 주세요." +
-            emitted.Notice());
+            emitted.Notice() + script.Notice());
     }
 
     /// <summary>
@@ -4220,11 +4067,11 @@ public partial class ChapterGraphView : UserControl
     /// ⚠ 내는 장치는 <b>세션의 것</b>이다 — 미룬 목록(§5.3)이 화면마다 갈리면 안 되고,
     /// 화면을 지나지 않는 편집(되돌리기)도 같은 자리를 지나야 한다.
     /// </summary>
-    private ChapterEmitRun EmitSelectedChapter() =>
+    private WorkbookEmitRun EmitSelectedChapter() =>
         _session is { } session && _selectedChapterId is { } chapterId
-            ? session.ChapterOutput.Emit(
+            ? session.WorkbookOutput.Emit(
                 session.Project, session.ProjectPath, chapterId, session.Definition)
-            : ChapterEmitRun.Empty;
+            : WorkbookEmitRun.Empty;
 
     /// <summary>
     /// 옛 <c>Report</c> — 워크북에 <b>직접</b> 쓰던 시절의 창구다. 아직 파일을 직접 만지는
