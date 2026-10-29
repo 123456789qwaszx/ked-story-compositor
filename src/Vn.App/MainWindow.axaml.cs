@@ -207,7 +207,7 @@ public partial class MainWindow : Window
 
         _session.Changed += OnSessionChanged;
         // 상태줄만 바뀐 경우는 셸 갱신 하나로 끝난다 (2026-08-18) — 판을 다시 그리거나
-        // 워크북을 다시 읽을 이유가 없다. 그 구분이 없어서 노드가 늘수록 느려졌다.
+        // 챕터를 다시 읽을 이유가 없다. 그 구분이 없어서 노드가 늘수록 느려졌다.
         _session.StatusChanged += (_, _) =>
         {
             if (Dispatcher.UIThread.CheckAccess())

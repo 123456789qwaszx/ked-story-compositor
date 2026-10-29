@@ -349,7 +349,7 @@ public partial class MiniStagePreview : UserControl
 
         if (chapter is null)
         {
-            return false; // 챕터 판이 아니거나 워크북을 못 읽었다 — 선택지를 지어낼 원천이 없다
+            return false; // 챕터 판이 아니거나 챕터를 못 찾았다 — 선택지를 지어낼 원천이 없다
         }
 
         ChapterRunState run = EnsureChapterRunFor(chapter);
@@ -578,7 +578,7 @@ public partial class MiniStagePreview : UserControl
     //    드롭다운을") — 목록의 원천은 챕터 그래프가 읽은 하나(SupplyChapters, 셸이 건다),
     //    선택은 ActiveFile 하나를 비춘다. GraphEditorView의 콤보와 같은 규칙이다.
 
-    /// <summary>챕터 그래프 뷰가 읽은 챕터 목록 — 이 뷰는 워크북을 직접 읽지 않는다.</summary>
+    /// <summary>챕터 그래프 뷰가 읽은 챕터 목록 — 이 뷰는 챕터를 직접 읽지 않는다.</summary>
     private IReadOnlyList<ChapterEntry> _chapters = Array.Empty<ChapterEntry>();
 
     /// <summary>선택을 비추는 동안에는 SelectionChanged가 선택을 바꾸지 않게 한다.</summary>

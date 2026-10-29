@@ -219,7 +219,7 @@ public static class GraphProjectionBuilder
     {
         IEnumerable<Vn.Authoring.Flow.ExitPort> exits = NodeConnections.PortsOf(node, project, definition);
 
-        // T2 (철도 배선) — 엑셀노드의 선택지 옵션 포트와 기본 출구는 카드가 아니라
+        // T2 (철도 배선) — 에피소드 카드의 선택지 옵션 포트와 기본 출구는 카드가 아니라
         // 짝 간선의 칩에 산다. IF 갈래 출구는 카드에 남는다(내부 곁가지는 간선과 무관).
         //
         // ⚠ <b>「조건 분기」 표식도 카드에 남는다</b> (R7 P-5 · 2026-09-17). 이것을 안 넣어
@@ -270,7 +270,7 @@ public static class GraphProjectionBuilder
     /// (§2 ③), 이어 붙는 순간 고쳐지는 것은 <c>ChapterDocument.Edges</c>다(§2 ①).
     ///
     /// ⚠ <b>간선이 셋을 넘으면 넘는 대로 전부 낸다.</b> 3은 <b>새로 만드는 칸</b>의 수이지
-    /// 상한이 아니다 — 엑셀에서 넷을 만든 챕터의 넷째를 화면이 숨기면 사람은 <b>사라진 줄</b>
+    /// 상한이 아니다 — 선택지를 넷 만든 챕터의 넷째를 화면이 숨기면 사람은 <b>사라진 줄</b>
     /// 안다. 상한을 모델에 박는 것은 v9가 없앤 `선택지수` 칸을 되살리는 일이다.
     ///
     /// ⚠ <b>챕터 판의 대사 노드는 전부 낸다</b> (R7 P-6 · 결정 ⑤ · 2026-09-17). 전에는

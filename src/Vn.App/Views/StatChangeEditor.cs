@@ -11,7 +11,7 @@ namespace Vn.App.Views;
 /// "엑셀에서 정의해둔 스탯을 드롭다운으로 선택하고 부호와 값을 넣는거야").
 ///
 /// 대사노드의 Set 편집기와 같은 감각이다 — 사람은 <b>고르고 누르지</b> 문법을 외우지
-/// 않는다. 원천은 여전히 챕터 엑셀 `간선` 시트의 `스탯변화` 칸이고, 이 편집기는 그
+/// 않는다. 원천은 챕터 간선의 스탯변화(`ChapterEdge.StatChanges`)이고, 이 편집기는 그
 /// 칸에 들어갈 글(<c>trust +1; anger -1</c>)을 만드는 손일 뿐이다 — 새 저장소가 아니다.
 ///
 /// <b>줄은 자리가 아니라 물건이다.</b> 처음엔 줄을 목록의 <i>번호</i>로 잡았는데, 다시
@@ -257,7 +257,7 @@ internal sealed class StatChangeEditor : StackPanel
             IsVisible = !isBool,
             Text = Math.Abs(row.Seed).ToString(System.Globalization.CultureInfo.InvariantCulture)
         };
-        // 초점을 잃을 때만 낸다 — 자판 하나마다 워크북을 열면 쓰던 숫자가 끊긴다.
+        // 초점을 잃을 때만 낸다 — 자판 하나마다 내면 되돌리기가 글자 수만큼 쌓이고 쓰던 숫자가 끊긴다.
         amountBox.LostFocus += (_, _) =>
         {
             if (!_rendering)

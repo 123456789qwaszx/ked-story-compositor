@@ -93,8 +93,8 @@ public partial class ChapterGraphView : UserControl
 
         // ⛔ 여기서 대본을 따라잡던 호출은 2026-09-16에 걷혔다 (R-D). 챕터를 고르는 것은
         //    <b>보는 일</b>이지 들여오는 일이 아니다 — 고를 때마다 워크북을 다시 읽으면
-        //    "임포트 뒤 다시 읽지 않는다"(§5.2)가 성립하지 않는다. 대본은 [대본 가져오기]로
-        //    들어온다.
+        //    "임포트 뒤 다시 읽지 않는다"(§5.2)가 성립하지 않는다. (그 [대본 가져오기]도
+        //    2026-10-29에 엑셀 연동과 함께 걷혔다 — 대본은 연출 그래프 카드의 글 칸에서 쓴다.)
 
         // 그 챕터의 판을 활성으로 — 왼쪽 목록의 강조가 이 값을 본다.
         ChapterSelected?.Invoke(chapterId);
@@ -171,9 +171,10 @@ public partial class ChapterGraphView : UserControl
         };
 
 
-        // 편집 (G-2 v2) — 전부 엑셀 셀에 써지고, 저장 감시가 다시 읽어 화면이 따라온다.
+        // 편집 — 전부 편집기 명령으로 프로젝트에 가고, 세션의 변경 알림이 다시 읽어 화면이 따라온다
+        // (⛔ G-2 v2의 "엑셀 셀에 쓰고 저장 감시가 다시 읽는다"는 R-F · D2에 걷혔다).
         // 2026-08-16 소유자 — [개명]·[적용] 단추 폐지: Id는 Enter로 개명하고, 조건 콤보는
-        // 고르는 순간 저장된다. 편집은 늘 열려 있고, 엑셀이 그 파일을 잡은 동안만 닫힌다.
+        // 고르는 순간 저장된다. 편집은 늘 열려 있다.
         IdBox.KeyDown += (_, e) =>
         {
             if (e.Key == Avalonia.Input.Key.Enter)
@@ -441,8 +442,8 @@ public partial class ChapterGraphView : UserControl
             }
 
             // 개명이 먼저다 (2026-08-24) — 이미 쓰인 이름을 끌고 간 뒤 등록부를 간다.
-            // 2026-10-29부터 끌고 가는 것은 <b>프로젝트의 줄</b>이고 워크북은 다시 낸다 — 잠긴
-            // 워크북은 막는 이유가 아니라 미룸이다(excel-boundary C4).
+            // 끌고 가는 것은 <b>프로젝트의 줄</b>뿐이다(워크북 재출력은 2026-10-29 D2에 엑셀 연동과
+            // 함께 걷혔다).
             string? report = string.Equals(previous, typed, StringComparison.Ordinal)
                 ? null
                 : CarrySpeakerRename(previous, typed);
@@ -634,7 +635,7 @@ public partial class ChapterGraphView : UserControl
     }
 
     /// <summary>
-    /// 구조 검증 + 도달성 증명 (G7). 워크북을 읽을 때마다 한 번 돌려 두고 화면은 그 결과를
+    /// 구조 검증 + 도달성 증명 (G7). 모델을 다시 읽을 때마다 한 번 돌려 두고 화면은 그 결과를
     /// 그리기만 한다 — 픽스처를 바꿀 때마다 상태공간을 다시 훑을 이유가 없다.
     /// </summary>
     private void Validate()
@@ -999,8 +1000,8 @@ public partial class ChapterGraphView : UserControl
     // 시트의 `활성` 픽스처만 남겨 두면 견본 챕터가 초록으로 켜진 채 <b>끄는 손잡이 없이</b>
     // 서 있게 된다. 그래서 화면 쪽은 통째로 걷는 것이 옳다.
     //
-    // ⚠ <b>엑셀의 `픽스처` 시트와 `ChapterFixtureWalker`는 안 지웠다</b> — 시트는 워크북
-    // 규격이라 지우면 남의 파일이 깨지고, 걷기는 저작 계층의 순수 함수다(제 테스트가 있다).
+    // ⚠ <b>`ChapterDocument.Fixtures`와 `ChapterFixtureWalker`는 안 지웠다</b> — 픽스처는 챕터의
+    // 데이터이고(옛 엑셀 `픽스처` 시트에서 왔다), 걷기는 저작 계층의 순수 함수다(제 테스트가 있다).
     // 되살릴 때 필요한 것은 콤보 하나와 이 자리의 걷기 호출뿐이다.
 
     /// <summary>
@@ -1298,7 +1299,7 @@ public partial class ChapterGraphView : UserControl
 
     private void DrawEpisode(ChapterGraphModel model, ChapterEpisode episode)
     {
-        // 워크북의 오류든 도달 불가든 노드에는 같은 ⚠로 선다 — 기획자에게는 둘 다 "고칠 것"이다.
+        // 모델의 오류든 도달 불가든 노드에는 같은 ⚠로 선다 — 기획자에게는 둘 다 "고칠 것"이다.
         bool hasError = model.EpisodeHasError(episode) || IsUnreachable(episode);
 
         var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
@@ -1430,8 +1431,8 @@ public partial class ChapterGraphView : UserControl
         }
 
 
-        // 클릭 = 선택(속성 패널) · 더블클릭 = 에피소드 엑셀 열기. 드래그는 없다(v3) —
-        // 배치는 깊이 레이아웃이 소유하고, 흐름을 바꾸면 자리가 따라온다.
+        // 클릭 = 선택(속성 패널) · 끌기 = 자리 옮기기(놓을 때 MoveEpisodes 한 번, v4).
+        // 더블클릭은 아무것도 안 한다(에피소드 엑셀을 열던 배선은 2026-10-29 D2에 걷혔다).
         WireCardInteraction(card, episode);
         card.Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
 
@@ -1679,7 +1680,7 @@ public partial class ChapterGraphView : UserControl
     /// 디스크 스냅샷(<see cref="SelectedModel"/>)으로 물러난다.
     ///
     /// ⛔ <b>표를 편집 가능하게 만든 순간 스냅샷으로는 못 그린다</b> (2026-09-17).
-    /// <see cref="SelectedModel"/>은 워크북을 읽은 <c>_entries</c>에서 오므로, 방금 고친 값이
+    /// <see cref="SelectedModel"/>은 마지막으로 읽은 <c>_entries</c>(스냅샷)에서 오므로, 방금 고친 값이
     /// 저장·재읽기 전까지 <b>안 비친다</b> — 사람은 적었는데 안 들어갔다고 읽는다.
     /// R7에서 철도가 같은 자리를 겪었고 답도 같다: <b>살아 있는 것을 먼저 보고 스냅샷은
     /// 뒷받침</b>. 둘 다 같은 값을 말하므로 정본이 둘이 되는 것은 아니다.
@@ -1993,8 +1994,8 @@ public partial class ChapterGraphView : UserControl
     /// <summary>
     /// 선택된 에피소드(또는 간선)의 현재 값으로 패널을 채운다. 원천은 언제나 방금 읽은 모델이다.
     ///
-    /// <b>편집 칸은 선택이 바뀔 때만 채운다.</b> 저장 감시는 언제든 울리는데(엑셀이 파일을
-    /// 건드리기만 해도) 그때마다 칸을 모델 값으로 되돌리면, 적어 두고 아직 [적용]하지 않은
+    /// <b>편집 칸은 선택이 바뀔 때만 채운다.</b> 다시 읽기는 언제든 도는데(프로젝트가 바뀔 때마다 —
+    /// 엑셀이 있던 때는 파일을 건드리기만 해도) 그때마다 칸을 모델 값으로 되돌리면, 적어 두고 아직 [적용]하지 않은
     /// 글자가 조용히 사라진다 — 사람 눈에는 "적용을 눌러도 안 바뀐다"로 보인다.
     /// 포커스가 어디 있는지로 판정하던 이전 방식은 콤보·체크박스를 만진 순간 뚫렸다.
     /// </summary>
@@ -2177,11 +2178,6 @@ public partial class ChapterGraphView : UserControl
         return string.Join("\n", lines);
     }
 
-    /// <summary>
-    /// 엑셀이 소유한 값들을 한 덩어리로. 비어 있는 것은 줄에 세우지 않는다 —
-    /// "(없음)"만 늘어놓으면 읽을거리가 아니라 소음이 된다.
-    /// </summary>
-
     /// <summary>목록을 갈되 고른 값은 지킨다(그 값이 새 목록에 남아 있다면).</summary>
     private static void SetItems(ComboBox combo, IReadOnlyList<string> items, string? selected)
     {
@@ -2292,8 +2288,8 @@ public partial class ChapterGraphView : UserControl
             ? picked
             : string.Empty;
 
-        // 배선과 증감이 한 저장으로 나간다 — 두 번 쓰면 그 사이에 엑셀이 파일을 잡을 수 있고,
-        // 반쪽만 적힌 길이 남는다.
+        // 배선과 증감이 한 변경으로 간다 — 두 번 쓰면 되돌리기가 둘로 쪼개져, 한 번 물렀을 때
+        // 반쪽만 적힌 길이 남는다(two-graphs.md §5-7).
         string stats = auto ? string.Empty : _formStats.ToSheetText();
         if (auto)
         {
@@ -2366,8 +2362,8 @@ public partial class ChapterGraphView : UserControl
 
             try
             {
-                // 문구 목록은 폼이 열릴 때마다 새로 깐다 — 엑셀에서 사전에 낱말을 더하면
-                // 다시 읽기 한 번으로 여기에 나타난다.
+                // 문구 목록은 폼이 열릴 때마다 새로 깐다 — 다른 곳(선택지 사전 · 연출 그래프의
+                // 선택지 칸)에서 낱말을 더하면 다시 읽기 한 번으로 여기에 나타난다.
                 SetItems(EdgeLabelBox, ChoiceLabelItems(model), EdgeLabelBox.SelectedItem as string);
             }
             finally
@@ -2907,7 +2903,7 @@ public partial class ChapterGraphView : UserControl
 
     /// <summary>
     /// 표 안의 글자 칸. <b>초점을 잃을 때 저장한다</b> — 자판마다 쓰면 되돌리기가 글자 수만큼
-    /// 쌓이고 워크북이 매번 다시 나간다(엑셀노드 대사 칸이 배운 것과 같다). Enter도 확정이다.
+    /// 쌓이고 다시 읽기가 매번 돈다(옛 엑셀노드 대사 칸이 배운 것과 같다). Enter도 확정이다.
     /// </summary>
     private TextBox SheetBox(string value, double width, string hint, Action<string> commit)
     {
@@ -3451,8 +3447,8 @@ public partial class ChapterGraphView : UserControl
 
     private void DrawDiagnostics(ChapterGraphModel model)
     {
-        // 워크북 읽기 진단 + 검증기(구조·교차·도달성) 진단을 한 목록으로 본다.
-        // 같은 진단이 두 곳에서 나올 수 있으므로(리더가 낸 것을 검증기가 다시 담는다) 겹은 지운다.
+        // 모델 진단(구조 검사 포함) + 검증기(구조·교차·도달성) 진단을 한 목록으로 본다.
+        // 같은 진단이 두 곳에서 나올 수 있으므로(모델이 낸 것을 검증기가 다시 담는다) 겹은 지운다.
         List<ChapterDiagnostic> all = model.Diagnostics
             .Concat(_validation?.All ?? Enumerable.Empty<ChapterDiagnostic>())
             .Concat(BoardWarnings(model))

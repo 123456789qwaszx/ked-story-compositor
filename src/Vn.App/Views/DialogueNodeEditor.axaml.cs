@@ -50,7 +50,7 @@ public partial class DialogueNodeEditor : UserControl
     /// 여기서 고쳐도 <b>다음 동기화가 되돌린다</b>는 것이 이유였는데, 그 동기화가 R-D에서
     /// 철거됐다. 대본의 원본은 이제 프로젝트다. <b>그래서 대본은 전부 열렸다.</b>
     ///
-    /// 남은 뜻은 좁다 — <b>챕터 워크북이 쥔 것</b>만이다. 셋뿐이고, 셋 다 대본이 아니다:
+    /// 남은 뜻은 좁다 — <b>챕터(기획자 층)가 쥔 것</b>만이다. 셋뿐이고, 셋 다 대본이 아니다:
     /// ① 노드 이름(챕터 `대사엔트리`가 원천 — R-F에서 뒤집힌다)
     /// ② 스탯변화(챕터 간선의 것 — 2026-08-14 결정, 엑셀과 무관)
     /// ③ 갈래 출구 배선(연출 그래프 카드의 IF 포트 하나 — 2026-08-23 결정, 문은 하나)
@@ -1232,8 +1232,8 @@ public partial class DialogueNodeEditor : UserControl
         }
 
         // ⛔ 엑셀노드만 초점을 잃을 때 내던 갈래는 2026-09-16에 사라졌다 (R-E). 이유는
-        //    "자판 하나마다 워크북 파일을 두드린다"였는데, 이제 글자는 프로젝트로 간다 —
-        //    워크북은 [글 반영]/[텍스트 반영] 때 한 번 난다.
+        //    "자판 하나마다 워크북 파일을 두드린다"였는데, 이제 글자는 프로젝트로 간다
+        //    (워크북 재출력 자체가 2026-10-29에 엑셀 연동과 함께 걷혔다).
         void Wire(Control field)
         {
             if (field is TextBox box)
@@ -1414,23 +1414,6 @@ public partial class DialogueNodeEditor : UserControl
 
         return rail.Children.Count > 0 ? rail : null;
     }
-
-    /// <summary>엑셀노드용 표시 전용 칩 — 태그 버튼과 같은 모양이되 누를 수 없다. 잠김이 모양으로 보인다.</summary>
-    private static Border TagChip(string text, IBrush background) => new()
-    {
-        Child = new TextBlock
-        {
-            Text = text,
-            FontSize = 9,
-            FontWeight = FontWeight.Bold,
-            Foreground = Brushes.White
-        },
-        Background = background,
-        Padding = new Thickness(6, 2),
-        CornerRadius = new CornerRadius(3),
-        Margin = new Thickness(0, 0, 4, 0),
-        VerticalAlignment = VerticalAlignment.Center
-    };
 
     private static Button TagButton(string text, IBrush background)
     {

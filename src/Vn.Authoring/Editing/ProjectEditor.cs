@@ -280,7 +280,8 @@ public sealed partial class ProjectEditor
 
         // ⭐ <b>이름을 고르는 규칙도 여기 하나다</b> (2026-09-18). 챕터 판에서는 이 이름이
         //    곧 EpisodeId가 되므로 <c>장면 3</c> 같은 <b>공백 든 Id</b>가 나오면 안 된다 —
-        //    그 Id는 대본 워크북의 파일 이름으로 나간다. 다른 창구가 이미 쓰던 `new01`
+        //    그 Id는 진행 JSON과 산출물의 열쇠로 나간다(엑셀 시절에는 대본 워크북의 파일 이름이기도
+        //    했다). 다른 창구가 이미 쓰던 `new01`
         //    규약으로 맞춘다.
         var created = new DialogueNode(
             name: name ?? (ChapterOfBoard(file) is { } board
@@ -334,7 +335,8 @@ public sealed partial class ProjectEditor
     /// 작가의 낙서판에는 챕터가 없고, 거기 세운 노드는 진행에 안 실린다.
     ///
     /// ⚠ <b>이미 있는 에피소드면 짓지 않고 표식만 붙인다.</b> 챕터 그래프에서 먼저 만든
-    /// 에피소드에 대본을 다는 것이(그리고 워크북 임포터가 노드를 세우는 것이) 정확히 그
+    /// 에피소드에 대본을 다는 것이(그리고 열 때 카드 없는 에피소드에 빈 카드를 세우는 것이 —
+    /// <see cref="AlignBoardsWithChapters"/>) 정확히 그
     /// 자리다 — 거기서 또 지으면 에피소드 하나에 카드가 둘 선다.
     ///
     /// ⚠ 임포터는 노드를 <b>EpisodeId가 아니라 `대사엔트리`로</b> 짓는다. 그래서 찾는 일은
@@ -2311,28 +2313,6 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>파일에서 새로 읽었을 때처럼, 기록을 버리고 통째로 갈아 끼운다.</summary>
-    /// <summary>
-    /// 프로젝트가 든 챕터를 통째로 갈아 끼운다 — <b>임포트의 마지막 한 걸음</b>
-    /// (R-F · 2026-09-16, 지시서 §5).
-    ///
-    /// ⛔ <b>합치지 않는다.</b> 같은 Id를 행 단위로 맞추려면 신원 매칭이 필요하고, 그것이 곧
-    /// <c>EpisodeSyncService</c>가 하던 일이다(R-D에서 철거한 그 기계). 임포트는 <b>한 번</b>이라
-    /// 맞출 상대가 없어야 맞다.
-    ///
-    /// ⚠ 되돌리기에 실린다 — 잘못 들여온 것을 되돌릴 길이 그것뿐이다(워크북은 곧 산출물이라
-    /// 거기서 다시 가져오는 것은 되돌리기가 아니다).
-    /// </summary>
-    public void ReplaceChapters(IReadOnlyList<ChapterDocument> chapters)
-    {
-        ArgumentNullException.ThrowIfNull(chapters);
-
-        Mutate(() =>
-        {
-            Project.Chapters.Clear();
-            Project.Chapters.AddRange(chapters);
-        });
-    }
-
     public void Replace(StoryProject project)
     {
         Project = project ?? throw new ArgumentNullException(nameof(project));
@@ -2594,8 +2574,8 @@ public sealed partial class ProjectEditor
     ///
     /// ⛔ 이 규약은 2026-09-18까지 <b>화면 둘에 손으로 복사돼</b> 있었고(챕터 그래프·대본 탭),
     /// 연출 그래프는 아예 다른 규약(<c>장면 3</c>)을 썼다 — 같은 행동이 창구마다 다른 Id를
-    /// 만들었다. EpisodeId는 대본 워크북의 <b>파일 이름</b>으로 나가므로 공백이 든 Id는
-    /// 특히 나쁘다.
+    /// 만들었다. EpisodeId는 진행 JSON과 산출물의 <b>열쇠</b>로 나가므로(엑셀 시절에는 대본 워크북의
+    /// 파일 이름이었다) 공백이 든 Id는 특히 나쁘다.
     ///
     /// ⚠ 사람이 고칠 것을 전제한 이름이다 — 이름을 정하는 것은 기획자의 일이고, 여기서는
     /// <b>겹치지 않는 자리</b>만 준다.

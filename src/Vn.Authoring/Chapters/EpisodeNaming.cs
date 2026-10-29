@@ -112,7 +112,7 @@ public static class EpisodeNaming
     /// 이 노드가 대신하는 <b>에피소드</b>. 없으면 <c>null</c>이다.
     ///
     /// 표식으로 먼저 찾고(진짜 신원), 못 찾으면 <b>이름이 대신하는 에피소드</b>를 찾는다 —
-    /// 워크북 임포터가 노드를 `대사엔트리`로 짓기 때문에 EpisodeId만 봐서는 못 만난다.
+    /// 옛 워크북 임포터가 지은 카드는 노드 이름이 `대사엔트리`라서 EpisodeId만 봐서는 못 만난다.
     /// </summary>
     public static ChapterEpisode? EpisodeFor(ChapterDocument chapter, DialogueNode node)
     {

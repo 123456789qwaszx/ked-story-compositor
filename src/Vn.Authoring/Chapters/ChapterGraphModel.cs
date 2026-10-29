@@ -10,7 +10,7 @@ namespace Vn.Authoring.Chapters;
 /// </summary>
 /// <param name="Index">"05"·"05A"·"★"처럼 사람이 붙이는 표시용 순번. 숫자가 아니어도 된다.</param>
 /// <param name="DialogueEntry">런타임이 재생할 대사 엔트리 이름. 비면 오류다.</param>
-/// <param name="SourceRow">엑셀 행 번호. 진단이 사람에게 자리를 짚어 주는 근거다.</param>
+/// <param name="SourceRow">들여온 옛 값의 엑셀 행 번호 — 이력일 뿐, 순서 · 진단 문장에는 안 쓴다(2026-10-29 D2).</param>
 /// <param name="AllowUnreachable">
 /// `도달불가 허용` 열(선택)이 켜져 있는가 (D3). 도달성 증명이 이 에피소드의 도달 불가를
 /// 오류가 아니라 알림으로 낮추되, 그 사실은 그래프에 표시된다 — 조용히 넘기지 않는다.
@@ -35,7 +35,8 @@ public sealed record ChapterEpisode(
     /// 이벤트라던지 보상을 발생시키기 위해서 이어주는 일종의 인덱스 같은 느낌" · "엔딩키보다도
     /// 이벤트키가 맞겠다" — 챕터의 끝이 아니라 <b>시청 완료 트리거</b>라 이름을 갈았다).
     ///
-    /// 툴은 이 값을 <b>해석하지 않는다</b> — 배지도 검증도 전이 의미도 없다. 엑셀에서 적고,
+    /// 툴은 이 값을 <b>해석하지 않는다</b> — 배지도 검증도 전이 의미도 없다. 엑셀에서 적었고(그 길은
+    /// 2026-10-29에 걷혀 지금은 툴 안에 고칠 칸이 없다),
     /// 내보내기가 노드의 <c>EventKey</c>로 그대로 싣는 것이 전부다. 옛 `엔딩키`(v11~v13,
     /// 간선)와 달리 에피소드에 사니 "같은 도착의 키 충돌"이라는 오류 부류 자체가 없다.
     /// 계약의 `EndingKey`/`EndingRules`(시나리오 층)와는 <b>다른 것</b>이다 — 그쪽은 v14에서
@@ -220,7 +221,7 @@ public sealed class ChapterGraphModel
         ChoiceOptions = choiceOptions ?? [];
     }
 
-    /// <summary>파일 이름에서 온다 — `chapters/{ChapterId}.xlsx` (§3.1).</summary>
+    /// <summary>챕터 Id — 판 이름과 같다(챕터 = 판 1:1). 엑셀 시절에는 `chapters/{ChapterId}.xlsx`의 파일 이름이었다.</summary>
     public string ChapterId { get; }
 
     public string SourcePath { get; }
@@ -250,7 +251,7 @@ public sealed class ChapterGraphModel
 
     /// <summary>
     /// 고를 수 있는 문구들 — 사전에 적힌 것 + 간선이 이미 쓰고 있는 것의 합집합(중복 제거).
-    /// 사전에 없는 문구를 손으로 적은 워크북에서도 툴의 드롭다운이 그 값을 잃지 않는다.
+    /// 사전에 없는 문구를 손으로 고친 파일에서도 툴의 드롭다운이 그 값을 잃지 않는다.
     /// </summary>
     public IReadOnlyList<string> ChoiceLabels =>
         field ??= ChoiceOptions.Select(option => option.Text)

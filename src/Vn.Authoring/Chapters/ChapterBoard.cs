@@ -28,7 +28,7 @@ internal sealed class ChapterBoard
     /// <summary>그 챕터의 판. 프로젝트는 있는데 판이 아직 없으면 <c>null</c> — 노드도 없다.</summary>
     private readonly StoryFile? _board;
 
-    /// <summary>에피소드 → 그 에피소드의 엑셀 대사 노드. 배선을 찾는 출발점이다.</summary>
+    /// <summary>에피소드 → 그 에피소드의 카드(대사 노드). 배선을 찾는 출발점이다.</summary>
     private readonly Dictionary<string, DialogueNode> _excelNodes =
         new(StringComparer.Ordinal);
 
@@ -101,7 +101,7 @@ internal sealed class ChapterBoard
     /// 이 에피소드의 <b>Yarn 노드 이름</b> — 계약의 <c>DialogueEntryId</c>. 판에서 못 찾으면
     /// 빈 문자열이고, 그때는 검증이 이미 오류로 막았다.
     ///
-    /// ⚠ <b>이름의 주인은 판의 노드다</b> (2026-08-25). 엑셀의 `대사엔트리` 글자로 지으면
+    /// ⚠ <b>이름의 주인은 판의 노드다</b> (2026-08-25). 에피소드의 `대사엔트리` 글자로 지으면
     /// 주인이 둘이 된다 — 판에서 노드를 개명하는 순간 진행 JSON은 옛 이름을 부르고 .yarn은
     /// 새 이름으로 서서, <b>로드·검증·증명이 전부 통과하는데 재생만 안 된다</b>. 이미터가
     /// 그 노드에 붙이는 타이틀과 같은 함수를 지나는 것이 유일한 방어다.

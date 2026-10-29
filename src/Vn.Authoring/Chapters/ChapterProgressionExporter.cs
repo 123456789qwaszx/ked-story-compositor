@@ -54,7 +54,7 @@ public static class ChapterProgressionExporter
     /// <summary>
     /// 이미 계산해 둔 검증 결과로 내보낸다 — <b>같은 증명을 두 번 돌리지 않는다</b>
     /// (2026-08-18). 화면은 검증 결과를 보고 패널에 세우려고 어차피 한 번 계산하는데,
-    /// 내보내기가 안에서 또 계산하고 있었다. 검증은 에피소드 워크북을 전부 읽고 상태공간을
+    /// 내보내기가 안에서 또 계산하고 있었다. 검증은 챕터 전체의 상태공간을
     /// 훑으므로 챕터 하나에 200ms 가까이 든다 — 그 값을 두 번 치르고 있었다.
     /// </summary>
     public static ChapterExportResult ExportValidated(
@@ -207,8 +207,8 @@ public static class ChapterProgressionExporter
     ///
     /// <b>이 칸이 비어 있던 것이 Gate D를 막고 있었다.</b> 초기값·최소·최대가 어느 런타임
     /// 입력에도 없어서, 툴의 도달성 증명만 <c>Clamp(값, 최소, 최대)</c>로 걷고 런타임은
-    /// 경계를 몰랐다 — 증명과 실제 플레이가 갈릴 수 있는 자리였다. 값의 주인은 챕터
-    /// 워크북의 `스탯` 시트다(같은 <c>trust</c>라도 챕터마다 초기값이 다를 수 있어
+    /// 경계를 몰랐다 — 증명과 실제 플레이가 갈릴 수 있는 자리였다. 값의 주인은 챕터의
+    /// 스탯 정의다([챕터] 탭의 스탯 표 — 같은 <c>trust</c>라도 챕터마다 초기값이 다를 수 있어
     /// 게임 단위가 아니라 챕터에 실린다).
     ///
     /// <b>⚠ 타입 이름을 번역한다.</b> 이쪽은 <c>Int</c>, 저쪽(`Ked.Progression.StatType`)은
@@ -238,11 +238,11 @@ public static class ChapterProgressionExporter
         IndexText = episode.Index,
         // ⚠ `Kind`(Main/Attachment)는 2026-08-25에 계약에서 사라졌다 — 코어가 `EpisodeKind`를
         // 통째로 지웠다. 저작의 `종류` 열은 남아 있지만 이제 <b>산출물에 실리지 않는다</b>.
-        // ⚠ <b>이름의 주인은 판의 노드다</b> (2026-08-25). 엑셀의 `대사엔트리` 글자로 지으면
+        // ⚠ <b>이름의 주인은 판의 노드다</b> (2026-08-25). 에피소드의 `대사엔트리` 글자로 지으면
         // 주인이 둘이 되어, 판에서 노드를 개명하는 순간 진행 JSON은 옛 이름을 부르고 .yarn은
         // 새 이름으로 선다 — 로드·검증·증명이 전부 통과하는데 재생만 안 된다.
         //
-        // 판을 못 볼 때만(테스트·CLI) 엑셀 글자로 되돌아간다. 그 경우에도 이미터의 이름
+        // 판을 못 볼 때만(테스트·CLI) `대사엔트리` 글자로 되돌아간다. 그 경우에도 이미터의 이름
         // 규칙은 지난다 — SanitizeNodeName이 `장면 1`을 `장면_1`로 만든다.
         DialogueEntryId = via.EpisodeNodeNameFor(episode) is { Length: > 0 } onBoard
             ? onBoard

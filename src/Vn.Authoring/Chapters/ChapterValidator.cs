@@ -2,7 +2,7 @@ using Vn.Authoring.Model;
 
 namespace Vn.Authoring.Chapters;
 
-/// <param name="Reachability">도달성 증명 결과. 에피소드 워크북이 하나도 없어도 돈다(증감 0 가정).</param>
+/// <param name="Reachability">도달성 증명 결과. 챕터 모델만으로 돈다(증감은 간선의 것).</param>
 public sealed record ChapterValidationResult(
     IReadOnlyList<ChapterDiagnostic> Diagnostics,
     ChapterReachabilityResult Reachability)

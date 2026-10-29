@@ -68,7 +68,7 @@ public partial class GraphEditorView : UserControl
     private readonly List<Control> _railVisuals = new();
 
     /// <summary>
-    /// 챕터 그래프 뷰가 읽은 챕터 목록 (T1). 이 뷰는 챕터 워크북을 직접 읽지 않는다 —
+    /// 챕터 그래프 뷰가 읽은 챕터 목록 (T1). 이 뷰는 챕터를 직접 읽지 않는다 —
     /// 챕터 모델의 원천은 하나여야 감시·재시도 규칙이 두 벌이 되지 않는다.
     /// </summary>
     private IReadOnlyList<ChapterEntry> _chapters = Array.Empty<ChapterEntry>();
@@ -3112,7 +3112,7 @@ public partial class GraphEditorView : UserControl
                 Canvas.GetTop(card.Visual),
                 CardWidth,
                 CardHeightOf(card),
-                card.Style.Accent); // 카드와 같은 시각 언어 — 미니맵에서도 엑셀·자유가 갈린다.
+                card.Style.Accent); // 카드와 같은 시각 언어 — 미니맵에서도 에피소드·낙서가 갈린다.
         }
 
         foreach (FileProxyVisual proxy in _proxies)
