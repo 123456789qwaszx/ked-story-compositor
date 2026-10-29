@@ -74,39 +74,16 @@ public class EmptyBranchTests
     // ── 대본의 <b>끝</b>에 있는 빈 블록 ─────────────────────────────────────
 
     [Fact]
-    public void 대본_끝의_빈_블록은_거부되지_않고_꼬리에_실린다()
-    {
-        // ⛔ 소유자가 겪은 나머지 반쪽. 전환은 늘 <em>다음</em> 대사 줄에 실리는데 대본이
-        //    조건 블록으로 끝나면 실을 줄이 없다 — 예전에는 "붙을 곳이 없습니다"로 통째
-        //    거부했다. 이제 <b>끝에서 짝이 맞으면</b> 그것은 대사 없는 블록이다.
-        var sample = new Sample();
-        sample.Line("복도는 조용했다");
-
-        ScenarioPasteOutcome outcome = sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
-
-        Assert.True(outcome.Applied, string.Join(" / ", outcome.Problems));
-        Assert.Empty(outcome.Problems);
-
-        Assert.Equal(
-            [ConditionTransitionKind.BeginIf, ConditionTransitionKind.EndIf],
-            sample.Dialogue.TrailingTransitions.Select(transition => transition.Kind));
-    }
-
-    [Fact]
     public void 꼬리의_빈_갈래도_흐름에서_갈래로_선다()
     {
         var sample = new Sample();
         sample.Line("복도는 조용했다");
 
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
+        // 대본 끝의 빈 조건 블록 — director가 그렇게 써 둔 원고다(`<<if …>>` `<<endif>>`가 마지막 줄 뒤).
+        ManuscriptFixture.Trailing(
+            sample.Dialogue,
+            LineConditionTransition.BeginIf(sample.ConditionA.Id),
+            LineConditionTransition.EndIf());
 
         DialogueFlow flow = ConditionFlowResolver.Resolve(sample.Dialogue, sample.Project);
 
@@ -122,27 +99,6 @@ public class EmptyBranchTests
     }
 
     [Fact]
-    public void 꼬리가_사라지면_노드에서도_사라진다()
-    {
-        // ⚠ 대본이 유일한 원천이다. 안 지우면 지운 블록이 산출물에 계속 남는다.
-        var sample = new Sample();
-        sample.Line("복도는 조용했다");
-
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
-
-        Assert.NotEmpty(sample.Dialogue.TrailingTransitions);
-
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id, "복도는 조용했다\n", GameDefinition.Empty, confirmDeletes: true);
-
-        Assert.Empty(sample.Dialogue.TrailingTransitions);
-    }
-
-    [Fact]
     public void 꼬리의_빈_블록이_산출물에_그대로_나간다()
     {
         // ⛔ 이것이 이 기능의 <b>수용 기준</b>이다. 저장만 되고 안 나가면 "적었는데 게임에
@@ -150,11 +106,11 @@ public class EmptyBranchTests
         var sample = new Sample();
         sample.Line("복도는 조용했다");
 
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
+        // 대본 끝의 빈 조건 블록 — director가 그렇게 써 둔 원고다(`<<if …>>` `<<endif>>`가 마지막 줄 뒤).
+        ManuscriptFixture.Trailing(
+            sample.Dialogue,
+            LineConditionTransition.BeginIf(sample.ConditionA.Id),
+            LineConditionTransition.EndIf());
 
         DialogueResult result = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
         RenderedDocument document = ResultDocumentComposer.Compose(result, project: sample.Project);
@@ -187,11 +143,11 @@ public class EmptyBranchTests
         var sample = new Sample();
         sample.Line("복도는 조용했다");
 
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
+        // 대본 끝의 빈 조건 블록 — director가 그렇게 써 둔 원고다(`<<if …>>` `<<endif>>`가 마지막 줄 뒤).
+        ManuscriptFixture.Trailing(
+            sample.Dialogue,
+            LineConditionTransition.BeginIf(sample.ConditionA.Id),
+            LineConditionTransition.EndIf());
 
         DialogueFlow flow = ConditionFlowResolver.Resolve(sample.Dialogue, sample.Project);
         ConditionBranch branch = Assert.Single(flow.Branches);
@@ -217,11 +173,11 @@ public class EmptyBranchTests
         var sample = new Sample();
         sample.Line("복도는 조용했다");
 
-        sample.Editor.ApplyScenarioText(
-            sample.Dialogue.Id,
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n<<endif>>\n",
-            GameDefinition.Empty,
-            confirmDeletes: true);
+        // 대본 끝의 빈 조건 블록 — director가 그렇게 써 둔 원고다(`<<if …>>` `<<endif>>`가 마지막 줄 뒤).
+        ManuscriptFixture.Trailing(
+            sample.Dialogue,
+            LineConditionTransition.BeginIf(sample.ConditionA.Id),
+            LineConditionTransition.EndIf());
 
         ExitPort port = Assert.Single(
             NodeConnections.PortsOf(sample.Dialogue, sample.Project),
@@ -238,19 +194,6 @@ public class EmptyBranchTests
             item => item.Kind == ExitPortKind.Branch);
 
         Assert.Equal(sample.TargetDefault.Id, wired.TargetNodeId);
-    }
-
-    [Fact]
-    public void 짝이_안_맞는_여는_전환은_여전히_오류다()
-    {
-        // 끝에서 열고 안 닫으면 그건 대사 없는 블록이 아니라 <b>진짜로 붙을 곳이 없는</b>
-        // 전환이다 — 예전 문구 그대로 말한다.
-        var sample = new Sample();
-
-        ScenarioParseResult parsed = ScenarioTextParser.Parse(
-            $"복도는 조용했다\n<<if {sample.ConditionA.Expression}>>\n", GameDefinition.Empty);
-
-        Assert.Contains(parsed.UnparsedLines, problem => problem.Contains("붙일 곳이 없습니다"));
     }
 
     [Fact]

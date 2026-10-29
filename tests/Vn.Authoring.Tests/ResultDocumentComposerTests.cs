@@ -77,40 +77,6 @@ public class ResultDocumentComposerTests
         Assert.Contains(meaningful, segment => segment.Source.LineId == l4);
     }
 
-    [Fact]
-    public void Yarn_Formatter는_NodeId와_LineId를_사용해_읽기_전용_문서를_만든다()
-    {
-        var sample = new Sample();
-
-        string opening = sample.Line("맞아요", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        sample.Editor.SetScriptLineText(sample.Script.Id, opening, "라루", "맞아요");
-        string ending = sample.Line("끝", LineConditionTransition.EndIf());
-
-        sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Branch, opening, sample.TargetA.Id);
-        sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Default, null, sample.TargetDefault.Id);
-
-        DialogueResult result = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
-        RenderedDocument document = ResultDocumentComposer.Compose(result, project: sample.Project);
-        string text = YarnPreviewFormatter.Format(document);
-
-        string expected =
-            $"title: {sample.Dialogue.Id}\n" +
-            $"// name: {sample.Dialogue.Name}\n" +
-            "---\n" +
-            // 2026-08-24 — 설정노드 초기값 `<<set $favor = 0>>`이 여기서 빠졌다(작업지시 §4).
-            // 그 값은 선언 파일로만 나가고, 되돌리기는 챕터 진입에서 런타임이 한다.
-            $"<<if {sample.ConditionA.Expression}>>\n" +
-            $"    라루: 맞아요 #line:{opening}\n" +
-            $"    <<detour {sample.TargetA.Id}>>\n" +
-            "<<endif>>\n" +
-            $"끝 #line:{ending}\n" +
-            $"<<jump {sample.TargetDefault.Id}>>\n" +
-            "===\n";
-
-        Assert.Equal(expected, text);
-        Assert.DoesNotContain('\r', text);
-    }
-
     /// <summary>
     /// 발행 시점의 조건 이름과 식을 결과가 함께 얼린다.
     /// 나중에 조건을 지워도 이미 발행한 결과는 같은 문서를 다시 만들어야 한다.
@@ -133,37 +99,6 @@ public class ResultDocumentComposerTests
     }
 
     [Fact]
-    public void 작업_중_미리보기는_사용할_수_없는_조건을_경고로_알린다()
-    {
-        // 범위가 판(챕터)이 된 뒤로 "못 쓴다"는 <b>다른 챕터에 있다</b>는 뜻이다 (2026-08-17).
-        // 설정노드를 다른 판으로 옮기면 그 판의 대사는 조건을 잃는다.
-        var sample = new Sample();
-        string opening = sample.Line("조건 대사", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-
-        var otherFile = new StoryFile("sf_other", "다른 챕터");
-        sample.Project.Files.Add(otherFile);
-        sample.File.Nodes.Remove(sample.SetNode);
-        otherFile.Nodes.Add(sample.SetNode);
-
-        RenderedDocument document = WorkingDialoguePreview.Compose(sample.Project, sample.Dialogue.Id);
-
-        RenderedSegment warning = Assert.Single(document.Segments, segment =>
-            segment.Kind == RenderedSegmentKind.Warning);
-        Assert.Equal(opening, warning.Source.LineId);
-        Assert.Contains("다른 챕터의 조건", warning.Text ?? string.Empty, StringComparison.Ordinal);
-
-        // 작가가 고른 조건은 그대로 남는다.
-        Assert.Equal(
-            sample.ConditionA.Id,
-            sample.Dialogue.FindExtension(opening)!.Transition!.ConditionId);
-
-        // 그리고 그 상태로는 발행되지 않는다.
-        Assert.False(document.IsPublished);
-        Assert.Throws<Vn.Authoring.Editing.PublishRejectedException>(
-            () => sample.Editor.PublishDialogue(sample.Dialogue.Id));
-    }
-
-    [Fact]
     public void 대사_Segment는_결과와_LineId_원본을_유지한다()
     {
         var sample = new Sample();
@@ -179,82 +114,6 @@ public class ResultDocumentComposerTests
         Assert.Equal(result.Identity.ResultId, segment.Source.DialogueResultId);
     }
 
-    [Fact]
-    public void 연출_Command를_대사_앞에_작성_순서대로_삽입한다()
-    {
-        var context = new CompositionFixture();
-        PresentationCommandInstance camera = context.Sample.Editor.AddPresentationCommand(
-            context.Presentation.Id,
-            context.LineId,
-            "camera.closeup",
-            new Dictionary<string, string> { ["preset"] = "closeup" });
-        PresentationCommandInstance acting = context.Sample.Editor.AddPresentationCommand(
-            context.Presentation.Id,
-            context.LineId,
-            "acting.smile",
-            new Dictionary<string, string> { ["preset"] = "smile" });
-
-        PresentationResult presentation = context.PublishPresentation();
-        RenderedDocument document = ResultDocumentComposer.Compose(
-            context.Dialogue,
-            presentation,
-            context.Sample.Project,
-            Sample.Definition);
-
-        RenderedSegment[] commands = document.Segments
-            .Where(segment => segment.Kind == RenderedSegmentKind.PresentationCommand)
-            .ToArray();
-        RenderedSegment dialogue = document.Segments.Single(segment =>
-            segment.Kind == RenderedSegmentKind.DialogueLine && segment.Source.LineId == context.LineId);
-
-        Assert.Equal(
-            new[] { camera.Id, acting.Id },
-            commands.Select(segment => segment.Source.PresentationCommandId));
-        Assert.All(commands, segment => Assert.Equal(context.LineId, segment.Source.LineId));
-        Assert.All(commands, segment =>
-            Assert.Equal(context.Presentation.Id, segment.Source.PresentationNodeId));
-        Assert.All(commands, segment =>
-            Assert.Equal(presentation.Identity.ResultId, segment.Source.PresentationResultId));
-        Assert.True(Array.IndexOf(document.Segments.ToArray(), commands[1]) <
-                    Array.IndexOf(document.Segments.ToArray(), dialogue));
-
-        string text = YarnPreviewFormatter.Format(document);
-
-        // 런타임 문법은 포지셔널이다 — 파라미터 순서대로 값만 잇는다.
-        int cameraIndex = text.IndexOf("<<camera closeup>>", StringComparison.Ordinal);
-        int actingIndex = text.IndexOf("<<character_acting smile>>", StringComparison.Ordinal);
-        int dialogueIndex = text.IndexOf("연출 대사 #line:", StringComparison.Ordinal);
-        Assert.True(cameraIndex >= 0 && cameraIndex < actingIndex);
-        Assert.True(actingIndex < dialogueIndex);
-        Assert.Equal(DocumentLayer.Presentation, commands[0].Layer);
-    }
-
-
-    [Fact]
-    public void Setup_커맨드는_첫_줄보다_앞에_LineId_없이_펼쳐진다()
-    {
-        var context = new CompositionFixture();
-        context.Sample.Editor.AddPresentationSetupCommand(
-            context.Presentation.Id,
-            "camera.wide");
-
-        RenderedDocument document = ResultDocumentComposer.Compose(
-            context.Dialogue,
-            context.PublishPresentation(),
-            context.Sample.Project,
-            Sample.Definition);
-
-        RenderedSegment setup = document.Segments.Single(segment =>
-            segment.Kind == RenderedSegmentKind.PresentationCommand);
-        RenderedSegment firstLine = document.Segments.First(segment =>
-            segment.Kind == RenderedSegmentKind.DialogueLine);
-
-        Assert.Null(setup.Source.LineId);
-        Assert.Equal(context.Presentation.Id, setup.Source.PresentationNodeId);
-        Assert.True(document.Segments.ToList().IndexOf(setup) <
-                    document.Segments.ToList().IndexOf(firstLine));
-        Assert.Contains("<<camera wide>>", YarnPreviewFormatter.Format(document), StringComparison.Ordinal);
-    }
 
     [Fact]
     public void 비활성_Command는_결과에_들어가지_않으므로_문서에도_없다()

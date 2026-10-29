@@ -81,8 +81,7 @@ public sealed class ScriptLocale
 /// 본문을 복사하지 않는다. 같은 문장을 고칠 수 있는 자리가 두 곳이 되면 어느 쪽이 진실인지
 /// 아무도 답할 수 없게 된다.
 ///
-/// 작가의 원본 파일은 <b>읽기 전용 가져오기 입력</b>이다. VnTool은 그 파일에 쓰지 않는다.
-/// 다시 읽어 들이는 것은 <see cref="ScriptSynchronizer"/>를 지나는 명시적인 동작이다.
+/// 대본을 쓰고 고치는 것은 ked-story-director다 — 이 툴은 원고를 읽기만 한다(2026-10-29).
 /// </summary>
 public sealed class ScriptDocument
 {

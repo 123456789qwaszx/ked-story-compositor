@@ -85,16 +85,6 @@ public class OutputPresetTests
             segment.Kind is RenderedSegmentKind.BranchJump
                 or RenderedSegmentKind.BranchDetour
                 or RenderedSegmentKind.DefaultJump);
-
-        string text = DocumentPreviewFormatter.Format(document);
-        Assert.DoesNotContain("[장면]", text, StringComparison.Ordinal);
-
-        // X11 — 조건은 대괄호 표기가 아니라 실제 Yarn 문법이다(표기=파싱 문법, X12 왕복 전제).
-        Assert.Contains("<<if ", text, StringComparison.Ordinal);
-        Assert.Contains("<<endif>>", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("[조건", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("#line:", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("<<set", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -107,12 +97,6 @@ public class OutputPresetTests
 
         Assert.All(document.Segments, segment =>
             Assert.Equal(RenderedSegmentKind.DialogueLine, segment.Kind));
-
-        string text = DocumentPreviewFormatter.Format(document);
-        Assert.Contains($"[LINE {sample.Opening}]", text, StringComparison.Ordinal);
-        Assert.Contains("라루:", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("Camera", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("ScreenEffect", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -124,11 +108,6 @@ public class OutputPresetTests
 
         Assert.All(document.Segments, segment =>
             Assert.Equal(RenderedSegmentKind.DialogueLine, segment.Kind));
-
-        string text = DocumentPreviewFormatter.Format(document);
-        Assert.StartsWith("LineId\tSpeaker\tSourceText\tLocalizedText\n", text, StringComparison.Ordinal);
-        Assert.Contains($"{sample.Opening}\t라루\t첫 대사\t", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("<<", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -148,17 +127,11 @@ public class OutputPresetTests
         Assert.DoesNotContain(document.Segments, segment => segment.Kind == RenderedSegmentKind.SetAssignment);
         Assert.DoesNotContain(document.Segments, segment => segment.Kind == RenderedSegmentKind.ConditionBegin);
 
-        string text = DocumentPreviewFormatter.Format(document);
-        Assert.Contains("[Camera]", text, StringComparison.Ordinal);
-        Assert.Contains("[ScreenEffect]", text, StringComparison.Ordinal);
-        Assert.Contains("[CharacterActing]", text, StringComparison.Ordinal);
-        Assert.Contains($"[LINE {sample.Opening}]", text, StringComparison.Ordinal);
-        Assert.Contains("첫 대사", text, StringComparison.Ordinal);
-
         // 2026-08-18 — 화자를 켰다. 이 양식이 **줄 단위로 연출을 훑는 유일한 자리**가
         // 됐기 때문이다: 런타임이 단일 대본만 읽게 되면서 `Pres_*.yarn`(서브 레인 사본)이
         // 없어졌고, 화자가 없으면 누구 대사인지 세어 가며 맞춰야 한다.
-        Assert.Contains("라루", text, StringComparison.Ordinal);
+        Assert.Contains(document.Segments, segment =>
+            segment.Kind == RenderedSegmentKind.DialogueLine && segment.Speaker == "라루");
     }
 
     [Fact]
@@ -184,7 +157,6 @@ public class OutputPresetTests
             segment.Source.LineId == sample.Opening);
         Assert.Equal("First line", opening.LocalizedText);
         Assert.Equal(before, ProjectSnapshotCodec.Encode(sample.Sample.Project));
-        Assert.Contains("First line", DocumentPreviewFormatter.Format(document), StringComparison.Ordinal);
     }
 
     [Fact]

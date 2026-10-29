@@ -8,49 +8,6 @@ namespace Vn.Authoring.Tests;
 public class EditingTests
 {
     [Fact]
-    public void 줄을_옮겨도_정체성이_유지된다()
-    {
-        var sample = new Sample();
-        string first = sample.Line("첫째");
-        string second = sample.Line("둘째");
-        string third = sample.Line("셋째");
-
-        sample.Editor.MoveScriptLine(sample.Script.Id, third, -2);
-
-        DialogueScript script = DialogueScriptResolver.Resolve(sample.Project, sample.Dialogue);
-
-        // 화면 순서(Index)는 바뀌었지만 각 줄의 Id는 그대로다.
-        Assert.Equal(
-            new[] { third, first, second },
-            script.Lines.Select(line => line.LineId));
-
-        Assert.Equal("셋째", script.Lines[0].Text);
-    }
-
-    [Fact]
-    public void 줄을_옮기면_그_줄이_열던_갈래도_함께_옮겨간다()
-    {
-        var sample = new Sample();
-        sample.Line("바깥");
-        string opener = sample.Line("if", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        sample.Line("안쪽");
-        sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Branch, opener, sample.TargetA.Id);
-
-        // 여는 줄을 맨 위로 올리면 갈래의 시작도 맨 위가 된다.
-        sample.Editor.MoveScriptLine(sample.Script.Id, opener, -1);
-
-        DialogueFlow flow = ConditionFlowResolver.Resolve(sample.Dialogue, sample.Project);
-
-        Assert.Equal(0, flow.Branches[0].FirstLineIndex);
-        Assert.NotNull(flow.Lines[0].Branch);
-        Assert.NotNull(flow.Lines[1].Branch);
-        Assert.NotNull(flow.Lines[2].Branch);
-
-        // 출구는 갈래에 매여 있으므로 이동에도 살아남는다.
-        Assert.Equal(sample.TargetA.Id, flow.Branches[0].ExitTargetNodeId);
-    }
-
-    [Fact]
     public void 새_노드는_파일_순서의_마지막에_생긴다()
     {
         var sample = new Sample();

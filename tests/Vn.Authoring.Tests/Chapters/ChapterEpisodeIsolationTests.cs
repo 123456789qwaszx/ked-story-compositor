@@ -2,6 +2,7 @@ using Vn.Authoring.Chapters;
 using Vn.Authoring.Definition;
 using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
+using Vn.Authoring.Script;
 
 namespace Vn.Authoring.Tests.Chapters;
 
@@ -38,7 +39,8 @@ public sealed class ChapterEpisodeIsolationTests
         Assert.NotEqual(cardA.ScriptId, cardB.ScriptId);
 
         // 한쪽 원고를 고쳐도 다른 쪽은 그대로다 — 이것이 보고된 버그의 핵심이다.
-        editor.ApplyScenarioText(cardA.Id, "라루: ch00의 대사", Definition, confirmDeletes: true);
+        ScriptLine line = editor.InsertScriptLine(cardA.ScriptId!);
+        editor.SetScriptLineText(cardA.ScriptId!, line.Id, "라루", "ch00의 대사");
 
         Assert.Contains("ch00의 대사", TextOf(editor.Project, cardA));
         Assert.DoesNotContain("ch00의 대사", TextOf(editor.Project, cardB));

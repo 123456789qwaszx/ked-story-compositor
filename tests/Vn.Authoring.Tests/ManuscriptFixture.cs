@@ -44,6 +44,10 @@ internal static class ManuscriptFixture
         episodes[index] = change(episodes[index]);
     }
 
+    /// <summary>대사 노드의 <b>꼬리</b> — 마지막 줄 뒤에 실린 전환(대사 없는 조건 블록)을 적는다.</summary>
+    public static void Trailing(DialogueNode node, params LineConditionTransition[] transitions) =>
+        node.TrailingTransitions.AddRange(transitions);
+
     /// <summary>`스탯변화` 원문을 그 챕터의 스탯으로 읽는다 — 원고에 적히는 모양 그대로다.</summary>
     public static IReadOnlyList<StatDelta> Deltas(StoryProject project, string chapterId, string text)
     {

@@ -3,9 +3,9 @@ using System.Text;
 namespace Vn.Authoring.Rendering;
 
 /// <summary>
-/// Yarn 표기 조립 규칙의 단일 구현. Preview(YarnPreviewFormatter)와
-/// 파일 이미터(YarnBundleEmitter)가 같은 코드를 지나야 화면에서 본 것과
-/// 파일에 쓴 것이 다른 이야기를 하지 않는다.
+/// Yarn 표기 조립 규칙의 단일 구현 — 파일 이미터(<see cref="YarnBundleEmitter"/>)와 챕터 조건 번역이
+/// 같은 코드를 지난다. (카드 미리보기가 쓰던 <c>YarnPreviewFormatter</c>는 2026-10-29에 걷혔다 —
+/// 카드 안 글쓰기는 ked-story-director의 것이다.)
 /// </summary>
 internal static class YarnSyntax
 {

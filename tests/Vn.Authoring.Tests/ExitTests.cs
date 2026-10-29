@@ -130,34 +130,6 @@ public class ExitTests
     }
 
     /// <summary>
-    /// 대본에서 줄이 빠지면 그 줄이 열던 출구는 <b>사라지지 않고 고아로 남는다.</b>
-    ///
-    /// 이전 구조에서는 줄과 조건이 한 객체였으므로 줄을 지우면 출구도 함께 지웠다.
-    /// 지금은 줄의 소유자가 대본이고, 대본은 되돌릴 수 있는 외부 산출물이다.
-    /// 도구가 말없이 지우면 대본을 되돌려도 작가가 만든 갈래는 돌아오지 않는다.
-    /// </summary>
-    [Fact]
-    public void 대본에서_줄이_빠지면_그_줄의_출구와_전환도_함께_접힌다()
-    {
-        // W47 (소유자 결정): 줄 카드가 없는 조건·출구는 지울 진입점조차 없는 유령이 된다 —
-        // 고아로 남기는 대신 줄이 물러날 때 함께 정리한다. 연출 바인딩은 기존 정책대로 남는다.
-        var sample = new Sample();
-        string opener = sample.Line("if", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Branch, opener, sample.TargetA.Id);
-
-        sample.Editor.RetireScriptLine(sample.Script.Id, opener);
-
-        Assert.Empty(sample.Dialogue.BranchExits);
-        Assert.Empty(sample.Dialogue.LineExtensions);
-
-        DialogueFlow flow = ConditionFlowResolver.Resolve(sample.Dialogue, sample.Project);
-        Assert.Empty(flow.Lines);
-        Assert.DoesNotContain(
-            flow.Problems,
-            problem => problem.Kind == FlowProblemKind.OrphanedLineExtension);
-    }
-
-    /// <summary>
     /// 반대로 <b>전환 자체를 지우면</b> 출구도 함께 버린다.
     /// 그 줄은 여전히 대본에 있는데 더 이상 갈래를 열지 않으므로, 남겨 두면
     /// 어느 화면에서도 지울 수 없는 간선이 그래프에 생긴다.

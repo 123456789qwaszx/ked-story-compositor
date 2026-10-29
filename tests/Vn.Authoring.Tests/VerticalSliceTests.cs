@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Vn.Authoring.Definition;
 using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
@@ -10,10 +11,10 @@ using Vn.Authoring.Serialization;
 namespace Vn.Authoring.Tests;
 
 /// <summary>
-/// 작가의 평평한 대본 한 벌이 저장·재실행 가능한 출력까지 왕복하는 전체 흐름.
+/// director가 써 둔 대본 한 벌이 저장·재실행 가능한 출력까지 왕복하는 전체 흐름.
 ///
 /// <code>
-/// 평평한 대본 → LineId·ko-KR 산출물 → 조건 → DialogueResult v1
+/// 대본(LineId·ko-KR) → 조건 → DialogueResult v1
 ///            → 그 v1을 읽는 연출 → PresentationResult
 ///            → RuntimeComposition → 다섯 가지 출력
 ///            → 저장 → 다시 열기 → 같은 결과 관계와 같은 문자열
@@ -36,9 +37,6 @@ public class VerticalSliceTests
     {
         string directory = TempDirectory();
         string manifestPath = Path.Combine(directory, "project" + ProjectManifestJson.FileExtension);
-        string rawPath = Path.Combine(directory, "raw", "chapter.txt");
-        Directory.CreateDirectory(Path.GetDirectoryName(rawPath)!);
-        File.WriteAllText(rawPath, RawScript, new UTF8Encoding(false));
 
         // 게임 정의도 프로젝트 옆의 파일이다. 왕복에 함께 실어 실제 배치와 같은 길을 지난다.
         File.WriteAllText(
@@ -65,7 +63,7 @@ public class VerticalSliceTests
 
         try
         {
-            // ── 1. 평평한 대본을 읽어 LineId와 ko-KR 산출물을 만든다 ──────────
+            // ── 1. 대본 다섯 줄 — director가 써 둔 원고다(LineId · ko-KR) ──────
             var project = new StoryProject { Title = "세로 흐름" };
             var file = new StoryFile("sf_slice", "1장", "story/chapter.vnstory.json");
             project.Files.Add(file);
@@ -74,12 +72,13 @@ public class VerticalSliceTests
                 now: () => new DateTimeOffset(2026, 2, 1, 9, 0, 0, TimeSpan.Zero));
 
             ScriptDocument script = editor.AddScript("1장 대본");
-            ScriptSyncPlan plan = editor.PlanScriptSync(
-                script.Id,
-                File.ReadAllText(rawPath),
-                rawPath);
-            Assert.False(plan.HasConflicts);
-            editor.ApplyScriptSync(plan);
+
+            foreach (string raw in RawScript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                int colon = raw.IndexOf(':');
+                ScriptLine line = editor.InsertScriptLine(script.Id);
+                editor.SetScriptLineText(script.Id, line.Id, raw[..colon], raw[(colon + 1)..].Trim());
+            }
 
             Assert.Equal(5, script.ActiveLines.Count());
             Assert.Equal(
@@ -122,17 +121,29 @@ public class VerticalSliceTests
                 name: "1장 Runtime");
 
             GameDefinition definition = GameDefinition.LoadBeside(manifestPath);
-            Dictionary<OutputPresetId, string> outputs = RenderAll(project, composition, definition);
+            Dictionary<OutputPresetId, RenderedDocument> outputs = RenderAll(project, composition, definition);
 
-            Assert.Contains("<<camera closeup>>", outputs[OutputPresetId.RuntimeFull], StringComparison.Ordinal);
-            Assert.Contains($"<<if {favor.Expression}>>", outputs[OutputPresetId.RuntimeFull], StringComparison.Ordinal);
-            Assert.Contains($"<<detour {ending.Id}>>", outputs[OutputPresetId.RuntimeFull], StringComparison.Ordinal);
+            // 게임이 읽는 Yarn — 연출 명령 · 조건 · 갈래의 detour가 함께 나간다.
+            string yarn = Yarn(project, composition, definition);
+            Assert.Contains("<<camera closeup>>", yarn, StringComparison.Ordinal);
+            Assert.Contains($"<<if {favor.Expression}>>", yarn, StringComparison.Ordinal);
+            Assert.Single(
+                outputs[OutputPresetId.RuntimeFull].Segments,
+                segment => segment.Kind == RenderedSegmentKind.BranchDetour && segment.TargetNodeId == ending.Id);
 
-            // 대본집은 연출을 빼고, 연출표는 대사를 화자 없이 보여 준다.
-            Assert.DoesNotContain("camera", outputs[OutputPresetId.ScenarioOnly], StringComparison.Ordinal);
-            Assert.Contains("[Camera]", outputs[OutputPresetId.DirectionSheet], StringComparison.Ordinal);
-            Assert.Contains("LineId\tSpeaker", outputs[OutputPresetId.LocalizationScript], StringComparison.Ordinal);
-            Assert.Contains("[LINE ", outputs[OutputPresetId.RecordingScript], StringComparison.Ordinal);
+            // 대본집은 연출을 빼고, 연출표는 연출을 싣고, 번역 · 녹음 대본은 대사 줄만 든다.
+            Assert.DoesNotContain(
+                outputs[OutputPresetId.ScenarioOnly].Segments,
+                segment => segment.Kind == RenderedSegmentKind.PresentationCommand);
+            Assert.Contains(
+                outputs[OutputPresetId.DirectionSheet].Segments,
+                segment => segment.Kind == RenderedSegmentKind.PresentationCommand);
+            Assert.All(
+                outputs[OutputPresetId.LocalizationScript].Segments,
+                segment => Assert.Equal(RenderedSegmentKind.DialogueLine, segment.Kind));
+            Assert.All(
+                outputs[OutputPresetId.RecordingScript].Segments,
+                segment => Assert.Equal(RenderedSegmentKind.DialogueLine, segment.Kind));
 
             // ── 6. 저장하고 다시 연다 ─────────────────────────────────────────
             ProjectStore.Save(manifestPath, project);
@@ -159,15 +170,17 @@ public class VerticalSliceTests
 
             // ── 7. 다시 만든 출력이 글자 하나까지 같다 ────────────────────────
             RuntimeComposition reloadedComposition = reloaded.FindComposition(composition.Id)!;
-            Dictionary<OutputPresetId, string> again = RenderAll(
+            Dictionary<OutputPresetId, RenderedDocument> again = RenderAll(
                 reloaded,
                 reloadedComposition,
                 GameDefinition.LoadBeside(manifestPath));
 
             foreach (OutputPresetId preset in outputs.Keys)
             {
-                Assert.Equal(outputs[preset], again[preset]);
+                Assert.Equal(Text(outputs[preset]), Text(again[preset]));
             }
+
+            Assert.Equal(yarn, Yarn(reloaded, reloadedComposition, GameDefinition.LoadBeside(manifestPath)));
         }
         finally
         {
@@ -249,20 +262,30 @@ public class VerticalSliceTests
         }
     }
 
-    private static Dictionary<OutputPresetId, string> RenderAll(
+    private static Dictionary<OutputPresetId, RenderedDocument> RenderAll(
         StoryProject project,
         RuntimeComposition composition,
         GameDefinition definition)
     {
-        ResolvedComposition resolved = RuntimeCompositionResolver.Resolve(
-            project.Results,
-            composition);
-        Assert.True(resolved.IsCompatible);
+        ResolvedComposition resolved = Resolve(project, composition);
 
         return OutputPresetCatalog.All.ToDictionary(
             preset => preset.Id,
-            preset => DocumentPreviewFormatter.Format(
-                ResultDocumentComposer.ComposePreset(resolved, preset, project, definition)));
+            preset => ResultDocumentComposer.ComposePreset(resolved, preset, project, definition));
+    }
+
+    /// <summary>게임용 Yarn 본문 — 이 툴이 내는 파일 그대로다.</summary>
+    private static string Yarn(StoryProject project, RuntimeComposition composition, GameDefinition definition) =>
+        YarnBundleEmitter.Emit(Resolve(project, composition), project, definition).StoryText;
+
+    /// <summary>문서 한 벌을 글자로 — 다시 열어 만든 것과 글자 하나까지 견준다.</summary>
+    private static string Text(RenderedDocument document) => JsonSerializer.Serialize(document.Segments);
+
+    private static ResolvedComposition Resolve(StoryProject project, RuntimeComposition composition)
+    {
+        ResolvedComposition resolved = RuntimeCompositionResolver.Resolve(project.Results, composition);
+        Assert.True(resolved.IsCompatible);
+        return resolved;
     }
 
     private static DialogueNode AddEndNode(ProjectEditor editor, StoryFile file, string name)

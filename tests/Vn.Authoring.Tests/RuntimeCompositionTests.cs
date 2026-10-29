@@ -167,22 +167,6 @@ public class RuntimeCompositionTests
             (segment.Text ?? string.Empty).Contains("ln_없는줄", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void 작업_중_미리보기는_발행_결과와_섞이지_않는다()
-    {
-        var fixture = new SliceFixture();
-
-        RenderedDocument working = WorkingDialoguePreview.Compose(
-            fixture.Project,
-            fixture.Sample.Dialogue.Id);
-
-        Assert.False(working.IsPublished);
-        Assert.Equal(0, working.DialogueResult.Version);
-        Assert.Null(working.PresentationResult);
-
-        // 작업 중 결과는 어떤 연출과도 호환되지 않는다.
-        Assert.False(fixture.Presentation.Source.Matches(working.DialogueResult));
-    }
 }
 
 /// <summary>발행된 대사 결과와 연출 결과, 그리고 그 둘을 묶은 조합 하나.</summary>

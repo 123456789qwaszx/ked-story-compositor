@@ -151,34 +151,6 @@ public class PublishTests
             problem => problem.Kind == PublishProblemKind.InvalidConditionStructure);
     }
 
-    /// <summary>
-    /// 고아 데이터는 알리되 발행을 막지 않는다. 막으면 대본을 한 줄 지웠다는 이유로
-    /// 프로젝트 전체를 발행할 수 없게 된다.
-    /// </summary>
-    [Fact]
-    public void 줄이_빠지면_그_줄의_조건도_함께_접혀_고아가_남지_않는다()
-    {
-        // W47 (소유자 결정): 줄이 물러날 때 그 줄의 조건 전환도 함께 정리된다 —
-        // 발행 검사에 고아 알림이 남지 않고, 작업 노드에도 유령 조건이 남지 않는다.
-        var sample = new Sample();
-        string opening = sample.Line("사라질 줄", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        string closing = sample.Line("함께 사라질 줄", LineConditionTransition.EndIf());
-        sample.Line("남는 줄");
-
-        sample.Editor.RetireScriptLine(sample.Script.Id, opening);
-        sample.Editor.RetireScriptLine(sample.Script.Id, closing);
-
-        DialogueDraft draft = sample.Editor.InspectDialoguePublish(sample.Dialogue.Id);
-
-        Assert.DoesNotContain(draft.Problems, problem => problem.Kind == PublishProblemKind.OrphanData);
-        Assert.True(draft.CanPublish);
-
-        DialogueResult result = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
-        Assert.Equal("남는 줄", Assert.Single(result.Lines).Text);
-
-        Assert.Empty(sample.Dialogue.LineExtensions);
-    }
-
     [Fact]
     public void 결과는_발행_시점의_조건_이름과_식을_얼린다()
     {
