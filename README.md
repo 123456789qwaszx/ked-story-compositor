@@ -1,9 +1,10 @@
 # VnTool
 
 > **이 저장소는 연출 툴 `ked-story-director`다.** 2026-10-29에 VnTool(`VNStoryEditor_avalonia` `dev` @ `f2a7bdc`)에서
-> 이력째 갈라졌고, VnTool이 연출을 걷은 것과 반대로 **작가 기능을 걷는 중**이다. 대사의 주인은 VnTool이고 이 툴은
-> VnTool이 발행한 대사 결과를 읽기만 한다. 계획과 단계는 [`docs/plans/director-split.md`](docs/plans/director-split.md).
-> 아래 본문은 아직 VnTool 시절 그대로다 — 단계마다 고친다.
+> 이력째 갈라졌고, 2026-10-29에 VnTool `dev`(`dd2d5be`)의 연출 제거 뒤 변경을 반입했다(무대 프리뷰 · 에셋 탐색기는 남는다).
+> 지금 하는 일은 대본 탭 · 엑셀 연동을 걷고, 연출 그래프를 위→아래로 세우고, 대사를 노드 안에서 직접 쓰게 하는 것이다.
+> 계획과 단계는 [`docs/plans/director-split.md`](docs/plans/director-split.md), 두 그래프의 설계 정리는
+> [`docs/design/two-graphs.md`](docs/design/two-graphs.md). 아래 본문은 아직 VnTool 시절 그대로다 — 단계마다 고친다.
 
 비주얼 노벨 저작 도구. C#/.NET 10 + Avalonia, 한국어 코드베이스.
 
