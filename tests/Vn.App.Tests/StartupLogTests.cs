@@ -135,10 +135,10 @@ public class StartupLogTests
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
         Assert.StartsWith(local, StartupLog.FilePath, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("VnTool", StartupLog.FilePath, StringComparison.Ordinal);
+        Assert.Contains(AppIdentity.Name, StartupLog.FilePath, StringComparison.Ordinal);
 
         // 작가에게 보여줄 문장에는 로그를 찾아갈 경로가 들어 있어야 한다.
-        Assert.Contains(StartupLog.FilePath, StartupLog.WriterMessage("VnTool을 시작하는"), StringComparison.Ordinal);
+        Assert.Contains(StartupLog.FilePath, StartupLog.WriterMessage($"{AppIdentity.Name}를 시작하는"), StringComparison.Ordinal);
     }
 
     private static Exception Caught()

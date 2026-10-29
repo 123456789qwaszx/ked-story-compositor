@@ -6,7 +6,7 @@
         Height="880"
         MinWidth="1000"
         MinHeight="640"
-        Title="VnTool">
+        Title="ked-story-compositor">
     <DockPanel>
         <Border DockPanel.Dock="Top"
                 Padding="12,10"

@@ -1,52 +1,50 @@
-# ked-story-director
+# ked-story-compositor
 
-> **연출 툴.** 2026-10-29에 VnTool(`VNStoryEditor_avalonia` `dev` @ `f2a7bdc`)에서 이력째 갈라졌고, 같은 날 VnTool `dev`(`dd2d5be`)의
-> 연출 제거 뒤 변경을 반입했다(무대 프리뷰 · 에셋 탐색기는 남는다). **대본 탭과 엑셀 연동은 걷었다**(D2). 다음은 연출 그래프를
-> 위→아래로 세우고(D3), 대사를 카드 안에서 직접 쓰게 하는 것(D4)이다. 계획과 단계는
-> [`docs/plans/director-split.md`](docs/plans/director-split.md), 두 그래프의 설계 정리는 [`docs/design/two-graphs.md`](docs/design/two-graphs.md).
-> 아래 "문서" 표의 안내서 중 일부는 아직 VnTool 시절(엑셀 워크플로)을 설명한다 — 지금 동작의 정본은 `two-graphs.md`다.
+> **대사에 연출을 얹는 툴.** 2026-10-29에 [`ked-story-director`](https://github.com/123456789qwaszx/ked-story-director)
+> (그 위로는 VnTool · `VNStoryEditor_avalonia`)에서 이력째 갈라졌다. 이야기의 뼈대(챕터 · 에피소드 · 선택지)와 대사는
+> director가 쓰고, 이 툴은 그 프로젝트를 **원고로 읽어** 무대 위에서 연출을 붙이고 게임이 읽을 Yarn을 낸다.
+> 계획과 단계는 [`docs/plans/compositor-split.md`](docs/plans/compositor-split.md).
+> 아래 "문서" 표의 안내서 대부분은 아직 VnTool · director 시절(두 그래프 · 엑셀 워크플로)을 설명한다 —
+> 이 툴의 지금 모양은 이 README와 `compositor-split.md`가 정본이다.
 
-비주얼 노벨 저작 도구. C#/.NET 10 + Avalonia, 한국어 코드베이스.
+비주얼 노벨 연출 도구. C#/.NET 10 + Avalonia, 한국어 코드베이스.
 
-만들어 내는 것은 유니티 런타임(별도 저장소)이 먹는 데이터입니다 —
-`exported/{챕터}.progression.json` + Yarn 번들.
+## 하는 일
 
-## 두 그래프
+창은 **무대 하나**다.
 
-| | **① 챕터 그래프** (기획) | **② 연출 그래프** (대사 · 연출) |
-|---|---|---|
-| 만드는 것 | 에피소드 구조 · 선택지 · 조건 · 스탯 | 에피소드마다 대사 카드 · 분기 · 커맨드 · 무대 · 초상화 |
-| 값이 사는 곳 | 프로젝트 | 프로젝트 |
-| 도구의 역할 | 편집하고 검증하고 낸다 | 편집한다 |
+- **챕터 · 씬 고르기** — 무대 위쪽의 선택기로 director가 써 둔 챕터와 씬(대사 노드)을 고른다. 판(씬)이 있는
+  챕터만 목록에 오른다.
+- **연출 붙이기** — 씬을 고르면 그 대사를 고정(발행)하고 연출 채널을 세운다. 터미널에서 줄을 골라 연출 명령을
+  더하고(우클릭 [＋ 연출 추가]), 수치 인스펙터 · Setup 편집 · 빠른 명령 · 이징 곡선으로 다듬는다. 무대가 그
+  자리에서 접어 보여 준다.
+- **에셋** — 무대 안의 에셋 탐색기가 배경 · 초상화 · 소리를 보여 준다.
+- **재생** — 줄 단위로 넘기고, 에피소드 끝에서는 챕터의 선택지가 무대에 선다.
+- **내보내기** — 게임용 **Yarn 묶음**(대사 + 연출 명령)과 곡선을 낸다. Yarn은 이 툴만 낸다(director는 내지 않는다).
 
-## 원본은 프로젝트 하나
+이 툴에는 그래프도 대사 편집기도 없다. 대사 · 화자 · 조건 · 챕터 구조를 고치려면 director에서 고치고, 이 툴에서
+다시 연다.
 
-모든 값의 원본은 **프로젝트 파일**입니다. 엑셀 워크북을 들여오고 내던 연동과 [대본] 탭은 2026-10-29(D2)에
-걷었습니다 — 나중에 다시 붙일 수 있지만 지금은 복잡하기만 하다는 판단입니다.
+## 원고는 읽기만, 연출은 원고 옆 파일에
 
-- **대사 본문·화자** → 연출 그래프의 **대사 카드**(카드마다 대본 하나). 카드 안에서 직접 쓰는 것이 D4의 목표입니다.
-- **에피소드 구조·간선·조건·스탯** → 챕터 그래프. 간선은 연출 그래프에서도 긋습니다(2026-09-17, R7): 카드 아래 칸에
-  문구를 적어 다른 카드로 끌면 그것이 간선입니다. **창구가 둘이지 값이 사는 곳은 하나**입니다.
-- 챕터 조건은 판의 공급 노드로 저절로 건너가 대사 카드의 조건 목록에 뜹니다.
-- **진행 JSON**은 검증을 통과하면 저절로 나갑니다. 저장은 프로젝트를 씁니다.
-- 프로젝트를 열 때 **카드 없는 에피소드에는 빈 카드가 섭니다**(엑셀에서 들여온 옛 프로젝트를 위한 맞추기).
-
-**각 값의 주인은 한 곳뿐**이라는 것이 설계 전체를 관통하는 규칙입니다. 같은 사실이 두 곳에
-있으면 어긋나고, 어긋남은 최종 출력에서야 드러납니다.
-
-## 저장 구조
+director의 프로젝트(`.vnproject.json`과 그 `script/` · `story/`)는 **원고**다 — 이 툴은 그 파일을 한 바이트도 쓰지
+않는다. 연출은 원고 옆 **`<이름>.vncompose.json`**에 산다. 열면 둘을 합쳐 한 프로젝트로 보고, 저장은 연출 쪽만 쓴다.
 
 ```text
 MyStory/
-├─ 예제.vnproject.json         목차 · 챕터 · 파일을 넘나드는 관계
+├─ 예제.vnproject.json         원고 (director) — 이 툴은 읽기만 한다
+├─ script/  story/             원고의 대본 · 판 (director)
 ├─ game.definition.json        초상화 매핑 · 연출 커맨드 어휘 · 스탯 · 화자
-├─ script/                     카드의 대본 (줄 신원 + 본문)
-├─ story/                      판(챕터마다 하나)과 그 위의 카드·노드
-├─ results.vnresults.json      발행된 결과
-├─ exported/
-│  └─ ch01.progression.json    런타임 수입물 — 검증을 통과하면 자동으로 나간다
+├─ 예제.vncompose.json         연출 — 연출 노드 · 배선 · 합성 · 곡선 · 빠른 명령 · 에셋 뿌리 · 내보내기 설정
+├─ results.vnresults.json      발행본(대사 · 연출 고정본)
 └─ assets/                     backgrounds · portraits · bgm · sfx
 ```
+
+- **열기**는 원고(`.vnproject.json`)로도, 이 툴의 파일(`.vncompose.json`)로도 된다.
+- 연출이 아직 원고 안에 있던 **옛 프로젝트**(VnTool · director의 연출 제거 전)는 그 연출을 가져온다. director가 옛
+  프로젝트를 열며 남긴 `presentation-original/`에서도 가져온다. 처음 저장하면 원고 옆에 `.vncompose.json`이 생긴다.
+- director가 판을 옮기거나 노드를 지웠으면, 연출 노드는 대사 노드의 판에 다시 서고 사라진 노드를 가리키던 배선은
+  버린다(상태줄이 몇 개인지 말한다).
 
 ## 실행
 
@@ -57,45 +55,32 @@ dotnet run --project .\src\Vn.App\Vn.App.csproj
 ## 검증
 
 ```powershell
-dotnet test .\VnTool.sln
+dotnet test .\ked-story-compositor.sln
 ```
 
-## 작가에게 전달할 Windows 휴대용 패키지
+## 연출자에게 전달할 Windows 휴대용 패키지
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\publish-windows.ps1
 ```
 
-.NET 런타임을 함께 담으므로 받는 PC에 개발 환경이 필요 없습니다.
+`artifacts\ked-story-compositor-win-x64.zip` — 압축을 풀고 `ked-story-compositor.exe`를 누르면 된다. .NET 런타임을
+함께 담으므로 받는 PC에 개발 환경이 필요 없다.
 
 ## 문서
 
-**처음 보는 사람은 [`docs/external-overview.md`](docs/external-overview.md), 작업을 이어받는
-사람은 [`docs/handoff/current-state.md`](docs/handoff/current-state.md)에서 시작합니다.**
-R0~R5의 순서·체크리스트·완료 근거는 [`docs/plans/PLAN.md`](docs/plans/PLAN.md)가 정본입니다.
-
 | 문서 | 무엇이 있나 |
 |---|---|
-| [`docs/design/two-graphs.md`](docs/design/two-graphs.md) | **지금 동작의 정본.** 두 그래프의 기능 · 사용자 동작 · 다시 쓸 때 지킬 것 · D2~D4 설계 |
-| [`docs/external-overview.md`](docs/external-overview.md) | **외부 진입점.** 도구의 책임 · 데이터 흐름 · 런타임 영향 · 자체 점검과 다음 작업 |
-| [`docs/plans/PLAN.md`](docs/plans/PLAN.md) | **런타임 정렬 계획.** R0~R5 순서 · 결정 지점 · 단계별 완료 기준 |
-| [`docs/handoff/current-state.md`](docs/handoff/current-state.md) | **진입점.** 계층 규칙 · 화면 · 코드 지도 · 진행 상태 |
-| [`docs/run-log.md`](docs/run-log.md) | **결정의 정본.** 한 일 · 근거 · 되돌리는 법 |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | 코드 구조 — "이 기능은 어느 파일" |
-| [`docs/handoff/architecture-decisions.md`](docs/handoff/architecture-decisions.md) | 확정된 설계와 **그 이유** |
-| [`docs/runtime-contract.md`](docs/runtime-contract.md) | 유니티 런타임과의 계약 (Gate D) |
-| [`docs/progression-handoff.md`](docs/progression-handoff.md) | 진행 코어 교환 이력·현행 상대·표본 JSON 안내 |
-| [`tests/fixtures/chapter-samples/`](tests/fixtures/chapter-samples/) | 견본 챕터 둘 — `ch05`(복도) · `ch01`(Scene·Auto·조건·스탯·EventKey를 담은 계약 표본). 2026-10-29까지 `docs/*.xlsx`였다 |
-| [`docs/work-orders/chapter-graph-orders.md`](docs/work-orders/chapter-graph-orders.md) | 챕터 계층 규격 원본 |
-| [`docs/chapter-layer-guide.md`](docs/chapter-layer-guide.md) | 기획자용 사용 안내 |
-| [`docs/writer-guide.md`](docs/writer-guide.md) | 작가용 사용 안내 |
-| [`docs/handoff/io-reference.md`](docs/handoff/io-reference.md) | 모든 입출력의 형식 |
-| [`docs/runtime-ui-tooling-principles.md`](docs/runtime-ui-tooling-principles.md) | 도구 설계 원칙 (`원칙 §…` 인용의 출처) |
+| [`docs/plans/compositor-split.md`](docs/plans/compositor-split.md) | **이 툴의 정본.** 갈라 낸 경위 · 결정(K1~K7) · 단계(C1~C3) · 열린 것 |
+| [`docs/plans/director-split.md`](docs/plans/director-split.md) | 그 위의 이력 — VnTool에서 director로 온 경위(D0~D4) |
+| [`docs/runtime-contract.md`](docs/runtime-contract.md) | 유니티 런타임과의 계약 |
+| [`docs/handoff/io-reference.md`](docs/handoff/io-reference.md) | 입출력의 형식 (VnTool 시절 기준) |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | 코드 구조 (VnTool 시절 기준 — 그래프 · 대본 쪽 서술은 이 툴에 없다) |
+| [`docs/design/two-graphs.md`](docs/design/two-graphs.md) | director의 두 그래프 설계 — 이 툴에는 그래프가 없다 |
 
 ## Yarn 분석 도구
 
-`Vn.Core`와 `Vn.Cli`는 Yarn 프로젝트를 읽고 검증하는 별도 도구입니다. 저작 경로와 분리돼
-있습니다.
+`Vn.Core`와 `Vn.Cli`는 Yarn 프로젝트를 읽고 검증하는 별도 도구다. 저작 경로와 분리돼 있다.
 
 ```powershell
 dotnet run --project .\src\Vn.Cli\Vn.Cli.csproj -- .\samples\Valid\Demo.yarnproject .\samples\Valid\game.schema.json

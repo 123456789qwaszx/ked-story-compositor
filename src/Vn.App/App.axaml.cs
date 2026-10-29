@@ -63,7 +63,7 @@ public partial class App : Application
 
         return new Window
         {
-            Title = "VnTool — 시작하지 못했습니다",
+            Title = $"{AppIdentity.Name} — 시작하지 못했습니다",
             Width = 760,
             Height = 480,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
@@ -76,7 +76,7 @@ public partial class App : Application
                     new TextBlock
                     {
                         // 작가용 메시지. 개발자용 상세 내용은 아래 상자와 로그 파일에 있다.
-                        Text = StartupLog.WriterMessage("VnTool을 시작하는"),
+                        Text = StartupLog.WriterMessage($"{AppIdentity.Name}를 시작하는"),
                         TextWrapping = TextWrapping.Wrap,
                         FontWeight = FontWeight.SemiBold
                     },

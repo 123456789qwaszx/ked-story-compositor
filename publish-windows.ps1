@@ -11,8 +11,8 @@ Push-Location $root
 #   치를 이유가 없고(느리다), 묶는 것은 배포의 성질이지 프로젝트의 성질이 아니다.
 
 try {
-    $publishDirectory = Join-Path $root "artifacts\VnTool-win-x64"
-    $zipPath = Join-Path $root "artifacts\VnTool-win-x64.zip"
+    $publishDirectory = Join-Path $root "artifacts\ked-story-compositor-win-x64"
+    $zipPath = Join-Path $root "artifacts\ked-story-compositor-win-x64.zip"
 
     Remove-Item $publishDirectory -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
@@ -28,7 +28,7 @@ try {
         -o $publishDirectory
 
     if ($LASTEXITCODE -ne 0) {
-        throw "VnTool publish failed with exit code $LASTEXITCODE."
+        throw "ked-story-compositor publish failed with exit code $LASTEXITCODE."
     }
 
     # ⛔ 지금은 <b>실행 파일만</b> 담는다 (2026-08-26 소유자: "읽어주세요와 견본 project는
@@ -39,16 +39,21 @@ try {
     #    세우면 된다. 규격이 며칠 사이 v14까지 굴렀고 그 둘이 옛 규격을 말하고 있어서,
     #    낡은 안내와 낡은 견본을 함께 건네느니 안 건네는 편이 낫다는 판단이다.
 
+    # 실행 파일 이름은 앱 이름이다(C3). 어셈블리 이름(Vn.App)은 그대로 두고 꾸러미의 실행 파일만 바꾼다 —
+    # 코드의 이름(`Vn.*`)을 바꿀지는 아직 열린 질문이다(docs/plans/compositor-split.md §4).
+    # 단일 파일 꾸러미는 이름을 바꿔도 그대로 뜬다(CI의 휴대용 점검이 띄워 본다).
+    $exe = Join-Path $publishDirectory "ked-story-compositor.exe"
+    Rename-Item (Join-Path $publishDirectory "Vn.App.exe") (Split-Path -Leaf $exe)
+
     Compress-Archive -Path (Join-Path $publishDirectory "*") -DestinationPath $zipPath
 
-    $exe = Join-Path $publishDirectory "Vn.App.exe"
     $sizeMb = [math]::Round((Get-Item $exe).Length / 1MB, 1)
 
     Write-Host ""
     Write-Host "꾸러미: $zipPath"
     Write-Host "실행 파일: $exe ($sizeMb MB)"
     Write-Host "담긴 것: 실행 파일 하나 (안내문·예제 프로젝트는 이번 꾸러미에 없습니다)"
-    Write-Host "받는 사람은 압축을 풀고 Vn.App.exe를 누르면 됩니다."
+    Write-Host "받는 사람은 압축을 풀고 ked-story-compositor.exe를 누르면 됩니다."
 }
 finally {
     Pop-Location

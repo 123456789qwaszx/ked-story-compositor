@@ -28,7 +28,7 @@ namespace Vn.App;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private const string BaseTitle = "VnTool";
+    private const string BaseTitle = AppIdentity.Name;
 
     private readonly AuthoringSession _session = new();
 
@@ -545,7 +545,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// 고아 출력 목록 (K1 ②안) — 노드를 지우거나 이름을 바꾸면 옛 파일이 출력 폴더에 남고,
-    /// 유니티가 폴더를 통째로 읽으면 그 옛 대사가 재생된다. VnTool은 <b>지우지 않고 보여 준다</b>:
+    /// 유니티가 폴더를 통째로 읽으면 그 옛 대사가 재생된다. 이 툴은 <b>지우지 않고 보여 준다</b>:
     /// 출력 폴더는 사용자의 폴더이지 도구의 소유물이 아니다.
     /// </summary>
     private void AddOrphanOutputs(StackPanel panel)
@@ -567,7 +567,7 @@ public partial class MainWindow : Window
 
         panel.Children.Add(new TextBlock
         {
-            Text = "지금 프로젝트가 만들지 않는 파일입니다. VnTool은 지우지 않습니다 — "
+            Text = "지금 프로젝트가 만들지 않는 파일입니다. 이 툴은 지우지 않습니다 — "
                 + "탐색기에서 직접 지우세요.",
             FontSize = 9,
             Opacity = 0.6,

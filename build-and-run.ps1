@@ -125,10 +125,10 @@ function Get-FirstDifference {
 }
 
 try {
-    dotnet build .\VnTool.sln
+    dotnet build .\ked-story-compositor.sln
     if ($LASTEXITCODE -ne 0) { throw "빌드에 실패했습니다." }
 
-    dotnet test .\VnTool.sln --no-build
+    dotnet test .\ked-story-compositor.sln --no-build
     if ($LASTEXITCODE -ne 0) { throw "테스트에 실패했습니다." }
 
     Write-Host ""
@@ -182,7 +182,7 @@ try {
 
     Write-Host "samples/Real/expected.txt와 일치합니다."
     Write-Host ""
-    Write-Host "All VnTool checks passed."
+    Write-Host "All ked-story-compositor checks passed."
 }
 finally {
     Pop-Location
