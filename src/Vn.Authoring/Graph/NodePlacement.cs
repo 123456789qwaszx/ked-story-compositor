@@ -4,84 +4,103 @@ using Vn.Authoring.Model;
 namespace Vn.Authoring.Graph;
 
 /// <summary>
-/// <b>새 대사 노드가 설 자리</b> — 제 장면의 줄에 (R7 P-4 · <c>docs/plans/R7.md</c>).
+/// <b>새 카드가 연출 그래프에 설 자리</b> — 위에서 아래로 (D3 · 2026-10-29, <c>docs/design/two-graphs.md</c> §7 D3).
 ///
-/// ⛔ <b>부르는 자리가 둘이다</b>: 에피소드를 만드는 길(<c>ProjectEditor.NewEpisodeCore</c>) ·
-/// 대본 워크북 임포터. 예전에는 저마다 자리를 안 주고 원점에 세웠고, 그래서 판을 열면
-/// 카드가 <b>한 곳에 쌓여</b> 챕터 프레임도 장면 영역도 뜻을 잃었다. 규칙이 여럿이면 갈리므로
-/// 한 벌로 둔다.
+/// 소유자: *"챕터 그래프처럼 위에서 아래로 진행시키도록 합니다 … 분기는 기존처럼 오른쪽으로 빠지도록."*
 ///
-/// ⚠ <b>이미 선 카드는 안 옮긴다.</b> 자리는 사람이 끌어 정하는 것이고, 여는 때마다 다시
-/// 줄을 세우면 그 손이 지워진다 — 여기서 정하는 것은 <b>새로 서는 카드</b>의 첫 자리뿐이다.
+/// <list type="bullet">
+/// <item><b>선택지로 가는 다음 에피소드</b>는 부모 카드의 <b>아래</b>에 선다. 그 자리가 차 있으면 오른쪽으로 비켜 선다.</item>
+/// <item><b>분기로 다녀갈 카드</b>는 원본의 <b>오른쪽</b>에 선다(<see cref="BesideOf"/>).</item>
+/// <item>부모가 없으면(시작 에피소드 · 들어오는 길이 없는 카드) 판의 맨 아래 카드 밑에, 판이 비었으면 원점에 선다.</item>
+/// </list>
+///
+/// ⛔ 2026-10-29까지는 왼→오였다 — 장면마다 한 줄을 받고 장면 안의 진행은 그 줄의 오른쪽으로 갔다(R7 P-4).
+/// 그리고 에피소드를 만드는 길이 자리를 <b>에피소드를 넣기 전에</b> 물어서, 챕터 그래프에서 만든 새 카드는
+/// 언제나 판 오른쪽 끝에 섰다(§6-1). 이제 부르는 쪽이 부모를 함께 준다.
+///
+/// ⚠ <b>이미 선 카드는 안 옮긴다.</b> 자리는 사람이 끌어 정하는 것이다 — 여기서 정하는 것은 새로 서는
+/// 카드의 첫 자리뿐이고, 판 전체를 다시 세우는 일은 [자동 정렬]이 사람이 누를 때만 한다.
 /// </summary>
 public static class NodePlacement
 {
-    /// <summary>옆 카드까지의 거리 — 카드 너비(210)에 여백을 더한 값.</summary>
+    /// <summary>옆 카드까지의 거리 — 카드 너비(210)에, 칩 오른쪽으로 내려가는 레인의 자리를 더한 값.</summary>
     public const double Column = 320;
 
-    /// <summary>장면 한 줄의 높이. 카드와 그 아래 선택지 가지가 함께 들어간다.</summary>
-    public const double SceneRow = 260;
+    /// <summary>
+    /// 아래 카드까지의 거리 — 카드(대개 90~150) + 그 아래 선택지 칩 셋(약 140) + 도착 접점과 여백.
+    /// </summary>
+    public const double Row = 340;
 
     /// <summary>
-    /// 그 에피소드의 노드가 설 자리.
-    ///
-    /// 같은 장면에 이미 카드가 있으면 <b>그 줄의 오른쪽 끝</b>에, 없으면 <b>제 장면의 줄</b>
-    /// 왼쪽 끝에 선다. 챕터를 못 찾거나 에피소드가 아니면 판의 오른쪽 끝에 둔다 — 겹치지만
-    /// 않으면 된다.
+    /// 그 에피소드의 카드가 설 자리.
     /// </summary>
-    public static (double X, double Y) For(StoryProject project, string chapterId, string episodeId)
+    /// <param name="parentEpisodeId">
+    /// 이 에피소드로 이어 줄 부모. 주지 않으면 챕터의 간선에서 찾는다(들어오는 길의 출발 중 카드가 선 첫 것).
+    /// ⚠ 에피소드와 간선을 <b>한 변경으로</b> 만드는 길(<c>AddNextEpisode</c>)은 자리를 물을 때 간선이 아직
+    /// 없다 — 그래서 부모를 직접 준다.
+    /// </param>
+    public static (double X, double Y) For(
+        StoryProject project, string chapterId, string episodeId, string? parentEpisodeId = null)
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        StoryFile? board = Chapters.EpisodeNaming.BoardOf(project, chapterId);
+        if (EpisodeNaming.BoardOf(project, chapterId) is not { } board)
+        {
+            return (0, 0);
+        }
+
+        if (ParentCard(project, chapterId, episodeId, parentEpisodeId) is { } parent)
+        {
+            return FirstFree(board, parent.Layout.X, parent.Layout.Y + Row);
+        }
+
+        List<DialogueNode> cards = board.Nodes.OfType<DialogueNode>().ToList();
+
+        return cards.Count == 0
+            ? (0, 0)
+            : FirstFree(board, cards.Min(card => card.Layout.X), cards.Max(card => card.Layout.Y) + Row);
+    }
+
+    /// <summary>원본의 오른쪽 — 분기로 다녀갈 카드의 자리. 차 있으면 더 오른쪽으로 비켜 선다.</summary>
+    public static (double X, double Y) BesideOf(StoryFile board, StoryNode source)
+    {
+        ArgumentNullException.ThrowIfNull(board);
+        ArgumentNullException.ThrowIfNull(source);
+
+        return FirstFree(board, source.Layout.X + Column, source.Layout.Y);
+    }
+
+    /// <summary>부모 카드 — 준 것이 먼저고, 없으면 들어오는 간선의 출발 중 카드가 선 첫 것이다.</summary>
+    private static DialogueNode? ParentCard(
+        StoryProject project, string chapterId, string episodeId, string? parentEpisodeId)
+    {
+        if (parentEpisodeId is not null)
+        {
+            return EpisodeNaming.CardFor(project, chapterId, parentEpisodeId);
+        }
 
         ChapterDocument? chapter = project.Chapters.FirstOrDefault(item =>
             string.Equals(item.ChapterId, chapterId, StringComparison.Ordinal));
 
-        if (board is null || chapter is null)
-        {
-            return (RightOf(board), 0);
-        }
-
-        IReadOnlyList<ChapterScene> scenes = ChapterSceneGrouping.Of(chapter.ToGraphModel(chapterId));
-
-        int row = -1;
-
-        for (int index = 0; index < scenes.Count; index++)
-        {
-            if (scenes[index].Episodes.Any(episode =>
-                    string.Equals(episode.EpisodeId, episodeId, StringComparison.Ordinal)))
-            {
-                row = index;
-                break;
-            }
-        }
-
-        if (row < 0)
-        {
-            // 챕터에 없는 이름이다 — 진행에 안 실리는 노드이므로 줄을 안 준다.
-            return (RightOf(board), 0);
-        }
-
-        var inScene = new HashSet<string>(
-            scenes[row].Episodes.Select(episode => episode.EpisodeId), StringComparer.Ordinal);
-
-        List<DialogueNode> neighbours = board.Nodes.OfType<DialogueNode>()
-            .Where(node => inScene.Contains(EpisodeOf(node)))
-            .ToList();
-
-        // 이웃이 있으면 그 줄을 따른다 — 사람이 그 장면을 통째로 옮겨 뒀을 수 있다.
-        return neighbours.Count > 0
-            ? (neighbours.Max(node => node.Layout.X) + Column, neighbours.Min(node => node.Layout.Y))
-            : (0, row * SceneRow);
+        return chapter?.Edges
+            .Where(edge => string.Equals(edge.ToEpisodeId, episodeId, StringComparison.Ordinal) &&
+                           !string.Equals(edge.FromEpisodeId, episodeId, StringComparison.Ordinal))
+            .Select(edge => EpisodeNaming.CardFor(project, chapterId, edge.FromEpisodeId))
+            .FirstOrDefault(card => card is not null);
     }
 
-    /// <summary>판의 오른쪽 끝 — 겹치지만 않게 둘 때.</summary>
-    private static double RightOf(StoryFile? board) =>
-        board is null || board.Nodes.Count == 0
-            ? 0
-            : board.Nodes.Max(node => node.Layout.X) + Column;
+    /// <summary>그 자리에 카드가 있으면 한 칸씩 오른쪽으로 — 겹치지만 않으면 된다.</summary>
+    private static (double X, double Y) FirstFree(StoryFile board, double x, double y)
+    {
+        List<DialogueNode> cards = board.Nodes.OfType<DialogueNode>().ToList();
 
-    /// <summary>그 노드가 대신하는 에피소드 — 규약은 <see cref="Chapters.EpisodeNaming"/> 한 벌이다.</summary>
-    private static string EpisodeOf(DialogueNode node) => Chapters.EpisodeNaming.EpisodeIdOf(node);
+        while (cards.Any(card =>
+                   Math.Abs(card.Layout.X - x) < Column / 2 &&
+                   Math.Abs(card.Layout.Y - y) < Row / 2))
+        {
+            x += Column;
+        }
+
+        return (x, y);
+    }
 }

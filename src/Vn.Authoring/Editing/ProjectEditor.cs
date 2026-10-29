@@ -425,10 +425,14 @@ public sealed partial class ProjectEditor
                 "그 자리에는 이미 분기가 있습니다 — 한 자리에 하나만 둘 수 있습니다.");
         }
 
+        // 분기로 다녀갈 카드는 원본의 <b>오른쪽</b>에 선다 (D3 · 2026-10-29 소유자: "분기는 기존처럼
+        // 오른쪽으로 빠지도록"). 아래는 선택지로 가는 다음 에피소드의 자리다.
+        (double x, double y) = Graph.NodePlacement.BesideOf(file, source);
+
         (DialogueNode created, _, Action attach) = NewDialogueNodeCore(
             file.Id,
-            source.Layout.X,
-            source.Layout.Y + Graph.NodePlacement.SceneRow,
+            x,
+            y,
             name ?? NextName("분기"),
             SceneOfNode(file, source),
             // ⛔ 들어오는 간선이 없다 — 챕터 진행이 아니라 대본의 `<<detour>>`로 들어간다.

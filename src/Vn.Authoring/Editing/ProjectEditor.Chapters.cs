@@ -197,14 +197,18 @@ public sealed partial class ProjectEditor
     /// 챕터에 에피소드를 넣는 것은 카드를 놓을 자리가 없다는 뜻이다.
     /// </summary>
     private (DialogueNode Node, ChapterEpisode? Episode, Action Attach) NewEpisodeCore(
-        string chapterId, string episodeId, string title, double x, double y, string? sceneId)
+        string chapterId, string episodeId, string title, double x, double y, string? sceneId,
+        string? parentEpisodeId = null)
     {
         string fileId = EnsureChapterBoard(chapterId);
 
         // ⚠ <b>자리가 둘이다.</b> 주어진 (x, y)는 <b>챕터 그래프</b>의 자리이고, 연출 판의
-        //    카드는 제 판의 규칙(<see cref="Graph.NodePlacement"/>)으로 선다 — 장면마다 제
-        //    줄에. 한쪽 좌표를 다른 판에 그대로 넣으면 사람이 맞춰 둔 배치가 흐트러진다.
-        (double cardX, double cardY) = Graph.NodePlacement.For(Project, chapterId, episodeId);
+        //    카드는 제 판의 규칙(<see cref="Graph.NodePlacement"/>)으로 선다 — 부모 카드의 아래에.
+        //    한쪽 좌표를 다른 판에 그대로 넣으면 사람이 맞춰 둔 배치가 흐트러진다.
+        //
+        // ⚠ 부모를 <b>직접</b> 준다 (D3 · 2026-10-29). 이 자리를 묻는 순간에는 에피소드도 간선도 아직
+        //    챕터에 없다 — 예전에는 그래서 언제나 "챕터에 없는 이름"으로 빠져 판 오른쪽 끝에 섰다(§6-1).
+        (double cardX, double cardY) = Graph.NodePlacement.For(Project, chapterId, episodeId, parentEpisodeId);
 
         return NewDialogueNodeCore(
             fileId,
@@ -243,7 +247,7 @@ public sealed partial class ProjectEditor
         }
 
         (_, ChapterEpisode? episode, Action attach) = NewEpisodeCore(
-            chapterId, newEpisodeId, title, x, y, sceneId);
+            chapterId, newEpisodeId, title, x, y, sceneId, parentEpisodeId);
 
         ChapterEdge edge = NewEdge(chapter, parentEpisodeId, newEpisodeId, optionLabel);
 
@@ -837,8 +841,13 @@ public sealed partial class ProjectEditor
             {
                 string chapterId = chapter.ChapterId;
 
+                // 흐름 순서로 세운다 — 부모 카드가 먼저 서야 자식이 그 아래에 선다(NodePlacement).
+                // 깊이가 없는(닿지 않는) 에피소드는 맨 뒤다.
+                IReadOnlyDictionary<string, int> depths = ChapterBranchPlanner.Depths(chapter.ToGraphModel(chapterId));
+
                 List<ChapterEpisode> missing = chapter.Episodes
                     .Where(episode => EpisodeNaming.CardFor(Project, chapterId, episode.EpisodeId) is null)
+                    .OrderBy(episode => depths.TryGetValue(episode.EpisodeId, out int depth) ? depth : int.MaxValue)
                     .ToList();
 
                 if (missing.Count > 0)
@@ -847,7 +856,7 @@ public sealed partial class ProjectEditor
 
                     foreach (ChapterEpisode episode in missing)
                     {
-                        // 새 카드는 제 장면의 줄에 선다 — 원점에 쌓이면 판을 열었을 때 카드가 한 곳에 겹친다.
+                        // 새 카드는 부모 카드의 아래에 선다 — 원점에 쌓이면 판을 열었을 때 카드가 한 곳에 겹친다.
                         (double x, double y) = Graph.NodePlacement.For(Project, chapterId, episode.EpisodeId);
                         AddDialogueNode(fileId, x, y, EpisodeNaming.NodeNameOf(episode));
                         cards.Add($"{chapterId}/{episode.EpisodeId}");
