@@ -169,6 +169,12 @@ public partial class GraphEditorView : UserControl
     private Point _groupDragStart;
     private readonly Dictionary<string, Point> _groupStartPositions = new(StringComparer.Ordinal);
 
+    // 끄는 동안의 자리 (D3 · 2026-10-29, docs/design/two-graphs.md §6-2) — 카드 · 무리 · 접힌 판
+    // 어느 끌기든 프로젝트에는 <b>놓을 때 한 번</b> 적는다(되돌리기 한 칸). 그때까지 화면은 이 값을 따른다.
+    private readonly Dictionary<string, Point> _dragPositions = new(StringComparer.Ordinal);
+    private GraphPosition _proxyPositionStart;
+    private Vector _proxyDragDelta;
+
     /// <summary>
     /// 토글 상태로 만든 필터. 거르는 것은 화면이 아니라 투영이다.
     /// 연출·연출 공급 노드는 필터 이전에 배관으로 숨는다(2026-08-21) — 토글이 없다.
@@ -1557,7 +1563,91 @@ public partial class GraphEditorView : UserControl
             _session.Definition,
             CurrentFilter);
 
-        foreach (ExpandedNodeProjection node in _projection.Items.OfType<ExpandedNodeProjection>())
+        PlaceVisuals(_projection);
+    }
+
+    /// <summary>
+    /// 끄는 동안 — 프로젝트는 그대로 두고 <b>화면의 자리만</b> 옮긴다 (D3 · §6-2).
+    ///
+    /// 예전에는 포인터가 움직일 때마다 <c>MoveNode</c>로 프로젝트에 적었다. 그때마다 투영 · 프레임 ·
+    /// 레일 재계산에 더해 dirty 판정(프로젝트 전체 인코딩)과 챕터 그래프 재읽기가 돌았고, 되돌리기는
+    /// 남지 않았다. 이제 지금 그린 투영의 자리만 바꿔 다시 놓고, 놓을 때 <see cref="CommitDrag"/>가 한 번 적는다.
+    /// </summary>
+    private void PreviewDrag()
+    {
+        if (_projection is null)
+        {
+            return;
+        }
+
+        // 자리는 절대값이라 몇 번을 덧입혀도 같다 — 끄는 도중에 판이 다시 그려져도 다음 움직임이 되살린다.
+        _projection = new GraphProjection(
+            _projection.Items
+                .Select(item => item switch
+                {
+                    ExpandedNodeProjection node when _dragPositions.TryGetValue(node.NodeId, out Point at) =>
+                        node with { Position = new GraphPosition(at.X, at.Y) },
+                    CollapsedFileProjection file when string.Equals(file.FileId, _draggingProxyFileId, StringComparison.Ordinal) =>
+                        file with
+                        {
+                            Position = new GraphPosition(
+                                _proxyPositionStart.X + _proxyDragDelta.X,
+                                _proxyPositionStart.Y + _proxyDragDelta.Y)
+                        },
+                    _ => item
+                })
+                .ToList(),
+            _projection.Connections);
+
+        PlaceVisuals(_projection);
+    }
+
+    /// <summary>
+    /// 끌기를 놓는다 — 끄는 동안 화면에만 있던 자리를 <see cref="Vn.Authoring.Editing.ProjectEditor.MoveNodes"/> 한 번으로
+    /// 적는다. 눌렀다 놓기만 했으면(선택) 적을 것이 없다.
+    /// </summary>
+    private void CommitDrag()
+    {
+        _draggingCard = null;
+        _draggingGroup = false;
+        _draggingProxyFileId = null;
+
+        if (_dragPositions.Count == 0)
+        {
+            return;
+        }
+
+        var positions = _dragPositions.ToDictionary(
+            pair => pair.Key, pair => (pair.Value.X, pair.Value.Y), StringComparer.Ordinal);
+        _dragPositions.Clear();
+        _proxyDragDelta = default;
+
+        _session?.Editor.MoveNodes(positions);
+    }
+
+    /// <summary>
+    /// 끌기를 걷는다 — 더블클릭의 첫 누름이 시작한 끌기다. 화면만 움직였으니 프로젝트 자리로 되돌려 놓는다.
+    /// </summary>
+    private void CancelDrag()
+    {
+        _draggingCard = null;
+        _draggingGroup = false;
+        _draggingProxyFileId = null;
+
+        if (_dragPositions.Count == 0)
+        {
+            return;
+        }
+
+        _dragPositions.Clear();
+        _proxyDragDelta = default;
+        RefreshPositions();
+    }
+
+    /// <summary>투영의 자리대로 카드 · 접힌 판 · 간선 · 프레임 · 레일 · 미니맵을 놓는다.</summary>
+    private void PlaceVisuals(GraphProjection projection)
+    {
+        foreach (ExpandedNodeProjection node in projection.Items.OfType<ExpandedNodeProjection>())
         {
             NodeCard? card = FindCard(node.NodeId);
 
@@ -1568,7 +1658,7 @@ public partial class GraphEditorView : UserControl
             }
         }
 
-        foreach (CollapsedFileProjection file in _projection.Items.OfType<CollapsedFileProjection>())
+        foreach (CollapsedFileProjection file in projection.Items.OfType<CollapsedFileProjection>())
         {
             FileProxyVisual? proxy = FindProxy(file.FileId);
 
@@ -1581,7 +1671,7 @@ public partial class GraphEditorView : UserControl
 
         foreach (EdgeVisual edge in _edges)
         {
-            GraphConnectionProjection? current = _projection.Connections.FirstOrDefault(
+            GraphConnectionProjection? current = projection.Connections.FirstOrDefault(
                 item => string.Equals(item.Key, edge.Connection.Key, StringComparison.Ordinal));
 
             if (current is not null)
@@ -1771,8 +1861,7 @@ public partial class GraphEditorView : UserControl
         // 안 걷으면 탭이 바뀐 뒤에도 카드가 마우스에 붙어 따라다닌다.
         card.DoubleTapped += (_, args) =>
         {
-            _draggingCard = null;
-            _draggingGroup = false;
+            CancelDrag();
             args.Handled = true;
             NodeActivated?.Invoke(visual.NodeId);
         };
@@ -1900,6 +1989,7 @@ public partial class GraphEditorView : UserControl
 
             _draggingProxyFileId = file.FileId;
             _proxyDragStart = args.GetPosition(GraphCanvas);
+            _proxyPositionStart = new GraphPosition(Canvas.GetLeft(visual), Canvas.GetTop(visual));
             _proxyStartPositions.Clear();
 
             foreach (StoryNode node in storyFile.Nodes)
@@ -1915,7 +2005,7 @@ public partial class GraphEditorView : UserControl
         visual.DoubleTapped += (_, args) =>
         {
             args.Handled = true;
-            _draggingProxyFileId = null; // 둘째 누름이 시작한 끌기 상태를 걷는다
+            CancelDrag(); // 둘째 누름이 시작한 끌기 상태를 걷는다
             _session?.SetFileExpanded(file.FileId, expanded: true);
         };
 
@@ -2997,12 +3087,12 @@ public partial class GraphEditorView : UserControl
 
             foreach ((string nodeId, Point start) in _groupStartPositions)
             {
-                _session.Editor.MoveNode(
-                    nodeId,
+                _dragPositions[nodeId] = new Point(
                     ClampNodeX(start.X + deltaX),
                     ClampNodeY(start.Y + deltaY));
             }
 
+            PreviewDrag();
             return;
         }
 
@@ -3013,12 +3103,13 @@ public partial class GraphEditorView : UserControl
 
             foreach ((string nodeId, Point start) in _proxyStartPositions)
             {
-                _session.Editor.MoveNode(
-                    nodeId,
+                _dragPositions[nodeId] = new Point(
                     ClampNodeX(start.X + deltaX),
                     ClampNodeY(start.Y + deltaY));
             }
 
+            _proxyDragDelta = new Vector(deltaX, deltaY);
+            PreviewDrag();
             return;
         }
 
@@ -3027,10 +3118,10 @@ public partial class GraphEditorView : UserControl
             return;
         }
 
-        _session.Editor.MoveNode(
-            _draggingCard.NodeId,
+        _dragPositions[_draggingCard.NodeId] = new Point(
             ClampNodeX(position.X - _dragOffset.X),
             ClampNodeY(position.Y - _dragOffset.Y));
+        PreviewDrag();
     }
 
     // 판 경계 클램프 (GB-4) — 카드가 스크롤이 닿지 않는 바깥으로 끌려 나가지 않는다.
@@ -3040,9 +3131,7 @@ public partial class GraphEditorView : UserControl
 
     private void OnCanvasPointerReleased(object? sender, PointerReleasedEventArgs args)
     {
-        _draggingCard = null;
-        _draggingGroup = false;
-        _draggingProxyFileId = null;
+        CommitDrag();
 
         // 범위 선택 확정 (W40) — 사각형에 걸친 카드 전부가 무리가 된다.
         if (_rubberBand is not null)

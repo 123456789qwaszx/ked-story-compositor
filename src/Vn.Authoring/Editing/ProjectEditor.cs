@@ -565,18 +565,43 @@ public sealed partial class ProjectEditor
         }
     }
 
+    /// <summary>노드 하나의 자리를 옮긴다 — <see cref="MoveNodes"/>의 한 칸짜리다.</summary>
+    public void MoveNode(string nodeId, double x, double y) =>
+        MoveNodes(new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal) { [nodeId] = (x, y) });
+
     /// <summary>
-    /// 그래프에서 노드를 끌어 놓은 결과. 되돌리기 기록을 남기지 않는다.
-    /// 드래그 한 번에 수십 번 불리는 값이라 기록에 쌓으면 되돌리기가 좌표 이동으로 가득 찬다.
+    /// 여러 노드의 자리를 <b>한 번의 변경으로</b> 옮긴다 — 끌기를 놓을 때와 [자동 정렬]이 쓴다
+    /// (2026-10-29 · D3, <c>docs/design/two-graphs.md</c> §6-2).
+    ///
+    /// <b>되돌리기 한 칸이다.</b> 예전에는 그래프가 포인터가 움직일 때마다 기록 없이 적었다 —
+    /// 끈 자리는 되돌릴 수 없었고, 앞선 편집을 되돌리면 끈 자리까지 조용히 돌아갔다. 이제 그래프는
+    /// 끄는 동안 화면만 옮기고 놓을 때 여기를 한 번 부른다(챕터 그래프의 <c>MoveEpisodes</c>와 같다).
+    ///
+    /// 없는 노드는 건너뛰고, 실제로 달라진 자리가 없으면 아무것도 적지 않는다(§5-8).
     /// </summary>
-    public void MoveNode(string nodeId, double x, double y)
+    public void MoveNodes(IReadOnlyDictionary<string, (double X, double Y)> positions)
     {
-        if (Project.FindNode(nodeId) is { } node)
+        ArgumentNullException.ThrowIfNull(positions);
+
+        List<(StoryNode Node, double X, double Y)> moves = positions
+            .Select(pair => (Node: Project.FindNode(pair.Key), pair.Value.X, pair.Value.Y))
+            .Where(move => move.Node is not null && (move.Node.Layout.X != move.X || move.Node.Layout.Y != move.Y))
+            .Select(move => (move.Node!, move.X, move.Y))
+            .ToList();
+
+        if (moves.Count == 0)
         {
-            node.Layout.X = x;
-            node.Layout.Y = y;
-            Raise(ProjectChangeKind.Layout);
+            return;
         }
+
+        Mutate(ProjectChangeKind.Layout, () =>
+        {
+            foreach ((StoryNode node, double x, double y) in moves)
+            {
+                node.Layout.X = x;
+                node.Layout.Y = y;
+            }
+        });
     }
 
     // ── 줄에 얹는 대사 논리 ────────────────────────────────────────────────

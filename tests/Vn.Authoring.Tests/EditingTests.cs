@@ -110,17 +110,42 @@ public class EditingTests
     }
 
     [Fact]
-    public void 노드_이동은_되돌리기_기록을_더럽히지_않는다()
+    public void 끌어_놓은_무리는_되돌리기_한_칸으로_돌아온다()
     {
+        // D3 · §6-2 — 그래프는 끄는 동안 화면만 옮기고 놓을 때 MoveNodes를 한 번 부른다.
+        //    예전에는 포인터마다 기록 없이 적어서 끈 자리를 되돌릴 수 없었다.
+        var sample = new Sample();
+        (double X, double Y) dialogue = (sample.Dialogue.Layout.X, sample.Dialogue.Layout.Y);
+        (double X, double Y) target = (sample.TargetB.Layout.X, sample.TargetB.Layout.Y);
+        int notifications = 0;
+        sample.Editor.Changed += (_, _) => notifications++;
+
+        sample.Editor.MoveNodes(new Dictionary<string, (double X, double Y)>
+        {
+            [sample.Dialogue.Id] = (dialogue.X + 400, dialogue.Y + 300),
+            [sample.TargetB.Id] = (target.X + 400, target.Y + 300)
+        });
+
+        Assert.Equal(1, notifications);
+
+        sample.Editor.Undo();
+
+        // 되돌리기는 스냅샷을 새로 푼다 — 노드는 Id로 다시 찾는다(§5-11).
+        StoryNode restoredDialogue = sample.Project.FindNode(sample.Dialogue.Id)!;
+        StoryNode restoredTarget = sample.Project.FindNode(sample.TargetB.Id)!;
+        Assert.Equal(dialogue, (restoredDialogue.Layout.X, restoredDialogue.Layout.Y));
+        Assert.Equal(target, (restoredTarget.Layout.X, restoredTarget.Layout.Y));
+    }
+
+    [Fact]
+    public void 제자리에_놓은_끌기는_되돌리기에_남지_않는다()
+    {
+        // 카드를 눌렀다 놓기만 한 것(선택)이 되돌리기 한 칸을 먹으면 앞선 편집이 한 번 늦게 돌아온다.
         var sample = new Sample();
         string line = sample.Line("처음");
         sample.Editor.SetScriptLineText(sample.Script.Id, line, string.Empty, "고친 뒤");
 
-        // 드래그 한 번에 수십 번 불리는 값이다. 이것이 쌓이면 되돌리기가 쓸모없어진다.
-        for (int step = 0; step < 20; step++)
-        {
-            sample.Editor.MoveNode(sample.Dialogue.Id, step, step);
-        }
+        sample.Editor.MoveNode(sample.Dialogue.Id, sample.Dialogue.Layout.X, sample.Dialogue.Layout.Y);
 
         sample.Editor.Undo();
         Assert.Equal("처음", TextOf(sample, line));
