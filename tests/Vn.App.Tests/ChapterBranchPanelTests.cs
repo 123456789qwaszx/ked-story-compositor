@@ -144,7 +144,7 @@ public sealed class ChapterBranchPanelTests
         var session = new AuthoringSession();
         session.Open(project.ManifestPath);
 
-        var view = new ChapterGraphView { LockProbe = _ => false };
+        var view = new ChapterGraphView();
         var window = new Window { Width = 1400, Height = 800, Content = view };
         window.Show();
         view.Attach(session);

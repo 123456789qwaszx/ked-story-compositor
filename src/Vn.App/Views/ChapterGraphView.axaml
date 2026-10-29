@@ -224,33 +224,16 @@
                               ResizeDirection="Rows"
                               Background="{DynamicResource ThemeBorderLowBrush}" />
 
-                <!-- 배너 + 탭은 한 덩어리다 — 스플리터의 상대가 이 격자(별 행) 하나여야
-                     아래로도 끌린다. 배너가 떴다 사라져도 목록 높이는 안 흔들린다. -->
-                <Grid Grid.Row="2" RowDefinitions="Auto,*">
-
-                <!-- 엑셀이 챕터 파일을 열고 있으면 그 파일의 갱신이 미뤄진다 (2026-08-16 실사례:
-                     챕터 더블클릭으로 엑셀을 연 뒤 툴에서 고쳤는데 파일이 안 따라왔다). 쓰기 전에
-                     화면이 먼저 말한다 — 상태줄 한 줄은 묻힌다. 막는 것이 아니라 알리는 것이라
-                     (2026-10-29 C6) 빨강이 아니라 호박색이다. -->
-                <Border x:Name="LockBanner"
-                        Grid.Row="0"
-                        IsVisible="False"
-                        Background="#FFF4E0"
-                        BorderBrush="#F0C674"
-                        BorderThickness="0,0,0,1"
-                        Padding="10,6">
-                    <TextBlock x:Name="LockBannerText"
-                               FontSize="11"
-                               Foreground="#7A5A00"
-                               TextWrapping="Wrap" />
-                </Border>
+                <!-- 탭은 격자 하나에 담긴다 — 스플리터의 상대가 이 격자(별 행) 하나여야 아래로도 끌린다.
+                     (엑셀 잠금 배너가 이 격자의 윗줄이었다 — 2026-10-29에 걷혔다.) -->
+                <Grid Grid.Row="2" RowDefinitions="*">
 
             <!-- 탭 순서 = 손이 가는 순서다 (2026-08-24 소유자: "편집/화자/챕터가 되도록
                  챕터를 가장 뒤에 보내"). [편집]은 고른 하나를 다루는 자리라 늘 첫째이고,
                  [챕터]는 판 전체의 읽기 전용 표라 가장 뒤다.
                  ⚠ 첫 화면은 `RightTabs.SelectedItem = EditTab`이 정한다 — 순서가 아니다.
                  XAML의 첫 탭에 기대면 순서를 바꾸는 날 조용히 따라 바뀐다. -->
-            <TabControl Grid.Row="1" x:Name="RightTabs" Padding="0">
+            <TabControl Grid.Row="0" x:Name="RightTabs" Padding="0">
                 <TabItem x:Name="EditTab" Header="편집" FontSize="12">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">

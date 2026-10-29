@@ -192,38 +192,16 @@ public sealed class ChapterGraphEditingTests
     });
 
     [Fact]
-    public void 엑셀이_잡고_있어도_툴_편집_창구는_열려_있다() => HeadlessUi.Run(() =>
+    public void 편집이_열려_있다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-24 소유자 — "엑셀이 켜지면 자동으로 잠기면서 편집이 불가능하게 막는게
-        // 좋겠어." 그때는 원본이 엑셀이었다. 2026-10-29(excel-boundary C6)부터 원본은 프로젝트고
-        // 엑셀이 잡은 것은 산출물이라, 배너만 서고 창구는 그대로다 — 그 파일의 갱신만 닫힐 때 따라간다.
-        using var project = new TempProject(SamplePath);
-        (ChapterGraphView view, _) = Show(project, locked: true);
-
-        view.SelectEpisode("main05.02");
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-
-        Assert.True(view.FindControl<Border>("LockBanner")!.IsVisible);
-        Assert.True(view.FindControl<TextBox>("IdBox")!.IsEnabled);
-        Assert.True(view.FindControl<ComboBox>("VisibleCombo")!.IsEnabled);
-        Assert.True(view.FindControl<Button>("AddNextEdgeButton")!.IsVisible);
-
-        var delete = view.FindControl<Button>("DeleteEpisodeButton")!;
-        Assert.True(delete.IsVisible);
-        Assert.True(delete.IsEnabled);
-    });
-
-    [Fact]
-    public void 엑셀이_안_잡고_있으면_편집이_열려_있다() => HeadlessUi.Run(() =>
-    {
-        // ⚠ 이것이 2026-08-24에 뒤집힌 기본값이다 — 전에는 닫힌 채로 시작했다.
+        // ⚠ 이것이 2026-08-24에 뒤집힌 기본값이다 — 전에는 닫힌 채로 시작했다. 2026-10-29부터는
+        //    닫을 길(엑셀 잠금) 자체가 없다.
         using var project = new TempProject(SamplePath);
         (ChapterGraphView view, _) = Show(project);
 
         view.SelectEpisode("main05.02");
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        Assert.False(view.FindControl<Border>("LockBanner")!.IsVisible);
         Assert.True(view.FindControl<TextBox>("IdBox")!.IsEnabled);
         Assert.True(view.FindControl<Button>("AddNextEdgeButton")!.IsVisible);
 
@@ -795,17 +773,12 @@ public sealed class ChapterGraphEditingTests
 
     // ── 기반 ────────────────────────────────────────────────────────────────
 
-    /// <param name="locked">
-    /// 엑셀이 그 챕터를 잡고 있다고 답할 손 (2026-08-24). 배너의 규칙을 보는 데는 손이면 되고,
-    /// 진짜 잠금까지 보는 것은 <c>ChapterEditGateTests</c>다.
-    /// </param>
-    private static (ChapterGraphView View, AuthoringSession Session) Show(
-        TempProject project, bool locked = false)
+    private static (ChapterGraphView View, AuthoringSession Session) Show(TempProject project)
     {
         var session = new AuthoringSession();
         session.Open(project.ManifestPath);
 
-        var view = new ChapterGraphView { LockProbe = _ => locked };
+        var view = new ChapterGraphView();
         var window = new Window { Width = 1400, Height = 800, Content = view };
         window.Show();
         view.Attach(session);

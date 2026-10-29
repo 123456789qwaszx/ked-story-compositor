@@ -55,8 +55,6 @@ public partial class ChapterGraphView : UserControl
     private readonly StatChangeEditor _formStats = new();
 
     private AuthoringSession? _session;
-    private ChapterFolderWatcher? _watcher;
-    private ChapterFolderWatcher? _episodeWatcher;
     private string? _selectedChapterId;
     private bool _updatingCombo;
 
@@ -84,8 +82,8 @@ public partial class ChapterGraphView : UserControl
     /// <summary>챕터 목록이 다시 읽혔다. 왼쪽 패널(MainWindow)이 이걸 듣고 목록을 다시 그린다.</summary>
     internal event Action<IReadOnlyList<ChapterEntry>>? EntriesReloaded;
 
-    /// <summary>폴더를 다시 훑고 감시를 다시 건다. 새 챕터를 만든 직후(폴더가 방금 생겼을 수 있다) 부른다.</summary>
-    internal void RefreshFromDisk() => WatchAndReload();
+    /// <summary>프로젝트를 다시 읽어 판을 다시 세운다. 새 챕터를 만든 직후 부른다.</summary>
+    internal void RefreshFromDisk() => ImportOnceAndReload();
 
     /// <summary>
     /// 판을 실제로 다시 만든 횟수. <see cref="ValidationComputeCount"/>와 같은 종류의 창이다 —
@@ -120,12 +118,6 @@ public partial class ChapterGraphView : UserControl
         _selectedEdgeKey = null;
         HideEdgeForm();
 
-        // 잠금 배너도 이전 챕터의 것이 아니다 (2026-08-24) — 엑셀이 A를 잡고 있을 때 B로
-        // 옮기면 B의 배너는 내려가 있어야 한다. ⚠ 그 물음을 여기 두지 않는다:
-        // 바로 아래 Draw()의 마지막 줄이 이미 묻는다 (RefreshPropertyPanel → RefreshLockBanner).
-        // 한 줄 더 두면 같은 물음이 두 곳에 산다. 대신 규칙을 테스트가 붙든다
-        // (`ChapterEditGateTests.다른_챕터로_옮기면_그_챕터의_잠금을_다시_묻는다`) —
-        // Draw()의 그 줄이 사라지면 여기가 아니라 그 테스트가 먼저 말한다.
         Validate();
         Draw();
 
@@ -323,7 +315,7 @@ public partial class ChapterGraphView : UserControl
         _session = session;
         _sessionChanged = (_, _) => QueueReload();
         session.Changed += _sessionChanged;
-        WatchAndReload();
+        ImportOnceAndReload();
     }
 
     /// <summary>세션 구독을 끊을 수 있도록 들고 있는다 — 람다를 바로 걸면 뗄 수가 없다.</summary>
@@ -354,11 +346,6 @@ public partial class ChapterGraphView : UserControl
 
         _sessionChanged = null;
         _session = null;
-
-        _watcher?.Dispose();
-        _watcher = null;
-        _episodeWatcher?.Dispose();
-        _episodeWatcher = null;
     }
 
     /// <summary>이미 예약된 재읽기가 있는가. 한 번의 UI 차례에 하나만 돈다.</summary>
@@ -368,7 +355,7 @@ public partial class ChapterGraphView : UserControl
     /// 재읽기 예약 — <b>몰려 오는 변경을 한 번으로 합친다</b> (2026-08-18).
     ///
     /// 동기화 한 번이 프로젝트 변경을 수십 개 낸다(에피소드마다 노드·줄이 붙는다).
-    /// 예전에는 그 하나하나가 <see cref="WatchAndReload"/>를 예약했고, 그 한 번이
+    /// 예전에는 그 하나하나가 <see cref="ImportOnceAndReload"/>를 예약했고, 그 한 번이
     /// 챕터 워크북 전부를 다시 열어 읽고 진행 JSON을 쓰고 판을 통째로 다시 그렸다.
     /// 노드 60개에서 <b>123번</b> 돌아 58초가 됐다 — 마지막 한 번 말고는 전부 버려질
     /// 그림이었다.
@@ -388,7 +375,7 @@ public partial class ChapterGraphView : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             _reloadQueued = false;
-            WatchAndReload();
+            ImportOnceAndReload();
         });
     }
 
@@ -508,23 +495,15 @@ public partial class ChapterGraphView : UserControl
         }
     }
 
-    /// <summary>프로젝트가 바뀌면 감시 대상 폴더도 바뀐다.</summary>
-    private void WatchAndReload()
+    /// <summary>
+    /// 프로젝트를 다시 읽는다 — 구판 프로젝트라면 그 전에 한 번 들여온다.
+    ///
+    /// ⛔ 여기서 `chapters/`·`episodes/`의 엑셀 잠금을 듣던 감시자 둘은 2026-10-29에 걷혔다
+    /// (docs/design/two-graphs.md §7 D2). 엑셀 연동을 통째로 걷는 첫 걸음이고, 그 감시자의 테스트가
+    /// Windows 러너에서 거듭 흔들린 것이 순서를 앞당겼다. 미룬 출력은 재읽기 · 편집 · 저장 때 다시 나간다.
+    /// </summary>
+    private void ImportOnceAndReload()
     {
-        string? folder = ChapterLibrary.FolderFor(_session?.ProjectPath);
-        string? episodes = EpisodeLibrary.FolderFor(_session?.ProjectPath);
-
-        if (!string.Equals(_watcher?.Folder, folder, StringComparison.OrdinalIgnoreCase))
-        {
-            StartWatching(folder);
-        }
-
-        // 대본 워크북도 세션의 조정자가 낸다 (C5) — 엑셀이 대본을 놓는 순간도 들어야 미룬 대본을 다시 낸다.
-        if (!string.Equals(_episodeWatcher?.Folder, episodes, StringComparison.OrdinalIgnoreCase))
-        {
-            StartWatchingEpisodes(episodes);
-        }
-
         // 구판 프로젝트라면 여기서 한 번 들어온다 — 그 뒤로 워크북은 산출물이다 (R-F).
         ImportChaptersOnce();
 
@@ -536,65 +515,6 @@ public partial class ChapterGraphView : UserControl
         //    길이었다. 워크북이 원본이던 시절에는 그것이 없으면 글이 영영 안 들어왔지만,
         //    이제 원본은 프로젝트다 — 주워 올 것이 없고, 켤 때마다 워크북을 다시 읽으면
         //    사람이 툴에서 고친 것을 옛 엑셀이 덮는다. 들여오기는 사람이 누른다.
-    }
-
-    /// <summary>
-    /// <summary>
-    /// 엑셀 저장 → 뷰 즉시 갱신 (Gate A). 감시·디바운스는 <see cref="ChapterFolderWatcher"/>가
-    /// 하고, 여기서는 그 알림을 UI 스레드로 옮겨 다시 그리기만 한다.
-    /// </summary>
-    private void StartWatching(string? folder)
-    {
-        _watcher?.Dispose();
-        _watcher = null;
-
-        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
-        {
-            return;
-        }
-
-        // 알림은 워커 스레드에서 온다 — 화면을 만지기 전에 반드시 UI 스레드로 건너간다.
-        _watcher = new ChapterFolderWatcher(
-            folder,
-            // ⛔ 저장 알림에는 <b>아무것도 하지 않는다</b> (R-F · 2026-09-16). 예전에는 여기서
-            //    폴더를 다시 읽어 판을 세웠고, 그것이 곧 워크북이 원본이라는 전제였다.
-            //    이제 그 파일은 우리가 낸 산출물이다 — 되읽으면 방금 낸 것을 되읽는 왕복이다.
-            onChanged: null,
-            debounce: null,
-            // 엑셀이 이 챕터를 <b>열거나 닫는</b> 순간 (2026-08-24). 저장이 아니므로 다시
-            // 읽지 않는다 — 내용은 그대로다. 바뀐 것은 <b>툴이 쓸 수 있는가</b>뿐이라
-            // 잠금만 다시 묻는다. 이 알림이 없으면 툴은 쓰기가 거부되고 나서야 알았다.
-            //
-            // ⚠ 이 알림이 <b>유일한 길은 아니다.</b> 엑셀이 잠금 파일을 지우는 것과 파일
-            // 핸들을 놓는 것 사이에 틈이 있으면(디바운스 250ms로도 못 덮는 경우) 여기서
-            // 물은 답이 아직 "잠김"일 수 있다. 그래도 갇히지 않는다: 그리기·패널 갱신이
-            // 모두 RefreshLockBanner를 지나므로 다음 클릭 한 번이면 풀린다.
-            onLockChanged: () => Dispatcher.UIThread.Post(
-                () => UiGuard.Run(_session, "엑셀 잠금 확인", RefreshLockState)));
-    }
-
-    /// <summary>
-    /// `episodes/`의 <b>잠금만</b> 듣는다 (C5 · 2026-10-29). 저장은 듣지 않는다 — 2026-09-16(R-D)에 걷힌
-    /// `SyncEpisodesIfDiskChanged`가 그것이었고, 그것이 곧 <b>워크북이 원본이라는 전제</b>였다. 대본은
-    /// [대본 가져오기] 한 번으로 들어온다(§5.2). 되살리지 말 것 — 되살리는 순간 툴과 엑셀이 다시 서로를
-    /// 덮어쓴다. 여기서 듣는 것은 "엑셀이 대본 파일을 놓았으니 미룬 출력을 다시 내라"뿐이다.
-    /// </summary>
-    private void StartWatchingEpisodes(string? folder)
-    {
-        _episodeWatcher?.Dispose();
-        _episodeWatcher = null;
-
-        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
-        {
-            return;
-        }
-
-        _episodeWatcher = new ChapterFolderWatcher(
-            folder,
-            onChanged: null,
-            debounce: null,
-            onLockChanged: () => Dispatcher.UIThread.Post(
-                () => UiGuard.Run(_session, "엑셀 잠금 확인", RefreshLockState)));
     }
 
     // ⛔ `ReloadIfDiskChanged`·`IfDiskChanged`·`DiskFingerprint`는 2026-09-16에 걷혔다
@@ -1167,7 +1087,7 @@ public partial class ChapterGraphView : UserControl
         AutoExport();        // 진행 JSON은 사람 손을 기다리지 않는다 (2026-08-17)
         Validate();
         Draw();              // 못 나갔으면 그 결론이 검증 보고 맨 위에 선다
-        RefreshLockState(); // 엑셀을 열거나 닫으면 그 사실이 여기로 온다
+        RetryDeferredOutput();
 
         // ⛔ 디스크 지문(`_diskFingerprint`)은 2026-09-16에 걷혔다 (R-F). "파일이 정말
         //    바뀌었나"는 <b>파일을 다시 읽던 시절</b>의 물음이고, 이제 판은 프로젝트에서 온다.
@@ -2619,7 +2539,6 @@ public partial class ChapterGraphView : UserControl
         EdgePanel.IsVisible = edge is not null;
         BranchPanel.IsVisible = branch is not null;
         NoSelectionText.IsVisible = episode is null && edge is null && branch is null;
-        RefreshLockBanner();
 
         if (branch is not null)
         {
@@ -2695,49 +2614,21 @@ public partial class ChapterGraphView : UserControl
     // 2026-08-24 소유자 — "저걸 툴사용자가 체크하는 게 아니라, 엑셀이 켜지면 자동으로
     // 잠기면서 편집이 불가능하게 막는게 좋겠어."
     //
-    // 그래서 체크를 없앴다. 문을 잠그는 것은 <b>사실 하나</b>다: 엑셀이 이 챕터 파일을
-    // 잡고 있는가. 체크는 그 사실의 사본이었고, 사본이라 어긋날 수 있었다 — 체크가
-    // 풀려 있는데 엑셀이 열려 있으면 툴은 "편집 가능"인 척하다 쓰기에서 거부됐다.
-    // 이제 사실은 한 곳에만 산다.
+    // 그래서 체크를 없앴고(그때는 잠금이 곧 편집 가능 여부였다), 2026-10-29에는 그 잠금도
+    // 편집을 막지 않게 됐다(VnTool C6). 엑셀 잠금을 듣는 감시자와 배너는 같은 날 걷혔다.
 
     /// <summary>콤보·목록을 프로그램이 채우는 중 — 자동 저장 억제.</summary>
     private bool _fillingPanel;
 
     /// <summary>
-    /// 엑셀이 잡고 있는지 묻는 손. 진짜 잠긴 파일은 <b>쓸 수도 없어서</b>, 배너의 규칙을 실제
-    /// 잠금으로는 검증하기 어렵다 — 검증이 이 손을 갈아끼운다.
-    /// </summary>
-    internal Func<string?, bool> LockProbe { get; set; } = ChapterWorkbookWriter.IsLockedByAnotherApp;
-
-    /// <summary>
-    /// 엑셀이 이 챕터를 열고 있으면 배너로 말한다 (2026-08-16 실사례) — 그동안 그 파일은
-    /// 갱신되지 않으므로, 쓰고 나서가 아니라 <b>쓰기 전에</b> 보여야 한다.
+    /// 미룬 출력을 다시 민다 — 재읽기와 편집 뒤에 부른다.
     ///
-    /// ⛔ <b>말하는 데서 그친다</b> (2026-10-29 · `docs/plans/excel-boundary.md` C6 · R1). 2026-08-24부터
-    /// 이 답이 곧 편집 가능 여부였다(<c>ToolEditable</c>) — 원본이 엑셀이던 시절의 규칙이다. 원본이
-    /// 프로젝트가 된 뒤로 엑셀이 잡은 것은 <b>산출물</b>이고, 편집은 프로젝트에 들어가며 그 파일의
-    /// 갱신만 미뤄졌다가 닫힐 때 따라간다(<see cref="WorkbookOutput.Retry"/>). 잠근 채 편집을 막으면
-    /// 산출물의 상태가 원본의 편집 권한을 정하는 꼴이다.
+    /// ⛔ <b>미룬 것을 잊지 않는다</b> (§5.3). 엑셀이 잡고 있어 못 낸 워크북은 조정자가 들고 있다가
+    /// 여기서 다시 낸다. 미룬 것이 없으면 파일을 열지 않으므로 값이 없다. (2026-10-29까지는 엑셀 잠금
+    /// 감시자가 이 자리를 불렀다 — 걷혔다.)
     /// </summary>
-    private void RefreshLockBanner()
+    private void RetryDeferredOutput()
     {
-        bool locked = LockProbe(SelectedChapterPath);
-
-        LockBanner.IsVisible = locked;
-        LockBannerText.Text = locked
-            ? $"⚠ 엑셀이 '{_selectedChapterId}.xlsx'를 열고 있습니다 — 편집은 계속되고, " +
-              "이 파일의 갱신은 엑셀에서 닫힐 때 따라갑니다."
-            : string.Empty;
-    }
-
-    /// <summary>
-    /// 밖에서 들어오는 길(다시 읽기·쓰기 결과·감시자) — 미룬 출력을 먼저 밀고 배너를 다시 묻는다.
-    /// </summary>
-    private void RefreshLockState()
-    {
-        // ⛔ <b>미룬 것을 잊지 않는다</b> (§5.3). 잠금이 움직였다는 신호마다 미룬 출력을 다시 민다 —
-        //    고른 챕터의 잠금이 그대로여도 다른 챕터·대본 파일을 엑셀이 놓았을 수 있다(C5).
-        //    미룬 것이 없으면 파일을 열지 않으므로 값이 없다.
         if (_session is { } session)
         {
             WorkbookEmitRun caught = session.WorkbookOutput.Retry(
@@ -2746,13 +2637,9 @@ public partial class ChapterGraphView : UserControl
             if (caught.Written.Count > 0)
             {
                 session.SetStatus(
-                    $"엑셀이 닫혀 미뤄 둔 워크북 {caught.Written.Count}개를 다시 냈습니다.");
+                    $"미뤄 둔 워크북 {caught.Written.Count}개를 다시 냈습니다.");
             }
         }
-
-        // ⚠ 잠금이 그대로면 아무 말도 하지 않는다 — 이 자리는 다시 그리기·쓰기 결과·감시자
-        //    알림마다 불리므로, 매번 말하면 같은 말이 끝없이 흐른다.
-        RefreshLockBanner();
     }
 
     /// <summary>표시·해금 콤보의 자동 저장 — 고르는 순간 그 셀 하나가 써진다.</summary>
@@ -4054,8 +3941,7 @@ public partial class ChapterGraphView : UserControl
         // 잘된 일은 조용하다 — 못 냈을 때만 그 사실이 성공 문구 뒤에 붙는다.
         _session?.SetStatus(success + EmitSelectedChapter().Notice());
 
-        // 못 냈다면 대개 엑셀이 잡고 있어서다 — 그 사실을 배너로도 세운다(상태줄은 묻힌다).
-        RefreshLockState();
+        RetryDeferredOutput();
     }
 
     /// <summary>
@@ -4080,7 +3966,7 @@ public partial class ChapterGraphView : UserControl
     private void Report(ChapterWriteResult result, string success)
     {
         _session?.SetStatus(result.Written ? success : result.Failure!);
-        RefreshLockState();
+        RetryDeferredOutput();
     }
 
     /// <summary>간선 하나를 가리키는 표식. 화면 검증이 이 이름으로 간선을 찾는다.</summary>
