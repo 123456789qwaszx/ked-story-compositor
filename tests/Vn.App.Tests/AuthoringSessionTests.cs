@@ -528,12 +528,13 @@ public class AuthoringSessionTests
     }
 
     [Fact]
-    public void 다른_폴더로_저장하면_챕터_대본_정의_에셋이_함께_이사한다()
+    public void 다른_폴더로_저장하면_정의_에셋이_함께_이사하고_챕터는_매니페스트에_실려_간다()
     {
         // 2026-08-21 소유자 보고: [다른 이름으로…]로 새 폴더에 저장해 "새 프로젝트"를
-        // 만들면, 판·작가 화자는 매니페스트에 실려 따라오는데 챕터 워크북·대본·정의는
-        // 옛 폴더에 남아 프로젝트가 찢어졌다 — 연출 그래프에는 옛 챕터의 판이 보이는데
-        // 챕터 목록은 비어 있었다. 이제 규약 데이터가 함께 복사된다.
+        // 만들면, 판·작가 화자는 매니페스트에 실려 따라오는데 정의·에셋은 옛 폴더에 남아
+        // 프로젝트가 찢어졌다. 이제 폴더 규약 데이터(정의·에셋)가 함께 복사된다.
+        // (2026-10-29 · D2: 챕터 워크북·대본 폴더를 함께 옮기던 몫은 엑셀 연동과 함께 걷혔다 —
+        // 챕터와 대사는 매니페스트에 산다.)
         string first = TempDirectory();
         string second = TempDirectory();
 
@@ -541,34 +542,36 @@ public class AuthoringSessionTests
         {
             var session = new AuthoringSession();
             session.Save(Path.Combine(first, "project.vnproject.json"));
+            session.Editor.EnsureChapter("ch01");
 
-            Directory.CreateDirectory(Path.Combine(first, "chapters"));
-            File.WriteAllText(Path.Combine(first, "chapters", "ch01.xlsx"), "챕터 워크북");
-            File.WriteAllText(Path.Combine(first, "chapters", "~$ch01.xlsx"), "엑셀 잠금 임시");
-            Directory.CreateDirectory(Path.Combine(first, "episodes", "ch01"));
-            File.WriteAllText(Path.Combine(first, "episodes", "ch01", "ep01.xlsx"), "대본");
             File.WriteAllText(Path.Combine(first, "game.definition.json"),
                 """{"variables":[{"name":"trust","type":"number"}],"speakers":[]}""");
             File.WriteAllBytes(Path.Combine(first, "assets", "backgrounds", "room.png"), [1]);
+            File.WriteAllBytes(Path.Combine(first, "assets", "backgrounds", "hall.png"), [1]);
 
             // 새 자리에 이미 있는 파일은 불가침이다.
-            Directory.CreateDirectory(Path.Combine(second, "chapters"));
-            File.WriteAllText(Path.Combine(second, "chapters", "ch01.xlsx"), "선주민");
+            Directory.CreateDirectory(Path.Combine(second, "assets", "backgrounds"));
+            File.WriteAllBytes(Path.Combine(second, "assets", "backgrounds", "hall.png"), [2]);
 
-            session.Save(Path.Combine(second, "moved.vnproject.json"));
+            string moved = Path.Combine(second, "moved.vnproject.json");
+            session.Save(moved);
 
-            Assert.Equal("선주민", File.ReadAllText(Path.Combine(second, "chapters", "ch01.xlsx")));
-            Assert.True(File.Exists(Path.Combine(second, "episodes", "ch01", "ep01.xlsx")));
             Assert.True(File.Exists(Path.Combine(second, "assets", "backgrounds", "room.png")));
-            Assert.False(File.Exists(Path.Combine(second, "chapters", "~$ch01.xlsx")));
+            Assert.Equal(new byte[] { 2 }, File.ReadAllBytes(Path.Combine(second, "assets", "backgrounds", "hall.png")));
 
             // 이사해 온 정의를 곧바로 읽는다 — 빈 뼈대가 먼저 깔려 진짜 정의를 막으면 안 된다.
             Assert.Contains(session.Definition.Variables, variable =>
                 string.Equals(variable.Name, "trust", StringComparison.Ordinal));
             Assert.Contains("함께 복사했습니다", session.StatusMessage);
 
+            // 챕터는 폴더가 아니라 매니페스트에 실려 따라온다.
+            var reopened = new AuthoringSession();
+            reopened.Open(moved);
+            Assert.NotNull(reopened.Editor.FindChapter("ch01"));
+
             // 복사이지 이동이 아니다 — 옛 매니페스트는 계속 그 폴더에서 산다.
-            Assert.True(File.Exists(Path.Combine(first, "chapters", "ch01.xlsx")));
+            Assert.True(File.Exists(Path.Combine(first, "assets", "backgrounds", "room.png")));
+            Assert.True(File.Exists(Path.Combine(first, "game.definition.json")));
 
             // 같은 폴더 재저장은 이사가 아니다.
             session.Save();

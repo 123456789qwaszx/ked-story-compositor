@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -7,15 +6,13 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
-using Vn.Authoring.Model;
 using Vn.Authoring.Editing;
-using Vn.Authoring.Serialization;
 
 namespace Vn.App.Tests;
 
 /// <summary>
 /// 챕터 v2 6단계 — "클릭이 안 먹힌다" 회귀 검증. 헤드리스 창에 진짜 포인터 이벤트를 넣어
-/// 카드 선택·더블클릭 열기·간선 라벨 클릭·빈 공간 해제·드래그 커밋을 화면 없이 못 박는다.
+/// 카드 선택·간선 라벨 클릭·빈 공간 해제·드래그 커밋을 화면 없이 못 박는다.
 /// (OS 전역 입력 주입이 아니다 — 이 창 안의 이벤트일 뿐, 커서는 움직이지 않는다.)
 ///
 /// 원래 결함: 카드의 PointerPressed가 선택하며 캔버스를 통째로 다시 만들어, 방금 누른 카드가
@@ -27,13 +24,10 @@ public sealed class ChapterGraphClickTests
     private const double CardWidth = 190;
     private const double CardHeight = 74;
 
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
-
     [Fact]
     public void 카드를_클릭하면_캔버스를_다시_만들지_않고_선택된다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, _) = Show(project);
 
         Border before = Card(canvas, "main05.02");
@@ -49,49 +43,13 @@ public sealed class ChapterGraphClickTests
         Assert.Equal(new Avalonia.Thickness(2.4), before.BorderThickness);
     });
 
-    [Fact]
-    public void 카드_더블클릭이_에피소드_워크북을_연다() => HeadlessUi.Run(() =>
-    {
-        using var project = new TempProject(SamplePath);
-        (Window window, Canvas canvas, ChapterGraphView view, _) = Show(project);
-
-        var opened = new List<string>();
-        view.OpenWorkbookFile = opened.Add;
-        view.WorkbookHandlerProbe = () => @"C:\Program Files\Microsoft Office\EXCEL.EXE";
-
-        Avalonia.Point center = CardCenter(window, canvas, "main05.02");
-        Click(window, center);
-        Click(window, center);
-
-        Assert.Contains(opened, path => path.Contains("main05.02"));
-    });
-
-    [Fact]
-    public void 기본_앱이_스프레드시트가_아니면_열지_않고_폴더를_보여준다() => HeadlessUi.Run(() =>
-    {
-        // 실사례 — .xlsx가 챗지피티에 연결된 기계에서 더블클릭이 챗지피티를 열었다.
-        // 편집할 수 없는 앱에 워크북을 던지지 않는다: 폴더에서 보여 주고 사유를 말한다.
-        using var project = new TempProject(SamplePath);
-        (Window window, Canvas canvas, ChapterGraphView view, _) = Show(project);
-
-        var opened = new List<string>();
-        var revealed = new List<string>();
-        view.OpenWorkbookFile = opened.Add;
-        view.RevealInFolder = revealed.Add;
-        view.WorkbookHandlerProbe = () => @"C:\Users\me\AppData\Local\ChatGPT\ChatGPT.exe";
-
-        Avalonia.Point center = CardCenter(window, canvas, "main05.02");
-        Click(window, center);
-        Click(window, center);
-
-        Assert.Empty(opened);
-        Assert.Contains(revealed, path => path.Contains("main05.02"));
-    });
+    // ⛔ `카드_더블클릭이_에피소드_워크북을_연다` · `기본_앱이_스프레드시트가_아니면_열지_않고_폴더를_보여준다`는
+    //    2026-10-29(D2)에 걷혔다 — 엑셀 연동이 사라져 카드 더블클릭이 열 워크북이 없다.
 
     [Fact]
     public void 간선_라벨_클릭이_간선을_선택한다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, _) = Show(project);
 
         // ⛔ v4까지 이 문구는 <b>카드 오른변 안쪽</b>의 포트 문구였다. v5에서 포트가 아래변으로
@@ -112,7 +70,7 @@ public sealed class ChapterGraphClickTests
     [Fact]
     public void 빈_공간_클릭이_선택을_푼다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, _) = Show(project);
 
         view.SelectEpisode("main05.02");
@@ -129,7 +87,7 @@ public sealed class ChapterGraphClickTests
     public void 카드를_끌면_그_자리가_적히고_되돌리기_한_번으로_돌아온다() => HeadlessUi.Run(() =>
     {
         // v4 (2026-09-18 소유자) — 자리의 주인이 깊이 배치에서 사람으로 넘어왔다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, AuthoringSession session) =
             Show(project);
 
@@ -160,7 +118,7 @@ public sealed class ChapterGraphClickTests
     public void 누르기만_한_카드는_자리를_안_적는다() => HeadlessUi.Run(() =>
     {
         // 고르기만 해도 되돌리기가 쌓이면 Ctrl+Z가 아무 일도 안 하는 것처럼 보인다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, AuthoringSession session) =
             Show(project);
 
@@ -176,9 +134,9 @@ public sealed class ChapterGraphClickTests
     [Fact]
     public void 한_점에_포개진_챕터는_빌린_자리로_그리고_첫_옮기기에_적는다() => HeadlessUi.Run(() =>
     {
-        // v3까지 자리는 그릴 때마다 계산됐으므로 X·Y를 아무도 안 채웠다 — 엑셀에서 들여온
+        // v3까지 자리는 그릴 때마다 계산됐으므로 X·Y를 아무도 안 채웠다 — 그 시절에 선
         // 챕터가 정확히 이 모양이다. 그대로 그리면 판이 카드 한 장처럼 보인다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, AuthoringSession session) =
             Show(project);
 
@@ -201,7 +159,7 @@ public sealed class ChapterGraphClickTests
         Drag(window, CardCenter(window, canvas, "main05.02"), new Vector(40, 40));
 
         Assert.False(ChapterBranchPlanner.NeedsSeeding(
-            session.Editor.FindChapter("ch05")!.ToGraphModel("ch05.xlsx", session.Definition)));
+            session.Editor.FindChapter("ch05")!.ToGraphModel("ch05", session.Definition)));
 
         // ④ 한 번의 변경이라 한 번에 물러난다.
         session.Editor.Undo();
@@ -213,7 +171,7 @@ public sealed class ChapterGraphClickTests
     [Fact]
     public void 자동_정렬은_한_번의_되돌리기다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Window window, Canvas canvas, ChapterGraphView view, AuthoringSession session) =
             Show(project);
 
@@ -293,29 +251,21 @@ public sealed class ChapterGraphClickTests
         return (window, canvas, view, session);
     }
 
+    /// <summary>견본 챕터(ch05 복도)를 든 임시 프로젝트.</summary>
     private sealed class TempProject : IDisposable
     {
-        private readonly string _directory;
+        private readonly string _directory = Path.Combine(
+            Path.GetTempPath(), "vn-chapter-click", Guid.NewGuid().ToString("N"));
 
         /// <summary>이 테스트가 띄운 화면. 폴더를 지우기 <b>전에</b> 닫는다.</summary>
         public OpenChapterViews Ui { get; } = new();
 
-        public TempProject(string samplePath)
+        public TempProject()
         {
-            _directory = Path.Combine(
-                Path.GetTempPath(), "vn-chapter-click", Guid.NewGuid().ToString("N"));
-
-            Directory.CreateDirectory(Path.Combine(_directory, ChapterLibrary.FolderName));
-            File.Copy(samplePath, ChapterPath);
-
-            ManifestPath = Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
-            ProjectStore.Save(ManifestPath, new StoryProject { Title = "클릭 검증" });
+            ManifestPath = SampleProject.Corridor(_directory, "클릭 검증");
         }
 
         public string ManifestPath { get; }
-
-        public string ChapterPath =>
-            Path.Combine(_directory, ChapterLibrary.FolderName, "ch05.xlsx");
 
         public void Dispose()
         {

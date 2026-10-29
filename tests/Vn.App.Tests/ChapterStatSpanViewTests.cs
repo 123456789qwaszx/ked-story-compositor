@@ -3,6 +3,7 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Serialization;
 
@@ -22,31 +23,26 @@ public sealed class ChapterStatSpanViewTests : IDisposable
 
     private string ManifestPath => Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
 
-    private string ChapterPath => Path.Combine(_directory, ChapterLibrary.FolderName, "ch01.xlsx");
+    /// <summary>판을 짓는 손. 화면을 띄울 때(<see cref="Render"/>) 그때 모습 그대로 저장한다.</summary>
+    private readonly ProjectEditor _editor = new(new StoryProject { Title = "스탯 폭 검증" });
 
     public ChapterStatSpanViewTests()
     {
-        Directory.CreateDirectory(_directory);
-
-        string chapters = Path.Combine(_directory, ChapterLibrary.FolderName);
-        ChapterWorkbookWriter.EnsureChapterWorkbook(chapters, "ch01", [("trust", "신뢰"), ("anger", "분노")]);
+        ChapterDocument chapter = _editor.EnsureChapter("ch01");
+        chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        chapter.Stats.Add(new ChapterStat("anger", "분노", 0, 0, 10, SourceRow: 0));
 
         // ep1 ─(+1)─ 싼길 ─┐
         //   └─(+3)─ 비싼길 ─┴─ 합류      (분노는 챕터 어디에서도 움직이지 않는다)
-        ChapterWorkbookWriter.AddEpisode(ChapterPath, "ep1", title: "", 0, 0);
-        ChapterWorkbookWriter.AddEpisode(ChapterPath, "싼길", title: "", 1, 0);
-        ChapterWorkbookWriter.AddEpisode(ChapterPath, "비싼길", title: "", 1, 1);
-        ChapterWorkbookWriter.AddEpisode(ChapterPath, "합류", title: "", 2, 0);
+        _editor.AddEpisode("ch01", "ep1", title: "", 0, 0);
+        _editor.AddEpisode("ch01", "싼길", title: "", 1, 0);
+        _editor.AddEpisode("ch01", "비싼길", title: "", 1, 1);
+        _editor.AddEpisode("ch01", "합류", title: "", 2, 0);
 
-        ChapterWorkbookWriter.AddEdge(ChapterPath, "ep1", "싼길");
-        ChapterWorkbookWriter.AddEdge(ChapterPath, "ep1", "비싼길");
-        ChapterWorkbookWriter.AddEdge(ChapterPath, "싼길", "합류");
-        ChapterWorkbookWriter.AddEdge(ChapterPath, "비싼길", "합류");
-
-        ChapterWorkbookWriter.UpdateEdge(ChapterPath, "ep1", "싼길", statChanges: "trust +1");
-        ChapterWorkbookWriter.UpdateEdge(ChapterPath, "ep1", "비싼길", statChanges: "trust +3");
-
-        ProjectStore.Save(ManifestPath, new StoryProject { Title = "스탯 폭 검증" });
+        _editor.AddEdge("ch01", "ep1", "싼길", statChanges: "trust +1");
+        _editor.AddEdge("ch01", "ep1", "비싼길", statChanges: "trust +3");
+        _editor.AddEdge("ch01", "싼길", "합류");
+        _editor.AddEdge("ch01", "비싼길", "합류");
     }
 
     public void Dispose()
@@ -98,8 +94,8 @@ public sealed class ChapterStatSpanViewTests : IDisposable
     {
         // 2026-08-17 소유자 보고 — 증감을 아직 안 적은 판에서 카드가 비어 있으면 기능이
         // 없는 것처럼 읽힌다. 거를 것이 없을 때는 거르지 않는다.
-        ChapterWorkbookWriter.UpdateEdge(ChapterPath, "ep1", "싼길", statChanges: string.Empty);
-        ChapterWorkbookWriter.UpdateEdge(ChapterPath, "ep1", "비싼길", statChanges: string.Empty);
+        _editor.UpdateEdge("ch01", "ep1", "싼길", statChanges: string.Empty);
+        _editor.UpdateEdge("ch01", "ep1", "비싼길", statChanges: string.Empty);
 
         Canvas canvas = Render();
 
@@ -122,6 +118,9 @@ public sealed class ChapterStatSpanViewTests : IDisposable
 
     private Canvas Render()
     {
+        Directory.CreateDirectory(_directory);
+        ProjectStore.Save(ManifestPath, _editor.Project);
+
         var session = new AuthoringSession();
         session.Open(ManifestPath);
 

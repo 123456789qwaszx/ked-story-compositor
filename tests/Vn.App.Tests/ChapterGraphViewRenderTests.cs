@@ -7,12 +7,12 @@ using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
 using Vn.Authoring.Model;
-using Vn.Authoring.Serialization;
+using Vn.Authoring.Tests.Fixtures;
 
 namespace Vn.App.Tests;
 
 /// <summary>
-/// Gate A 1번 — "견본 워크북을 프로젝트에 넣으면 그래프가 엑셀에 적힌 X·Y 위치와 간선 관계
+/// Gate A 1번 — "견본 챕터를 든 프로젝트를 열면 그래프가 챕터에 적힌 X·Y 위치와 간선 관계
 /// 그대로 그려진다"를 <b>사람 눈 없이</b> 닫는다.
 ///
 /// 창을 띄우고 좌표를 찍어 클릭하는 방식은 쓰지 않는다 — 창이 앞으로 올라왔는지 확인할 수 없어
@@ -24,13 +24,10 @@ public sealed class ChapterGraphViewRenderTests
     private const double CardWidth = 190;
     private const double CardHeight = 74;
 
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
-
     [Fact]
     public void 견본_챕터가_6노드_5간선으로_그려진다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         Assert.Equal(6, NodeCards(canvas).Count);
@@ -46,14 +43,14 @@ public sealed class ChapterGraphViewRenderTests
     public void 그려진_노드는_에피소드가_진_자리에_선다() => HeadlessUi.Run(() =>
     {
         // ⛔ <b>v3까지 이 테스트의 이름은 「깊이 열에 선다」였다</b> — 판을 그릴 때마다
-        //    깊이 배치를 다시 계산했고, 엑셀의 X·Y는 내보내기에나 쓰였다. v4(2026-09-18
+        //    깊이 배치를 다시 계산했고, 챕터의 X·Y는 내보내기에나 쓰였다. v4(2026-09-18
         //    소유자: *"자유롭게 노드의 위치를 조절할 수 있게"*)가 그것을 뒤집었다:
         //    이제 <b>사람이 적어 둔 자리 그대로</b> 선다.
         //
-        //    그래서 여기 적힌 숫자는 배치 산식이 아니라 <b>견본 워크북의 X 열</b>이다:
+        //    그래서 여기 적힌 숫자는 배치 산식이 아니라 <b>견본 챕터에 적힌 X</b>다:
         //    01=0 · 02=220 · A=440 · 03=440 · end=680. 깊이 배치라면 03은 660(A 다음 열)에
         //    섰을 텐데, 사람은 A와 같은 열에 두었고 이제 그 뜻이 이긴다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         IReadOnlyDictionary<string, (double X, double Y)> placed = Placements(canvas);
@@ -63,11 +60,11 @@ public sealed class ChapterGraphViewRenderTests
         Assert.Equal(440, placed["main05.03"].X - placed["main05.01"].X);
         Assert.Equal(680, placed["main05.end"].X - placed["main05.01"].X);
 
-        // 세로도 워크북 그대로다 — A는 본줄 위(−120), 03은 아래(+120).
+        // 세로도 견본 그대로다 — A는 본줄 위(−120), 03은 아래(+120).
         Assert.Equal(-120, placed["branch05.02A"].Y - placed["main05.01"].Y);
         Assert.Equal(120, placed["main05.03"].Y - placed["main05.01"].Y);
 
-        // 간선 없는 부착 노드는 본줄 아래에 따로 선다 (워크북이 그렇게 적어 두었다).
+        // 간선 없는 부착 노드는 본줄 아래에 따로 선다 (견본이 그렇게 적어 두었다).
         Assert.True(
             placed["attach05.02s"].Y > placed["main05.01"].Y,
             $"attach05.02s(Y={placed["attach05.02s"].Y})는 본류(Y={placed["main05.01"].Y}) 아래여야 한다");
@@ -76,10 +73,10 @@ public sealed class ChapterGraphViewRenderTests
     [Fact]
     public void 음수_자리도_판_안으로_들어온다() => HeadlessUi.Run(() =>
     {
-        // ⛔ v3의 깊이 배치는 언제나 0 이상을 냈지만 손으로 적은 워크북은 아니다 —
+        // ⛔ v3의 깊이 배치는 언제나 0 이상을 냈지만 사람이 적은 자리는 아니다 —
         //    견본의 `branch05.02A`가 Y=−120이다. 그대로 그리면 캔버스 위쪽 바깥에 서고,
         //    스크롤이 닿지 않아 <b>아예 못 만지는 카드</b>가 된다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         IReadOnlyDictionary<string, (double X, double Y)> placed = Placements(canvas);
@@ -95,9 +92,9 @@ public sealed class ChapterGraphViewRenderTests
     });
 
     [Fact]
-    public void 그려진_간선이_엑셀의_관계_그대로다() => HeadlessUi.Run(() =>
+    public void 그려진_간선이_챕터의_관계_그대로다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         string[] drawn = canvas.Children.OfType<Line>()
@@ -126,7 +123,7 @@ public sealed class ChapterGraphViewRenderTests
         //    분기가 오른쪽)였고, 소유자가 그것을 짚었다 (2026-09-18): *"여기는 그게 반대로
         //    분기가 아래, 선택지가 우측이다보니 헷갈립니다."* 판이 둘인데 같은 것이 다른
         //    변에서 나가면 손이 매번 헷갈린다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         IReadOnlyDictionary<string, (double X, double Y)> placed = Placements(canvas);
@@ -148,7 +145,7 @@ public sealed class ChapterGraphViewRenderTests
         // 2026-08-23 소유자 보고 — "간선을 수직선으로 그어주다보니 … 선이 완전히 겹쳐
         // 어디로 이어지는지 확인하기가 힘들어". 예전에는 포트 간선이 직교 3구간이었고
         // 꺾이는 x가 출발·도착의 중간이라, 같은 열로 가는 길들이 세로 구간을 공유했다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         foreach (string tag in new[]
@@ -168,7 +165,7 @@ public sealed class ChapterGraphViewRenderTests
     {
         // 이것이 소유자가 실제로 겪은 문제다. 겹치지 않는다는 말의 뜻은 "기울기가 다르다"이고,
         // 직선이면 그것이 저절로 성립한다 — 포트마다 출발 y가 다르고 도착마다 자리가 다르다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         (double Dx, double Dy)[] directions = canvas.Children.OfType<Line>()
@@ -192,13 +189,12 @@ public sealed class ChapterGraphViewRenderTests
     public void 도달_불가가_원인_조건과_함께_검증_보고에_선다() => HeadlessUi.Run(() =>
     {
         // 규칙 개정 — 도달성 증명(G7)이 뷰에 붙으면서, 견본 챕터의 실제 도달 불가가
-        // 화면에 뜬다. 에피소드 워크북이 없으면 스탯이 오르지 않으므로 신뢰높음(trust >= 3)이
+        // 화면에 뜬다. 견본에는 trust를 올리는 간선이 없으므로 신뢰높음(trust >= 3)이
         // 영원히 닫히고 branch05.02A에 닿을 수 없다 — 저작 시점에 잡히는 것이 이 레이어의 목적이다.
-        using var project = new TempProject(SamplePath);
-
-        // 대본은 채워 둔다 — 빈 노드는 2026-08-25부터 그 자체가 오류라, 안 채우면
-        // 이 테스트가 재려는 도달 불가 한 건이 그 더미에 묻힌다.
-        EpisodeWorkbookFixture.Fill(project.EpisodesFolder);
+        //
+        // 빈 노드(줄이 하나도 없는 대사 노드)는 2026-08-25부터 그 자체가 오류다. 열 때 선
+        // 카드는 빈 줄 하나를 들고 서므로 그 더미가 쌓이지 않는다 — 오류는 도달 불가 한 건뿐이다.
+        using var project = new TempProject();
         (Canvas canvas, ChapterGraphView view) = Render(project);
 
         var expander = view.FindControl<Expander>("DiagnosticsExpander")!;
@@ -212,7 +208,7 @@ public sealed class ChapterGraphViewRenderTests
         Assert.Contains("🔴 오류 1", (string)expander.Header!);
 
         // 경고 4건 — 스탯이 game.definition.json(기본값은 variables가 비어 있다)에 없다는
-        // 것(`스탯` 시트가 "읽기전용 미러"라는 규격 그대로의 보고)이 스탯 수만큼이다.
+        // 것이 스탯 수만큼이다.
         // v12 — 문구 없는 간선이 사라지면서 그 경고 하나가 빠졌다(견본이 문구를 갖는다).
         // 2026-08-25 — `복도지남` 깃발이 늘면서 미러 경고가 하나 더 는다(스탯 3 → 4).
         Assert.Contains("🟡 경고 4", (string)expander.Header!);
@@ -239,7 +235,7 @@ public sealed class ChapterGraphViewRenderTests
     public void 노드_카드는_배치_뒤_실제_크기를_갖는다() => HeadlessUi.Run(() =>
     {
         // "그려졌다"의 최소 조건 — 배치가 돌아 카드가 0×0이 아니어야 한다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (Canvas canvas, _) = Render(project);
 
         Assert.All(NodeCards(canvas), card =>
@@ -252,16 +248,16 @@ public sealed class ChapterGraphViewRenderTests
     });
 
     [Fact]
-    public void 챕터_워크북이_없으면_어디에_넣으라고_알려_준다() => HeadlessUi.Run(() =>
+    public void 챕터가_없으면_첫_챕터를_만들라고_알려_준다() => HeadlessUi.Run(() =>
     {
-        using var project = new TempProject(samplePath: null);
+        using var project = new TempProject(withSample: false);
         (Canvas canvas, ChapterGraphView view) = Render(project);
 
         var empty = view.FindControl<TextBlock>("EmptyText")!;
 
         Assert.Empty(canvas.Children);
         Assert.True(empty.IsVisible);
-        Assert.Contains(ChapterLibrary.FolderName, empty.Text);
+        Assert.Contains("＋ 챕터", empty.Text);
 
         // 프로젝트는 있는데 챕터가 없는 첫 화면 — 안내문 아래 판 한가운데에 [＋ 챕터]가
         // 함께 선다. [새 프로젝트]는 아니다: 프로젝트는 이미 있다.
@@ -300,11 +296,10 @@ public sealed class ChapterGraphViewRenderTests
     public void 빈_챕터를_열면_가운데_에피소드_추가_단추가_선다() => HeadlessUi.Run(() =>
     {
         // 셋째 걸음 (2026-08-26 소유자: "챕터를 열었는데, 아무 에피소드가 없을 땐
-        // + 에피소드 버튼이 나오도록") — 새 챕터의 에피소드 시트는 머리글뿐이다.
-        using var project = new TempProject(samplePath: null);
-        string chapters = Path.Combine(
-            Path.GetDirectoryName(project.ManifestPath)!, ChapterLibrary.FolderName);
-        ChapterWorkbookWriter.EnsureChapterWorkbook(chapters, "ch01");
+        // + 에피소드 버튼이 나오도록") — 새 챕터에는 에피소드가 하나도 없다.
+        using var project = new TempProject(
+            withSample: false,
+            configure: story => story.Chapters.Add(new ChapterDocument { ChapterId = "ch01" }));
 
         (_, ChapterGraphView view) = Render(project);
 
@@ -319,7 +314,7 @@ public sealed class ChapterGraphViewRenderTests
     {
         // 이 단추들은 "아무것도 없을 때의 첫걸음"이다 — 판이 그려지는 순간 할 일은
         // 만들기가 아니라 그리기·잇기이고, 만들기는 우측 기둥의 [＋]가 계속 진다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (_, ChapterGraphView view) = Render(project);
 
         Assert.False(view.ChapterAddCenterButton.IsVisible);
@@ -347,7 +342,7 @@ public sealed class ChapterGraphViewRenderTests
         // Fluent의 Expander 머리글은 최소 48px이라 접혀 있어도 판 아래를 그만큼 늘 먹었다.
         // ⚠ 그 48은 템플릿 안에서 토글에 <b>직접</b> 박히는 값이라 Style 세터로는 못 이긴다
         // (해 보고 알았다). 템플릿이 쳐다보는 리소스를 Expander 자리에서 갈아 끼운다.
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         (_, ChapterGraphView view) = Render(project);
 
         var expander = view.FindControl<Expander>("DiagnosticsExpander")!;
@@ -377,6 +372,7 @@ public sealed class ChapterGraphViewRenderTests
 
     private static (Canvas Canvas, ChapterGraphView View) Render(TempProject project)
     {
+        // 카드는 세션이 열 때 이미 서 있다(<c>ProjectEditor.AlignBoardsWithChapters</c>).
         var session = new AuthoringSession();
         session.Open(project.ManifestPath);
 
@@ -385,10 +381,6 @@ public sealed class ChapterGraphViewRenderTests
         window.Show();
 
         view.Attach(session);
-
-        // 대본은 이제 사람이 들여온다 (R-D) — 노드가 없으면 "빈 노드" 오류가 더미로 쌓여
-        // 이 클래스가 재려는 진단이 그 속에 묻힌다.
-        view.ImportEpisodes();
 
         // 배치를 실제로 돌린다 — 이걸 하지 않으면 Bounds가 전부 0이고 "그려졌다"가 거짓이 된다.
         window.Measure(new Avalonia.Size(1280, 800));
@@ -406,35 +398,27 @@ public sealed class ChapterGraphViewRenderTests
         return (canvas, view);
     }
 
-    /// <summary>견본을 chapters/ 아래 둔 임시 프로젝트. 뷰가 실제로 읽는 자리 그대로다.</summary>
+    /// <summary>견본 챕터(ch05 복도)를 든 임시 프로젝트.</summary>
     private sealed class TempProject : IDisposable
     {
-        private readonly string _directory;
+        private readonly string _directory = Path.Combine(
+            Path.GetTempPath(), "vn-chapter-render", Guid.NewGuid().ToString("N"));
 
         /// <summary>이 테스트가 띄운 화면. 폴더를 지우기 <b>전에</b> 닫는다.</summary>
         public OpenChapterViews Ui { get; } = new();
 
-        public TempProject(string? samplePath)
+        /// <param name="withSample">견본 챕터를 실을지. 빼면 챕터 없는 프로젝트다.</param>
+        /// <param name="configure">저장 전에 프로젝트를 더 다듬을 자리.</param>
+        public TempProject(bool withSample = true, Action<StoryProject>? configure = null)
         {
-            _directory = Path.Combine(
-                Path.GetTempPath(), "vn-chapter-render", Guid.NewGuid().ToString("N"));
+            (string Sample, string ChapterId)[] chapters = withSample
+                ? [(SampleChapters.Corridor, SampleChapters.Corridor)]
+                : [];
 
-            Directory.CreateDirectory(_directory);
-
-            if (samplePath is not null)
-            {
-                Directory.CreateDirectory(Path.Combine(_directory, ChapterLibrary.FolderName));
-                File.Copy(samplePath, Path.Combine(_directory, ChapterLibrary.FolderName, "ch05.xlsx"));
-            }
-
-            ManifestPath = Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
-            ProjectStore.Save(ManifestPath, new StoryProject { Title = "렌더 검증" });
+            ManifestPath = SampleProject.Create(_directory, "렌더 검증", chapters, configure);
         }
 
         public string ManifestPath { get; }
-
-        /// <summary>그 챕터의 대본 폴더 — episodes/{ChapterId}/ (2026-08-16 챕터별 격리).</summary>
-        public string EpisodesFolder => Path.Combine(_directory, "episodes", "ch05");
 
         public void Dispose()
         {

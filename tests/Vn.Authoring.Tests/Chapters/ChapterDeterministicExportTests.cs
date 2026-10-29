@@ -2,6 +2,9 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
+using Vn.Authoring.Model;
+using Vn.Authoring.Serialization;
 
 namespace Vn.Authoring.Tests.Chapters;
 
@@ -35,20 +38,24 @@ public sealed class ChapterDeterministicExportTests : IDisposable
     }
 
     [Fact]
-    public void 워크북을_다시_열어_export해도_바이트가_같다()
+    public void 프로젝트를_저장하고_다시_열어_export해도_바이트가_같다()
     {
-        ChapterWorkbookWriter.EnsureChapterWorkbook(_root, "reload", [("trust", "신뢰")]);
-        string path = Path.Combine(_root, "reload.xlsx");
-        ChapterWorkbookWriter.AddEpisode(path, "ep1", "첫 화", 0, 0);
-        ChapterWorkbookWriter.AddEpisode(path, "ep2", "둘째", 200, 0);
-        ChapterWorkbookWriter.AddEdge(path, "ep1", "ep2", optionLabel: "다음");
+        var editor = new ProjectEditor(new StoryProject());
+        editor.EnsureChapter("reload").Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        editor.AddEpisode("reload", "ep1", "첫 화", 0, 0);
+        editor.AddEpisode("reload", "ep2", "둘째", 200, 0);
+        editor.AddEdge("reload", "ep1", "ep2", optionLabel: "다음");
 
-        byte[] first = ChapterExportBytes.Encode(
-            ChapterProgressionExporter.Export(ChapterWorkbookReader.Read(path), null).Json!);
-        byte[] reopened = ChapterExportBytes.Encode(
-            ChapterProgressionExporter.Export(ChapterWorkbookReader.Read(path), null).Json!);
+        byte[] first = ChapterExportBytes.Encode(ChapterProgressionExporter.Export(
+            editor.FindChapter("reload")!.ToGraphModel("reload"), null).Json!);
 
-        Assert.Equal(first, reopened);
+        ProjectStore.Save(ProjectPath, editor.Project);
+        StoryProject reopened = ProjectStore.Load(ProjectPath).Project;
+
+        byte[] again = ChapterExportBytes.Encode(ChapterProgressionExporter.Export(
+            reopened.Chapters.Single(chapter => chapter.ChapterId == "reload").ToGraphModel("reload"), null).Json!);
+
+        Assert.Equal(first, again);
     }
 
     [Fact]
@@ -139,13 +146,11 @@ public sealed class ChapterDeterministicExportTests : IDisposable
     [Fact]
     public void 출시_기준선_뒤_순서_변경은_기존_export를_보존하고_이유를_말한다()
     {
-        string workbook = Path.Combine(_root, "ch.xlsx");
-        File.WriteAllBytes(workbook, [1, 2, 3]);
         var service = new ChapterExportService();
         ChapterGraphModel original = Chapter(true);
 
         ChapterExportRun first = service.ExportAll(
-            [new ChapterEntry("ch", workbook, original, null)], ProjectPath);
+            [new ChapterEntry("ch", original)], ProjectPath);
         Assert.True(first.AllExported, first.Notice);
         Assert.True(ChapterReleaseBaseline.Capture(ProjectPath, "ch"));
         byte[] released = File.ReadAllBytes(ChapterExportService.ExportPathFor(ProjectPath, "ch"));
@@ -155,7 +160,7 @@ public sealed class ChapterDeterministicExportTests : IDisposable
             original.Edges.Select(edge => edge with { SourceRow = 20 - edge.SourceRow }).ToArray(),
             original.Conditions, original.Stats, original.Fixtures, original.Diagnostics);
         ChapterExportRun run = service.ExportAll(
-            [new ChapterEntry("ch", workbook, swapped, null)], ProjectPath);
+            [new ChapterEntry("ch", swapped)], ProjectPath);
 
         Assert.False(run.AllExported);
         Assert.Contains(run.Blocked, item => item.StartsWith("ch(ep1)", StringComparison.Ordinal));

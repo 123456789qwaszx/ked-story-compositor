@@ -68,24 +68,6 @@ public sealed class ChapterExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void 디스크의_워크북이_바뀌어도_모델이_같으면_다시_증명하지_않는다()
-    {
-        // ⛔ 워크북은 산출물이다 (2026-10-29 · excel-boundary C3). 출력이 다시 써지거나
-        //    사람이 엑셀에서 고쳐도 원본(프로젝트)은 그대로이므로 판정도 그대로다 — 2026-10-29까지는
-        //    지문이 파일 해시라 산출물의 상태가 검증을 흔들었다.
-        var service = new ChapterExportService();
-        ChapterEntry entry = Entry("ch01", Sound);
-
-        service.ValidationFor(entry, ProjectPath);
-
-        File.WriteAllBytes(entry.Path, [9, 9, 9, 9]);
-
-        service.ValidationFor(entry, ProjectPath);
-
-        Assert.Equal(1, service.ValidationComputeCount);
-    }
-
-    [Fact]
     public void 챕터마다_따로_기억한다()
     {
         var service = new ChapterExportService();
@@ -325,17 +307,11 @@ public sealed class ChapterExportServiceTests : IDisposable
 
     // ── 기반 ────────────────────────────────────────────────────────────────
     //
-    // 지문도 검증도 **메모리의 모델**로 몬다(2026-10-29). Entry가 파일을 하나 두는 것은
-    // 경로가 있어야 하는 자리(진단의 SourcePath·잠금 조사)를 위해서다 — 엑셀을 실제로 굽지
-    // 않으므로 빠르다.
+    // 지문도 검증도 **메모리의 모델**로 몬다(2026-10-29) — 챕터는 프로젝트에 살고 디스크에
+    // 읽을 파일이 없다.
 
-    private ChapterEntry Entry(string chapterId, Func<string, ChapterGraphModel> build)
-    {
-        string path = Path.Combine(_root, chapterId + ".xlsx");
-        File.WriteAllBytes(path, [1, 2, 3, 4]);
-
-        return new ChapterEntry(chapterId, path, build(chapterId), null);
-    }
+    private static ChapterEntry Entry(string chapterId, Func<string, ChapterGraphModel> build) =>
+        new(chapterId, build(chapterId));
 
     /// <summary>ep1 → ep2. 오류 없이 나간다.</summary>
     private static ChapterGraphModel Sound(string chapterId) => new(

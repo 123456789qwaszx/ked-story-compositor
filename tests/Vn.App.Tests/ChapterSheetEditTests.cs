@@ -5,6 +5,7 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Serialization;
 
@@ -28,7 +29,13 @@ public sealed class ChapterSheetEditTests : IDisposable
     public ChapterSheetEditTests()
     {
         Directory.CreateDirectory(_directory);
-        ProjectStore.Save(ManifestPath, new StoryProject { Title = "챕터 시트 편집" });
+
+        // [＋ 챕터](AuthoringSession.CreateChapter)와 같은 모양 — 챕터 · 스탯 `trust` · 판.
+        var editor = new ProjectEditor(new StoryProject { Title = "챕터 시트 편집" });
+        editor.EnsureChapter("ch01").Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 100, SourceRow: 0));
+        editor.EnsureChapterBoard("ch01");
+
+        ProjectStore.Save(ManifestPath, editor.Project);
     }
 
     public void Dispose()
@@ -208,23 +215,18 @@ public sealed class ChapterSheetEditTests : IDisposable
 
     private static void Redraw(ChapterGraphView view)
     {
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
     }
 
     /// <summary>
     /// 스탯 `trust`와 그것을 쓰는 조건 `신뢰높음`이 선 챕터.
     ///
-    /// ⚠ <b>워크북이 디스크에 있어야 한다</b> — 이 탭의 챕터 목록은 디스크를 읽은
-    /// <c>_entries</c>에서 오므로, 모델에만 세운 챕터는 고를 수가 없다. 조건은 그 뒤에
-    /// <b>편집기로</b> 더한다(= 사람이 이 탭에서 하는 길) — 표가 살아 있는 모델을 먼저
-    /// 보는지까지 함께 재게 된다.
+    /// 챕터와 스탯은 프로젝트에 실어 연다(생성자). 조건은 그 뒤에 <b>편집기로</b> 더한다
+    /// (= 사람이 이 탭에서 하는 길) — 표가 살아 있는 모델을 먼저 보는지까지 함께 재게 된다.
     /// </summary>
     private (ChapterGraphView View, AuthoringSession Session) Show()
     {
-        ChapterWorkbookWriter.EnsureChapterWorkbook(
-            Path.Combine(_directory, ChapterLibrary.FolderName), "ch01", [("trust", "신뢰")]);
-
         var session = new AuthoringSession();
         session.Open(ManifestPath);
 
@@ -232,7 +234,6 @@ public sealed class ChapterSheetEditTests : IDisposable
         var window = new Window { Width = 1400, Height = 800, Content = view };
         window.Show();
         view.Attach(session);
-        view.RefreshFromDisk();
 
         // ⚠ 탭을 열어야 그 안의 컨트롤이 시각 트리에 올라온다 — 안 열면 표는 만들어져
         //    있는데 찾을 수가 없다.

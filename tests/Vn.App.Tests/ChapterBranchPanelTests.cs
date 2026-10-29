@@ -172,16 +172,14 @@ public sealed class ChapterBranchPanelTests
             var editor = new ProjectEditor(new StoryProject { Title = "분기 검증" });
 
             editor.EnsureChapter("ch01");
-            string fileId = editor.EnsureChapterBoard("ch01");
+            editor.EnsureChapterBoard("ch01");
             editor.AddEpisode("ch01", "root", title: "root", 0, 0);
 
             ChapterDocument chapter = editor.FindChapter("ch01")!;
-            chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 2));
-            editor.AddChapterCondition("ch01", "신뢰높음", "trust >= 3");
+            chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
 
-            ChapterBoardSupply.SupplyChapterConditionsToBoard(
-                editor, Vn.Authoring.Definition.GameDefinition.Empty, fileId,
-                chapter.ToGraphModel("ch01.xlsx"));
+            // 판이 이미 섰으므로 조건은 더하는 그 자리에서 판에 공급된다.
+            editor.AddChapterCondition("ch01", "신뢰높음", "trust >= 3");
 
             DialogueNode caller = EpisodeNaming.CardFor(editor.Project, "ch01", "root")!;
 

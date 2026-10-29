@@ -78,7 +78,6 @@ public sealed class ChapterSceneEntryCheckTests
             Errors(chapter), item => item.Code == ChapterDiagnosticCode.SceneHasManyEntries);
 
         Assert.Equal(22, found.Row);
-        Assert.Equal("B", found.Column);   // `간선` 시트의 `도착` 칸
     }
 
     [Fact]
@@ -86,7 +85,7 @@ public sealed class ChapterSceneEntryCheckTests
     {
         // 트리의 ⌂·⚠는 `ChapterSceneGrouping`에서 나오고 그쪽은 `IsSceneRoot`를 쓴다.
         // 둘이 갈리면 사람은 어느 쪽을 믿을지 모른다.
-        ChapterGraphModel model = Split().ToGraphModel("chapters/ch01.xlsx");
+        ChapterGraphModel model = Split().ToGraphModel("ch01");
 
         ChapterScene shared = ChapterSceneGrouping.Of(model)
             .Single(scene => scene.SceneId == "shared");
@@ -99,11 +98,11 @@ public sealed class ChapterSceneEntryCheckTests
     // ── 기반 ────────────────────────────────────────────────────────────────
 
     private static List<ChapterDiagnostic> Errors(ChapterDocument chapter) =>
-        [.. chapter.ToGraphModel("chapters/ch01.xlsx").Errors];
+        [.. chapter.ToGraphModel("ch01").Errors];
 
     private static bool Refused(ChapterDocument chapter) =>
         ChapterProgressionExporter
-            .Export(chapter.ToGraphModel("chapters/ch01.xlsx"))
+            .Export(chapter.ToGraphModel("ch01"))
             .Refused;
 
     /// <summary>shared 장면에 밖에서 들어오는 자리가 둘 — 규칙 위반.</summary>

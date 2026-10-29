@@ -14,7 +14,7 @@ namespace Vn.Authoring.Tests.Chapters;
 ///
 /// <list type="number">
 ///   <item>한 동작으로 여러 카드를 옮겼으면 <b>되돌리기도 한 번</b>이다</item>
-///   <item>아직 자리가 없는 챕터(엑셀에서 들여와 전부 0,0)는 <b>한 번 심어</b> 준다</item>
+///   <item>아직 자리가 없는 챕터(아무도 X·Y를 안 채워 전부 0,0)는 <b>한 번 심어</b> 준다</item>
 /// </list>
 /// </summary>
 public sealed class ChapterEpisodeLayoutTests
@@ -93,8 +93,8 @@ public sealed class ChapterEpisodeLayoutTests
     [Fact]
     public void 겹쳐_있으면_심을_자리다()
     {
-        // 엑셀에서 들여온 챕터가 정확히 이 모양이다 — X·Y를 아무도 안 채웠다.
-        Assert.True(ChapterBranchPlanner.NeedsSeeding(Chapter.ToGraphModel("ch01.xlsx")));
+        // 옛 엑셀에서 들여온 챕터가 정확히 이 모양이었다 — X·Y를 아무도 안 채웠다.
+        Assert.True(ChapterBranchPlanner.NeedsSeeding(Chapter.ToGraphModel("ch01")));
 
         _editor.MoveEpisodes("ch01", new Dictionary<string, (double X, double Y)>
         {
@@ -105,7 +105,7 @@ public sealed class ChapterEpisodeLayoutTests
 
         // ⭐ 한 번만 참이다 — 심고 나면 다시 심지 않는다. 그래야 사람이 옮긴 자리를
         //    그리기가 덮지 않는다.
-        Assert.False(ChapterBranchPlanner.NeedsSeeding(Chapter.ToGraphModel("ch01.xlsx")));
+        Assert.False(ChapterBranchPlanner.NeedsSeeding(Chapter.ToGraphModel("ch01")));
     }
 
     [Fact]
@@ -117,6 +117,6 @@ public sealed class ChapterEpisodeLayoutTests
         lone.AddEpisode("ch02", "ep01", "혼자", 0, 0);
 
         Assert.False(ChapterBranchPlanner.NeedsSeeding(
-            lone.FindChapter("ch02")!.ToGraphModel("ch02.xlsx")));
+            lone.FindChapter("ch02")!.ToGraphModel("ch02")));
     }
 }

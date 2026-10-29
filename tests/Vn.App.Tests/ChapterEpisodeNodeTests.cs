@@ -5,10 +5,11 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
-using Vn.Authoring.Chapters.Import;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Model;
-using Vn.Authoring.Serialization;
+using Vn.Authoring.Script;
+using Vn.Authoring.Tests.Fixtures;
 
 namespace Vn.App.Tests;
 
@@ -27,9 +28,6 @@ namespace Vn.App.Tests;
 /// </summary>
 public sealed class ChapterEpisodeNodeTests
 {
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
-
     [Fact]
     public void 대사_잠금은_사라졌다() => HeadlessUi.Run(() =>
     {
@@ -38,7 +36,7 @@ public sealed class ChapterEpisodeNodeTests
         //    R-D에서 철거됐다. 되돌릴 것이 없으므로 잠글 것도 없다.
         //
         //    이름으로 못을 박아 두는 이유 — 지운 것을 무심코 되살리는 일을 막는다.
-        (DialogueNodeEditor editor, _, _) = ShowSyncedNode();
+        (DialogueNodeEditor editor, _, _) = ShowEpisodeCard();
 
         Assert.Null(editor.FindControl<ToggleButton>("ExcelTextLockToggle"));
     });
@@ -48,7 +46,7 @@ public sealed class ChapterEpisodeNodeTests
     {
         // ⛔ 지시서 §6.4가 이름으로 짚은 두 줄이다 —
         //    `AddLineButton.IsEnabled = !_excelOwned` · `ApplyScenarioButton.IsEnabled = !_excelOwned`.
-        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowSyncedNode();
+        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowEpisodeCard();
 
         Assert.True(editor.FindControl<Button>("AddLineButton")!.IsEnabled);
         Assert.True(editor.FindControl<Button>("ApplyScenarioButton")!.IsEnabled);
@@ -67,7 +65,7 @@ public sealed class ChapterEpisodeNodeTests
     public void 챕터_에피소드의_본문과_화자가_열렸다() => HeadlessUi.Run(() =>
     {
         // 옛 판은 이 셋이 <b>잠겼음</b>을 지켰다. 잠긴 이유가 사라졌으니 지킬 것이 뒤집힌다.
-        (DialogueNodeEditor editor, _, _) = ShowSyncedNode();
+        (DialogueNodeEditor editor, _, _) = ShowEpisodeCard();
         var host = editor.FindControl<StackPanel>("LineHost")!;
 
         // 본문 칸 — 캐럿이 선다. (화자 자동완성 내부의 TextBox는 제외.)
@@ -93,10 +91,10 @@ public sealed class ChapterEpisodeNodeTests
     [Fact]
     public void 이름만은_아직_챕터의_것이다() => HeadlessUi.Run(() =>
     {
-        // ⚠ 잠긴 이유가 바뀌었다 — 엑셀이 대본을 쥐어서가 아니라, <b>이름의 원천이 챕터
-        //    `대사엔트리`</b>이고 그 워크북의 주인이 아직 기획자이기 때문이다(R-F까지).
-        //    개명은 [챕터 그래프]의 [이름] 칸에서 하고, 그쪽은 워크북과 노드를 함께 간다.
-        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowSyncedNode();
+        // ⚠ 잠긴 이유가 바뀌었다 — 대본의 주인 때문이 아니라, <b>이름의 원천이 챕터의
+        //    에피소드</b>이기 때문이다. 개명은 [챕터 그래프]의 [이름] 칸에서 하고, 그쪽은
+        //    챕터와 카드를 함께 간다.
+        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowEpisodeCard();
 
         Assert.True(editor.FindControl<TextBox>("NameBox")!.IsReadOnly);
 
@@ -118,10 +116,9 @@ public sealed class ChapterEpisodeNodeTests
         //    성공했을 때만 노드를 고치는 순서였고, 그 이유가 <i>"노드만 고치면 다음
         //    동기화가 지운다"</i>였다.
         //
-        //    다시 읽는 동기화가 없어졌으므로 지울 것이 없다. 고친 글은 프로젝트에 남고,
-        //    엑셀은 산출물이라 다음 출력이 프로젝트를 따라간다.
+        //    다시 읽는 동기화가 없어졌으므로 지울 것이 없다 — 고친 글은 프로젝트에 남는다.
         //    그리고 2026-09-16에 <b>잠금을 푸는 절차가 사라졌다</b>(R-E) — 그냥 고친다.
-        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowSyncedNode();
+        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowEpisodeCard();
 
         var host = editor.FindControl<StackPanel>("LineHost")!;
         TextBox body = host.GetVisualDescendants().OfType<TextBox>()
@@ -137,37 +134,8 @@ public sealed class ChapterEpisodeNodeTests
             line => line.Text == "연출 그래프에서 고친 대사");
     });
 
-    [Fact]
-    public void 엑셀이_잡고_있어도_노드는_고쳐진다() => HeadlessUi.Run(() =>
-    {
-        // ⚠ 이것도 뒤집혔다 (R-D). 앞선 판은 `엑셀이_잡고_있으면_노드도_안_고친다`로,
-        //    셀에 못 쓰면 노드도 안 고치는 것이 규칙이었다 — 둘이 어긋나면 다음 동기화가
-        //    사람의 글을 지웠기 때문이다.
-        //
-        //    이제 툴이 대본 파일에 쓸 일이 없으므로 엑셀이 붙들고 있든 말든 상관없다.
-        //    §5.3이 말한 <b>잠금의 뜻이 바뀐다</b>가 이것이다 — 막는 것이 아니라
-        //    "그 파일을 지금 갱신하지 못했다"일 뿐이다.
-        (DialogueNodeEditor editor, AuthoringSession session, string nodeId) = ShowSyncedNode();
-
-        var host = editor.FindControl<StackPanel>("LineHost")!;
-        TextBox body = host.GetVisualDescendants().OfType<TextBox>()
-            .First(box => box.FindAncestorOfType<AutoCompleteBox>() is null);
-
-        DialogueNode node = session.Project.FindDialogue(nodeId)!;
-        string workbook = EpisodeLibrary.FindExisting(
-            EpisodeLibrary.FolderFor(session.ProjectPath, "ch05")!, "main05.02")!;
-
-        using (new FileStream(workbook, FileMode.Open, FileAccess.Read, FileShare.None))
-        {
-            Type(editor, body, "엑셀이 잡고 있는 동안 쓴 글");
-        }
-
-        Assert.Contains(
-            session.Project.FindScript(node.ScriptId)!.Locales
-                .SelectMany(locale => locale.Entries.Values),
-            line => line.Text == "엑셀이 잡고 있는 동안 쓴 글");
-    });
-
+    // ⛔ `엑셀이_잡고_있어도_노드는_고쳐진다`는 2026-10-29(D2)에 걷혔다 — 엑셀 연동이 사라져
+    //    붙들릴 대본 파일이 없다.
 
     // ⛔ `다른_노드로_옮기면_다시_잠긴다`는 2026-09-16에 은퇴했다 (R-E). 노드를 옮길 때마다
     //    다시 잠그던 규율은 "여는 것은 잠깐의 예외여야 한다"에서 나왔는데, 이제 예외가
@@ -179,28 +147,29 @@ public sealed class ChapterEpisodeNodeTests
     //    노드는 갈래를 가질 길 자체가 없어졌다. 막을 것이 없어진 빗장이라 함께 걷는다.
 
     [Fact]
-    public void 출구_후보에_엑셀노드가_없다() => HeadlessUi.Run(() =>
+    public void 출구_후보에_에피소드_카드가_없다() => HeadlessUi.Run(() =>
     {
         // 소유자 결정 (2026-08-14) — 에피소드 사이 흐름은 챕터 간선(기획자) 소유다.
-        // 자유 노드의 출구로 엑셀노드를 고를 수 있으면 챕터 장부(표시/해금·스탯 환산·
+        // 자유 노드의 출구로 에피소드 카드를 고를 수 있으면 챕터 장부(표시/해금·스탯 환산·
         // cleared)를 지나치는 뒷길이 생기고, Yarn 점프라 "복귀"도 처음부터 다시 재생된다.
-        (DialogueNodeEditor editor, AuthoringSession session, string excelNodeId) = ShowSyncedNode();
+        (DialogueNodeEditor editor, AuthoringSession session, string episodeNodeId) = ShowEpisodeCard();
 
-        string fileId = session.EnsureChapterBoard("ch05");
-        DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "곁가지");
-        session.Editor.AddDialogueNode(fileId, name: "곁가지2");
+        // 자유 노드는 챕터가 아닌 판에 산다 — 챕터 판의 대사 노드는 전부 에피소드다(R7 P-6).
+        string scratch = session.Editor.AddStoryFile("낙서판").Id;
+        DialogueNode free = session.Editor.AddDialogueNode(scratch, name: "곁가지");
+        session.Editor.AddDialogueNode(scratch, name: "곁가지2");
 
         // ⚠ [기본 출구] 편집 구역은 2026-08-22에 사라졌다 (소유자) — 같은 값을 판의
         // 레일 칩이 편집하므로 창구를 하나로 줄였다. 후보 규칙은 갈래(detour) 출구가
         // 그대로 물려받았고, 여기서 지키는 것은 그 규칙이다.
-        editor.Show(excelNodeId);
+        editor.Show(episodeNodeId);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         Assert.Null(editor.FindControl<Grid>("DefaultExitControls"));
         Assert.Null(editor.FindControl<ComboBox>("DefaultExitCombo"));
         Assert.Null(editor.FindControl<TextBlock>("DefaultExitSubtitle"));
 
-        // 갈래 출구의 후보 — 자유 노드만 남고 엑셀노드는 빠진다.
+        // 갈래 출구의 후보 — 자유 노드만 남고 에피소드 카드는 빠진다.
         List<StoryNode> targets = editor.ExitTargetsProbe(free.Id);
 
         Assert.Contains(targets, target => target.Name == "곁가지2");
@@ -209,24 +178,23 @@ public sealed class ChapterEpisodeNodeTests
     });
 
     [Fact]
-    public void 엑셀노드로_향하는_출구는_검증이_크게_말한다() => HeadlessUi.Run(() =>
+    public void 에피소드_카드로_향하는_출구는_검증이_크게_말한다() => HeadlessUi.Run(() =>
     {
         // 편집기는 후보에서 빼지만, 이미 있는 연결(옛 프로젝트)은 막지 않고 경고한다.
-        (_, AuthoringSession session, string excelNodeId) = ShowSyncedNode();
+        (_, AuthoringSession session, string episodeNodeId) = ShowEpisodeCard();
 
         string fileId = session.EnsureChapterBoard("ch05");
         DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "우회로");
 
-        // 갈래(detour) 출구가 엑셀노드를 가리키면 여전히 크게 말한다.
-        free.BranchExits["ln_legacy"] = excelNodeId;
+        // 갈래(detour) 출구가 에피소드 카드를 가리키면 여전히 크게 말한다.
+        free.BranchExits["ln_legacy"] = episodeNodeId;
 
         // ⚠ 2026-09-17에 뒤집혔다 (R7 P-6 · 결정 ⑤). 전에는 커스텀 노드의 기본 출구가
-        //    죽은 값이라 경고도 안 냈다 — 그 관문이 곧 엑셀노드/자유노드의 구분이었고,
+        //    죽은 값이라 경고도 안 냈다 — 그 관문이 곧 에피소드/자유노드의 구분이었고,
         //    구분이 없어졌으므로 이 배선도 살아나 <b>갈래 출구와 나란히</b> 짚인다.
-        free.DefaultExitTargetNodeId = excelNodeId;
+        free.DefaultExitTargetNodeId = episodeNodeId;
 
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(
-            Path.Combine(EpisodesRoot(session), "..", "chapters", "ch05.xlsx"));
+        ChapterGraphModel chapter = Chapter(session);
 
         var warnings = ChapterBoardSupply.WarnExitsIntoLandingCards(session.Editor, fileId, chapter);
 
@@ -245,11 +213,12 @@ public sealed class ChapterEpisodeNodeTests
     public void 자유_노드는_그대로_편집된다() => HeadlessUi.Run(() =>
     {
         var session = new AuthoringSession();
-        using var project = new TempProject(SamplePath);
+        using var project = new TempProject();
         session.Open(project.ManifestPath);
 
-        string fileId = session.EnsureChapterBoard("ch05");
-        DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "자유씬");
+        // 자유 노드는 챕터가 아닌 판에 산다 — 챕터 판에 세우면 에피소드가 된다(R7 P-6).
+        string scratch = session.Editor.AddStoryFile("낙서판").Id;
+        DialogueNode free = session.Editor.AddDialogueNode(scratch, name: "자유씬");
 
         var editor = new DialogueNodeEditor();
         var window = new Window { Width = 1200, Height = 800, Content = editor };
@@ -265,7 +234,7 @@ public sealed class ChapterEpisodeNodeTests
     [Fact]
     public void 그래프_카드_배지에_에피소드_표식이_붙는다() => HeadlessUi.Run(() =>
     {
-        (_, AuthoringSession session, string nodeId) = ShowSyncedNode();
+        (_, AuthoringSession session, string nodeId) = ShowEpisodeCard();
 
         Vn.Authoring.Graph.GraphProjection projection = Vn.Authoring.Graph.GraphProjectionBuilder.Build(
             session.Project,
@@ -284,13 +253,13 @@ public sealed class ChapterEpisodeNodeTests
     {
         // 2단계 4번 — 작가가 설정노드를 손으로 잇지 않아도, 판 위의 자유 노드가
         // 조건 드롭다운에서 챕터 라벨(A 계층)을 바로 고를 수 있어야 한다.
-        (_, AuthoringSession session, _) = ShowSyncedNode();
+        // (R7 P-6부터 챕터 판에 세운 노드는 에피소드 카드가 된다 — 공급은 판 전체가 본다.)
+        (_, AuthoringSession session, _) = ShowEpisodeCard();
 
         string fileId = session.EnsureChapterBoard("ch05");
         DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "자유씬");
 
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(
-            Path.Combine(EpisodesRoot(session), "..", "chapters", "ch05.xlsx"));
+        ChapterGraphModel chapter = Chapter(session);
 
         ChapterBoardSupply.SupplyChapterConditionsToBoard(
             session.Editor, session.Definition, fileId, chapter);
@@ -315,13 +284,12 @@ public sealed class ChapterEpisodeNodeTests
         // A 계층 격리 (2026-08-15 소유자) — 챕터의 조건 식(스탯 변수)은 기획자의 자료다.
         // 공급 설정노드가 시나리오 그래프에 카드·링크로 서 있으면 작가에게 노출된다.
         // 데이터(공급·드롭다운 라벨)는 살아 있되, 화면에서는 존재하지 않는다.
-        (_, AuthoringSession session, _) = ShowSyncedNode();
+        (_, AuthoringSession session, _) = ShowEpisodeCard();
 
         string fileId = session.EnsureChapterBoard("ch05");
         DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "자유씬");
 
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(
-            Path.Combine(EpisodesRoot(session), "..", "chapters", "ch05.xlsx"));
+        ChapterGraphModel chapter = Chapter(session);
 
         ChapterBoardSupply.SupplyChapterConditionsToBoard(
             session.Editor, session.Definition, fileId, chapter);
@@ -374,71 +342,55 @@ public sealed class ChapterEpisodeNodeTests
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
     }
 
-    private static string EpisodesRoot(AuthoringSession session) =>
-        EpisodeLibrary.FolderFor(session.ProjectPath)!;
+    private static ChapterGraphModel Chapter(AuthoringSession session) =>
+        session.Editor.FindChapter(SampleChapters.Corridor)!.ToGraphModel(SampleChapters.Corridor);
 
     // ── 기반 ────────────────────────────────────────────────────────────────
 
-    /// <summary>견본 에피소드를 동기화해 엑셀노드를 만들고, 그 노드를 편집기에 띄운다.</summary>
-    private static (DialogueNodeEditor Editor, AuthoringSession Session, string NodeId) ShowSyncedNode()
+    /// <summary>
+    /// 견본 챕터를 든 프로젝트를 열고, <c>main05.02</c>의 카드에 대사 두 줄을 채워 편집기에 띄운다.
+    /// 카드는 세션이 열 때 이미 서 있다(<c>ProjectEditor.AlignBoardsWithChapters</c>).
+    /// </summary>
+    private static (DialogueNodeEditor Editor, AuthoringSession Session, string NodeId) ShowEpisodeCard()
     {
         var session = new AuthoringSession();
-        var project = new TempProject(SamplePath);
+        var project = new TempProject();
         session.Open(project.ManifestPath);
 
-        string fileId = session.EnsureChapterBoard("ch05");
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(project.ChapterPath);
+        DialogueNode card = EpisodeNaming.CardFor(session.Project, SampleChapters.Corridor, "main05.02")!;
 
-        // ⚠ 대본은 <b>그 챕터의</b> 폴더에 산다 — episodes/{ChapterId}/{Id}.xlsx
-        // (2026-08-16). 예전 이 헬퍼는 구판 평면 자리(episodes/{Id}.xlsx)에 두었는데,
-        // 그러면 되쓰기가 그 줄의 엑셀 자리를 못 찾아 대사 잠금 토글이 열리지 않는다
-        // (2026-08-24에 그 토글을 만들며 드러났다).
-        string workbook = Path.Combine(
-            Path.GetDirectoryName(project.ChapterPath)!, "..", "episodes", "ch05", "main05.02.xlsx");
-        Directory.CreateDirectory(Path.GetDirectoryName(workbook)!);
-        File.Copy(SamplePath, workbook);
+        // 대사 두 줄. 새 카드는 빈 줄 하나로 서는데, 그 줄을 먼저 채워야 붙여넣기가 그것을
+        // 지울 후보로 보지 않는다(ScenarioPasteTests와 같은 준비).
+        ScriptDocument script = session.Project.FindScript(card.ScriptId)!;
+        session.Editor.SetScriptLineText(script.Id, script.ActiveLines.First().Id, "윌로", "첫 줄");
 
-        EpisodeImport import = EpisodeWorkbookImporter.Run(
-            session.Editor, session.Definition, fileId,
-            Path.GetDirectoryName(workbook)!, chapter);
+        ScenarioPasteOutcome pasted = session.Editor.ApplyScenarioText(
+            card.Id, "윌로: 첫 줄\n라루: 둘째 줄", session.Definition, confirmDeletes: true);
 
-        Assert.True(import.Applied, string.Join(" / ", import.Diagnostics.Select(item => item.Message)));
+        Assert.True(pasted.Applied, string.Join(" / ", pasted.Problems));
 
         var editor = new DialogueNodeEditor();
         var window = new Window { Width = 1200, Height = 800, Content = editor };
         window.Show();
         editor.Attach(session);
-        // ⚠ Id로 고른다 — 들여오기는 <b>대본이 없는 에피소드에도</b> 빈 노드를 세우므로
-        //    첫 항목이 우리가 찾는 그 에피소드라는 보장이 없다.
-        string nodeId = import.Entries
-            .Single(entry => entry.EpisodeId == "main05.02").DialogueNodeId;
-
-        editor.Show(nodeId);
+        editor.Show(card.Id);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        return (editor, session, nodeId);
+        return (editor, session, card.Id);
     }
 
+    /// <summary>견본 챕터(ch05 복도)를 든 임시 프로젝트.</summary>
     private sealed class TempProject : IDisposable
     {
-        private readonly string _directory;
+        private readonly string _directory = Path.Combine(
+            Path.GetTempPath(), "vn-episode-node", Guid.NewGuid().ToString("N"));
 
-        public TempProject(string samplePath)
+        public TempProject()
         {
-            _directory = Path.Combine(
-                Path.GetTempPath(), "vn-excel-lock", Guid.NewGuid().ToString("N"));
-
-            Directory.CreateDirectory(Path.Combine(_directory, ChapterLibrary.FolderName));
-            File.Copy(samplePath, ChapterPath);
-
-            ManifestPath = Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
-            ProjectStore.Save(ManifestPath, new StoryProject { Title = "잠금 검증" });
+            ManifestPath = SampleProject.Corridor(_directory, "에피소드 카드 검증");
         }
 
         public string ManifestPath { get; }
-
-        public string ChapterPath =>
-            Path.Combine(_directory, ChapterLibrary.FolderName, "ch05.xlsx");
 
         public void Dispose()
         {

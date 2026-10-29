@@ -13,7 +13,7 @@ public sealed class ChapterRunStateTests
         IReadOnlyList<ChapterStat>? stats = null,
         IReadOnlyList<ChapterCondition>? conditions = null) => new(
         "ch01",
-        "chapters/ch01.xlsx",
+        "ch01",
         [],
         [],
         conditions ?? [],

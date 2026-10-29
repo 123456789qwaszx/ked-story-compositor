@@ -228,7 +228,7 @@ public sealed class ChoiceSlotTests : IDisposable
 
         // 그리고 그 길은 규격을 지킨다 — 저작 시점 진단이 조용해야 한다.
         Assert.DoesNotContain(
-            session.Editor.FindChapter("ch01")!.ToGraphModel("chapters/ch01.xlsx").Errors,
+            session.Editor.FindChapter("ch01")!.ToGraphModel("ch01").Errors,
             item => item.Code.ToString().StartsWith("AutoEdge", StringComparison.Ordinal));
     });
 

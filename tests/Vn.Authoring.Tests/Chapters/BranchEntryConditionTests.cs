@@ -165,7 +165,7 @@ public sealed class BranchEntryConditionTests
 
         ChapterBoardSupply.SupplyChapterConditionsToBoard(
             editor, Definition.GameDefinition.Empty, fileId,
-            chapter.ToGraphModel("ch01.xlsx"));
+            chapter.ToGraphModel("ch01"));
 
         DialogueNode caller = EpisodeNaming.CardFor(editor.Project, "ch01", "root")!;
         string lineId = editor.Project.FindScript(caller.ScriptId)!.ActiveLines.First().Id;

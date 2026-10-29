@@ -5,12 +5,12 @@ namespace Vn.Authoring.Tests.Chapters;
 /// <summary>
 /// <b>자동 길 다섯 규칙이 툴 소유 챕터에서도 돈다</b> (V1 · `docs/plans/R6.md` §9).
 ///
-/// ⛔ 이 다섯은 <see cref="ChapterWorkbookReader"/> 안에만 있었다. R-F로 판의 주인이
+/// ⛔ 이 다섯은 옛 워크북 리더(<c>ChapterWorkbookReader</c>) 안에만 있었다. R-F로 판의 주인이
 /// 워크북에서 프로젝트로 넘어가자 읽는 길이 사라졌고, 그와 함께 <b>조용히 안 돌게 됐다</b>.
 /// 내보내기 관문은 코어가 여전히 거부하니 잘못된 것이 나가지는 않았지만, 기획자는
 /// <b>고치는 중에</b> 못 봤다 — 관문에서야 알면 어디를 고칠지 되짚어야 한다.
 ///
-/// ⚠ 그러니 이 파일이 재는 것은 워크북이 아니라 <see cref="ChapterDocument"/>다.
+/// ⚠ 그러니 이 파일이 재는 것은 <see cref="ChapterDocument"/>다.
 /// </summary>
 public sealed class ChapterAutoEdgeCheckTests
 {
@@ -84,7 +84,7 @@ public sealed class ChapterAutoEdgeCheckTests
     // ── 기반 ────────────────────────────────────────────────────────────────
 
     private static List<ChapterDiagnostic> Errors(ChapterDocument chapter) =>
-        [.. chapter.ToGraphModel("chapters/ch01.xlsx").Errors];
+        [.. chapter.ToGraphModel("ch01").Errors];
 
     private static ChapterEdge Auto(string from, string to) =>
         new(from, to, null, null, null, 0) { Auto = true };

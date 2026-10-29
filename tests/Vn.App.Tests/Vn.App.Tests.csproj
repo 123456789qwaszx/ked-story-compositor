@@ -28,30 +28,5 @@
     <Compile Include="..\Vn.Authoring.Tests\Fixtures\SampleChapters.cs" Link="Fixtures\SampleChapters.cs" />
   </ItemGroup>
 
-  <!-- D2 임시(합치기 전에 걷는다): 엑셀에서 떼는 중인 테스트. -->
-  <ItemGroup Label="D2Pending">
-    <Compile Remove="AuthoringSessionTests.cs" />
-    <Compile Remove="ChapterBranchPanelTests.cs" />
-    <Compile Remove="ChapterEdgeLabelTests.cs" />
-    <Compile Remove="ChapterEditGateTests.cs" />
-    <Compile Remove="ChapterEpisodeNodeTests.cs" />
-    <Compile Remove="ChapterGraphClickTests.cs" />
-    <Compile Remove="ChapterGraphEditingTests.cs" />
-    <Compile Remove="ChapterGraphNavigationTests.cs" />
-    <Compile Remove="ChapterGraphSyncViewTests.cs" />
-    <Compile Remove="ChapterGraphViewRenderTests.cs" />
-    <Compile Remove="ChapterGraphWorkAmountTests.cs" />
-    <Compile Remove="ChapterRailTests.cs" />
-    <Compile Remove="ChapterSheetEditTests.cs" />
-    <Compile Remove="ChapterStatEditingTests.cs" />
-    <Compile Remove="ChapterStatSpanViewTests.cs" />
-    <Compile Remove="ChapterSwitchTests.cs" />
-    <Compile Remove="ChapterVocabularyTests.cs" />
-    <Compile Remove="ChoiceSlotTests.cs" />
-    <Compile Remove="NewProjectNoiseViewTests.cs" />
-    <Compile Remove="SpeakerTabTests.cs" />
-    <Compile Remove="StageEpisodeChoiceTests.cs" />
-    <Compile Remove="StarterProjectTests.cs" />
-  </ItemGroup>
 
 </Project>

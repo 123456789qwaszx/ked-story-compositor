@@ -7,9 +7,9 @@ namespace Vn.Authoring.Tests.Chapters;
 /// <summary>
 /// <b>챕터를 고치는 일이 프로젝트 안에서 일어난다</b> (R-F · 2026-09-16, 지시서 §4.1).
 ///
-/// 옛 <see cref="ChapterWorkbookWriter"/>는 셀 하나를 고치는 외과수술이었다 — 열 번호와
+/// 옛 <c>ChapterWorkbookWriter</c>는 셀 하나를 고치는 외과수술이었다 — 열 번호와
 /// 시트 이름이 부르는 쪽까지 스며 있었고, 고친 결과를 보려면 파일을 다시 읽어야 했다.
-/// 이제 고치는 것은 모델이고 파일은 이미터가 통째로 낸다.
+/// 이제 고치는 것은 모델이다(2026-10-29 · D2에 워크북 출력도 걷혔다).
 ///
 /// ⛔ <b>이 묶음이 지키는 것은 "규칙이 안 사라졌다"이다.</b> 자리를 옮기는 변경에서 제일
 /// 흔한 손실이 <i>옛 코드에만 적혀 있던 규칙</i>이다 — 간선의 신원(v9), 개명이 참조를 끌고
@@ -214,7 +214,7 @@ public sealed class ChapterEditingTests
         Assert.Equal("친해졌을 때", Chapter.Conditions[0].Description);   // 안 준 것은 그대로다
         Assert.Empty(Chapter.Conditions[0].Parsed);
 
-        ChapterGraphModel model = Chapter.ToGraphModel("ch01.xlsx");
+        ChapterGraphModel model = Chapter.ToGraphModel("ch01");
 
         Assert.True(model.Conditions[0].IsValid);
         Assert.Equal(["trust"], model.Conditions[0].Parsed.Select(term => term.Key));

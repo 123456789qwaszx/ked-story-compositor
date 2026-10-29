@@ -384,7 +384,7 @@ VnTool이 내던 트리오(`Story_*` / `Set_*` / `Pres_*`)가 **`{대사엔트�
 
 ## 현행 표본 (R5)
 
-- 원천 워크북: [`ch01.contract-sample.xlsx`](ch01.contract-sample.xlsx)
+- 원천 챕터: [`ch01.chapter.json`](../tests/fixtures/chapter-samples/ch01.chapter.json) (프로젝트 형식 · 2026-10-29까지 `ch01.contract-sample.xlsx`)
 - 결정적 산출물: [`ch01.progression.sample.json`](ch01.progression.sample.json)
 - 재생성·필드·소비자 로더 검증:
   `ProgressionSampleGoldenTests`

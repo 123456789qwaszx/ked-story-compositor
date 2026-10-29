@@ -6,6 +6,7 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Serialization;
 
@@ -29,9 +30,9 @@ public sealed class ChapterGraphNavigationTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
 
-        string chapters = Path.Combine(_directory, ChapterLibrary.FolderName);
-        ChapterWorkbookWriter.EnsureChapterWorkbook(chapters, "ch01", [("trust", "신뢰")]);
-        string path = Path.Combine(chapters, "ch01.xlsx");
+        var editor = new ProjectEditor(new StoryProject { Title = "판 다루기 검증" });
+        ChapterDocument chapter = editor.EnsureChapter("ch01");
+        chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
 
         // 뷰포트보다 넓은 판 — 이동이 실제로 일어날 자리가 있어야 한다.
         // ⚠ v4부터 판은 에피소드가 <b>제 X·Y로</b> 그려진다(깊이 배치가 매번 벌려 주지
@@ -41,17 +42,17 @@ public sealed class ChapterGraphNavigationTests : IDisposable
         for (int index = 0; index < 8; index++)
         {
             string id = $"ep{index}";
-            ChapterWorkbookWriter.AddEpisode(path, id, title: "", index * ChapterBranchPlanner.ColumnWidth, 0);
+            editor.AddEpisode("ch01", id, title: "", index * ChapterBranchPlanner.ColumnWidth, 0);
 
             if (previous.Length > 0)
             {
-                ChapterWorkbookWriter.AddEdge(path, previous, id);
+                editor.AddEdge("ch01", previous, id);
             }
 
             previous = id;
         }
 
-        ProjectStore.Save(ManifestPath, new StoryProject { Title = "판 다루기 검증" });
+        ProjectStore.Save(ManifestPath, editor.Project);
     }
 
     public void Dispose()

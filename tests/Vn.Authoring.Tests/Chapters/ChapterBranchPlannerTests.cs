@@ -19,7 +19,7 @@ public sealed class ChapterBranchPlannerTests
 
     private static ChapterGraphModel Model(
         IReadOnlyList<ChapterEpisode> episodes, IReadOnlyList<ChapterEdge> edges) =>
-        new("ch", "ch.xlsx", episodes, edges, [], [], [], []);
+        new("ch", "ch", episodes, edges, [], [], [], []);
 
     [Fact]
     public void 합류_노드의_깊이는_가장_깊은_부모_기준이다()
@@ -95,7 +95,7 @@ public sealed class ChapterBranchPlannerTests
     [Fact]
     public void 화면_배치는_열이_깊이고_고아는_아래_줄에_선다()
     {
-        // 뷰는 이 배치를 그릴 때마다 다시 계산한다(v3) — 엑셀 X·Y와 무관하게 흐름이 자리를 정한다.
+        // 이 배치는 저장된 X·Y와 무관하게 흐름이 자리를 정한다(v3 — 지금은 처음 심을 때만 쓴다).
         ChapterGraphModel model = Model(
             [Episode("root", 10, 20), Episode("a", 900, -50), Episode("b", 30, 400),
              Episode("c", 500, 0), Episode("orphan", 777, 888)],
@@ -110,7 +110,7 @@ public sealed class ChapterBranchPlannerTests
         Assert.Equal(220d, placed["b"].X);
         Assert.Equal(440d, placed["c"].X);
 
-        // 같은 열 안 순서 = 시트 행 순서 (a가 b보다 먼저 적힘).
+        // 같은 열 안 순서 = 에피소드를 적은 순서 (a가 b보다 먼저 적힘).
         Assert.Equal(0d, placed["a"].Y);
         Assert.Equal(ChapterBranchPlanner.RowHeight, placed["b"].Y);
 

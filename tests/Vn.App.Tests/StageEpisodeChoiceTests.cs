@@ -10,8 +10,8 @@ namespace Vn.App.Tests;
 /// <summary>
 /// 에피소드 끝의 챕터 간선 선택지 (2026-08-27 소유자 보고: "에피소드가 끝날 때 선택지가
 /// 제시되지 않고 있어"). 전이 규칙 v9①의 프리뷰 절반이다: 대본 끝(나갈 곳 없음)에서
-/// `간선` 시트의 선택지가 행 순서대로 서고, 고르면 도착 에피소드의 씬으로 넘어간다 —
-/// 씬 선택기와 같은 길(SceneChosen) 하나를 지난다.
+/// 챕터 간선의 선택지가 행 순서(<c>SourceRow</c>)대로 서고, 고르면 도착 에피소드의 씬으로
+/// 넘어간다 — 씬 선택기와 같은 길(SceneChosen) 하나를 지난다.
 /// </summary>
 public sealed class StageEpisodeChoiceTests
 {
@@ -36,7 +36,7 @@ public sealed class StageEpisodeChoiceTests
     });
 
     [Fact]
-    public void 조건_시트에_없는_라벨은_깨진_관문으로_막고_사유를_병기한다() => HeadlessUi.Run(() =>
+    public void 챕터_조건에_없는_라벨은_깨진_관문으로_막고_사유를_병기한다() => HeadlessUi.Run(() =>
     {
         // 깨진 조건을 통과시켜 도달을 부풀리지 않는다(증명기와 한 벌) — 다만 저작 도구라
         // 지우는 대신 흐리게 남기고 무엇이 깨졌는지 문구가 말한다.
@@ -208,7 +208,7 @@ public sealed class StageEpisodeChoiceTests
     });
 
     [Fact]
-    public void 도착_에피소드가_동기화_전이면_안내하고_남는다() => HeadlessUi.Run(() =>
+    public void 도착_에피소드에_카드가_없으면_안내하고_남는다() => HeadlessUi.Run(() =>
     {
         var (preview, session, fileId) = ShowPreview();
         DialogueNode ep01 = AddEpisodeNode(session, fileId, "EP01"); // EP02 노드는 아직 없다
@@ -264,17 +264,15 @@ public sealed class StageEpisodeChoiceTests
         ChapterStat[]? stats = null,
         ChapterCondition[]? conditions = null) => new(
         chapterId,
-        $"chapters/{chapterId}.xlsx",
         new ChapterGraphModel(
             chapterId,
-            $"chapters/{chapterId}.xlsx",
+            chapterId,
             [],
             edges ?? [],
             conditions ?? [],
             stats ?? [],
             [],
-            []),
-        OpenFailure: null);
+            []));
 
     private static ChapterEdge Edge(
         string from,

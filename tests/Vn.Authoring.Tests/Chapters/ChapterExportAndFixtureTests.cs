@@ -1,7 +1,9 @@
 using System.Text.Json;
-using ClosedXML.Excel;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
+using Vn.Authoring.Model;
 using Vn.Authoring.Rendering;
+using Vn.Authoring.Tests.Fixtures;
 
 namespace Vn.Authoring.Tests.Chapters;
 
@@ -9,35 +11,21 @@ namespace Vn.Authoring.Tests.Chapters;
 /// G8 내보내기(런타임 필드 1:1 + 위치 확장 + 픽스처 제외 + 오류 시 거부)와
 /// G6 픽스처 경로(전환 시 경로가 바뀐다)를 닫는다 — Gate C 2·3번.
 /// </summary>
-public sealed class ChapterExportAndFixtureTests : IDisposable
+public sealed class ChapterExportAndFixtureTests
 {
-    private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), "vn-chapter-export", Guid.NewGuid().ToString("N"));
-
-    public ChapterExportAndFixtureTests() => Directory.CreateDirectory(_directory);
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_directory))
-        {
-            Directory.Delete(_directory, recursive: true);
-        }
-    }
-
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
+    /// <summary>견본 챕터(ch05 복도) — <see cref="SampleChapters.Corridor"/>.</summary>
+    private static ChapterGraphModel Sample() => SampleChapters.Model(SampleChapters.Corridor);
 
     // ── G8 — 내보내기 ───────────────────────────────────────────────────────
 
     [Fact]
     public void 견본이_런타임_필드와_일대일로_내보내진다()
     {
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
-        // 에피소드 워크북이 없는 폴더 → 도달성은 "스탯 무변화" 가정으로 돈다. 견본 챕터는
-        // 신뢰높음 관문이 있어 branch05.02A가 도달 불가가 되므로, 여기서는 그 에피소드에
-        // `도달불가 허용`이 없는 원본 대신 검증을 통과하는 절단본으로 낸다 — 거부 동작은
-        // 아래 테스트가 따로 고정한다.
+        // 견본 간선에는 trust 증감이 없다 → 신뢰높음 관문이 영원히 닫혀 branch05.02A가 도달
+        // 불가다. 그래서 그 에피소드에 `도달불가 허용`이 없는 원본 대신 검증을 통과하는
+        // 절단본으로 낸다 — 거부 동작은 아래 테스트가 따로 고정한다.
         ChapterGraphModel trimmed = Trim(chapter, remove: "branch05.02A");
 
         ChapterExportResult result = ChapterProgressionExporter.Export(trimmed);
@@ -49,7 +37,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         JsonElement root = document.RootElement;
 
         // SO 최상위 필드 1:1.
-        Assert.Equal("chapter-graph-sample", root.GetProperty("ChapterId").GetString());
+        Assert.Equal("ch05", root.GetProperty("ChapterId").GetString());
         Assert.Equal("main05.01", root.GetProperty("StartEpisodeId").GetString());
 
         JsonElement nodes = root.GetProperty("Nodes");
@@ -64,7 +52,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         // 통째로 지웠으므로 실으면 조용히 버려지는 칸이 하나 늘 뿐이다.
         Assert.False(start.TryGetProperty("Kind", out _));
         Assert.False(start.TryGetProperty("Attachments", out _));
-        // ⚠ 견본 워크북의 `대사엔트리`가 `Story_ch05_01`이다 — 이름 규칙이 어디에도 없던
+        // ⚠ 견본의 `대사엔트리`가 `Story_ch05_01`이다 — 이름 규칙이 어디에도 없던
         // 시절 사람이 접두를 손으로 적어 둔 것이다(§4 가운데 줄의 그 방식). 이미터를
         // 통과하면 접두가 한 번 더 붙고, **그 값이 맞다**: 이미터가 그 노드에 붙이는 yarn
         // 타이틀도 `Story_Story_ch05_01`이라 둘이 같고, 그래야 재생된다.
@@ -93,7 +81,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         // v14 (2026-08-26) — `EndingKey`·`IsChapterEndingCandidate`는 안 실리고(간선의
         // 엔딩키가 개념째 폐지 — 코어 DTO는 빈 값을 기본으로 받는다), 대신 에피소드의
         // `이벤트키`가 `EventKey`로 실린다(유니티 전용 패스스루 — 견본의 옛 엔딩 간선
-        // 키가 이행으로 도착 에피소드에 옮겨 왔다).
+        // 키가 도착 에피소드에 옮겨 와 있다).
         JsonElement ending = nodes.EnumerateArray()
             .Single(node => node.GetProperty("EpisodeId").GetString() == "main05.end");
         Assert.False(ending.TryGetProperty("IsChapterEndingCandidate", out _));
@@ -108,7 +96,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     [Fact]
     public void 스탯_조건은_Stat_비교로_번역된다()
     {
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
         ChapterGraphModel trimmed = Trim(chapter, remove: "branch05.02A");
 
         // trimmed에는 신뢰높음 간선이 없으므로, 지쳐있음(AND 2항)을 단 에피소드로 확인한다.
@@ -124,9 +112,9 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     [Fact]
     public void 검증_오류가_있으면_내보내기가_거부된다()
     {
-        // Gate C 3번. 견본 원본은 에피소드 워크북 없이는 branch05.02A가 도달 불가다 —
+        // Gate C 3번. 견본 원본은 trust를 올려 주는 간선이 없어 branch05.02A가 도달 불가다 —
         // 그 상태로 내보내려 하면 거부되고, 무엇이 왜인지가 담긴다.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
         ChapterExportResult result = ChapterProgressionExporter.Export(chapter);
 
@@ -191,7 +179,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     {
         var chapter = new ChapterGraphModel(
             "invalid",
-            "invalid.xlsx",
+            "invalid",
             [
                 new ChapterEpisode("root", "루트", "", "root", 0, 0, null, 2),
                 new ChapterEpisode("a", "A", "", "a", 200, 0, null, 3),
@@ -243,19 +231,13 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
             item.Message.Contains("밖에서 들어오는 자리", StringComparison.Ordinal));
     }
 
-    // ⛔ `대본에_CHOICE_OPTION이_남아_있으면_어디로_가야_하는지_말한다`는 2026-09-16에
-    //    은퇴했다 (규격 v15 — R-C). 그 진단은 <b>`유형` 칸에 적힌 CHOICE·OPTION</b>을 짚는
-    //    것이었는데 그 칸이 폐지되어 선언할 자리가 없다. 구판 파일의 그 행은 이행기가
-    //    <b>문구를 살려</b> 대사 행으로 옮긴다 — 사람이 쓴 글이 사라지지 않게
-    //    (`EpisodeColumnOrderV15Tests.CHOICE_OPTION_행의_문구는_남는다`).
-
     [Fact]
     public void 보이지_않는_기본_칸은_보이는_선택지와_공존한다()
     {
         // 방어장치 (2026-08-16) — 어떤 선택지 조건도 만족 못 할 때 빠지는 빈 칸(보이지 않는
-        // 기본)은 에피소드당 하나 허용이고, 조건 없는 간선과 짝이면 조용하다. 이행된 견본
-        // (보이는 칸 둘 + 빈 칸들)이 오류 0으로 읽히는 것이 그 계약이다.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        // 기본)은 에피소드당 하나 허용이고, 조건 없는 간선과 짝이면 조용하다. 견본
+        // (보이는 칸 둘 + 빈 칸들)이 오류 0으로 검증되는 것이 그 계약이다.
+        ChapterGraphModel chapter = Sample();
 
         ChapterValidationResult validation = ChapterValidator.Validate(chapter);
 
@@ -268,26 +250,18 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     {
         // 2026-08-16 소유자 — "선택지는 간선의 숫자보다 많아도 된다. 간선이랑 연결이 안
         // 되어 있으면 그냥 안 쓰고 종료시키면 되니까." 그 길을 고르면 챕터가 거기서 끝난다.
-        string path = Path.Combine(_directory, "orphan.xlsx");
-        File.Copy(SamplePath, path);
+        // v9 뒤로 그 칸은 어느 간선도 안 쓰는 사전 낱말이다.
+        ChapterDocument document = SampleChapters.Load(SampleChapters.Corridor);
+        document.ChoiceOptions.Add(new ChapterChoiceOption("999", "아직 안 이은 문구", Memo: null, SourceRow: 0));
 
-        using (var workbook = new ClosedXML.Excel.XLWorkbook(path))
-        {
-            ClosedXML.Excel.IXLWorksheet choices = workbook.Worksheet(ChapterSheetNames.Choices);
-            int row = choices.LastRowUsed()!.RowNumber() + 1;
-            choices.Cell(row, 1).SetValue("main05.01");
-            choices.Cell(row, 2).SetValue(999);            // 어떤 간선도 안 가리키는 인덱스
-            choices.Cell(row, 3).SetValue("아직 안 이은 문구");
-            workbook.Save();
-        }
-
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(path);
+        ChapterGraphModel chapter = document.ToGraphModel(SampleChapters.PathOf(SampleChapters.Corridor));
         ChapterValidationResult validation = ChapterValidator.Validate(chapter);
 
         // 안 이은 칸으로는 아무 말도 나오지 않는다(견본의 다른 진단은 그대로 둔다).
         Assert.DoesNotContain(validation.Diagnostics, item => item.Message.Contains("간선이 없습니다"));
-        Assert.DoesNotContain(validation.Diagnostics, item =>
-            item.Sheet == ChapterSheetNames.Choices && item.Message.Contains("999"));
+        Assert.DoesNotContain(validation.All, item =>
+            item.Sheet == ChapterSheetNames.Choices ||
+            item.Message.Contains("아직 안 이은 문구", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -340,7 +314,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     public void 픽스처를_바꾸면_경로가_바뀐다()
     {
         // Gate C 2번의 절반 — "픽스처 전환 시 경로 하이라이트가 바뀐다"의 데이터 쪽.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
         ChapterFixture basic = chapter.Fixtures.Single(fixture => fixture.Name == "기본 루트");
         ChapterFixture trust = chapter.Fixtures.Single(fixture => fixture.Name == "신뢰 루트");
@@ -362,7 +336,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
     [Fact]
     public void 갈래에_고정_선택이_없으면_어디를_적으라고_말한다()
     {
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
         ChapterFixture trust = chapter.Fixtures.Single(fixture => fixture.Name == "신뢰 루트");
 
         var noChoice = trust with { Choices = Array.Empty<ChapterFixtureChoice>() };
@@ -374,32 +348,28 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         Assert.Contains("main05.02→", walk.StoppedBecause);
     }
 
-    // ── 기반 ────────────────────────────────────────────────────────────────
-
-    /// <summary>에피소드 하나(와 그 간선)를 뺀 사본. 검증 통과용 절단본을 만들 때 쓴다.</summary>
     [Fact]
     public void 수입기가_믿어야_하는_JSON_규약을_고정한다()
     {
         // 런타임 계약서 §G (2026-08-17) — 수입기가 없는 동안 조용히 어긋날 자리 셋을 못 박는다.
         // 여기가 깨지면 계약서 G1~G5도 함께 고쳐야 한다.
-        string path = Path.Combine(_directory, "gd.xlsx");
-        Directory.CreateDirectory(_directory);
-        ChapterWorkbookWriter.EnsureChapterWorkbook(
-            _directory, "gd", [("trust", "신뢰"), ("anger", "분노")]);
+        var editor = new ProjectEditor(new StoryProject());
+        ChapterDocument chapter = editor.EnsureChapter("gd");
+        chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        chapter.Stats.Add(new ChapterStat("anger", "분노", 0, 0, 10, SourceRow: 0));
 
-        ChapterWorkbookWriter.AddEpisode(path, "ep1", "첫 화", 0, 0);
-        ChapterWorkbookWriter.AddEpisode(path, "ep2", "둘째", 200, 0);
-        ChapterWorkbookWriter.AddCondition(path, "신뢰0이상", "trust >= 0");
-        ChapterWorkbookWriter.AddCondition(path, "신뢰초과", "trust > 1");
-        ChapterWorkbookWriter.AddEdge(path, "ep1", "ep2", optionLabel: "믿는다");
-        ChapterWorkbookWriter.UpdateEdge(path, "ep1", "ep2",
+        editor.AddEpisode("gd", "ep1", "첫 화", 0, 0);
+        editor.AddEpisode("gd", "ep2", "둘째", 200, 0);
+        editor.AddChapterCondition("gd", "신뢰0이상", "trust >= 0");
+        editor.AddChapterCondition("gd", "신뢰초과", "trust > 1");
+        editor.AddEdge("gd", "ep1", "ep2", optionLabel: "믿는다");
+        editor.UpdateEdge("gd", "ep1", "ep2",
             visibleConditionLabel: "신뢰0이상", conditionLabel: "신뢰초과",
             statChanges: "trust +2", matchOptionLabel: "믿는다");
         // 관문 없는 길 하나 — 이게 없으면 ep2가 도달 불가라 내보내기가 거부된다(Gate C 3번).
-        ChapterWorkbookWriter.AddEdge(path, "ep1", "ep2", optionLabel: "무시한다");
+        editor.AddEdge("gd", "ep1", "ep2", optionLabel: "무시한다");
 
-        ChapterExportResult result = ChapterProgressionExporter.Export(
-            ChapterWorkbookReader.Read(path));
+        ChapterExportResult result = ChapterProgressionExporter.Export(chapter.ToGraphModel("gd"));
         Assert.False(result.Refused, string.Join(" / ", result.Validation.All.Select(item => item.Message)));
 
         using JsonDocument document = JsonDocument.Parse(result.Json!);
@@ -428,8 +398,7 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         // 초기값·최소·최대가 어느 런타임 입력에도 없었고, 툴의 도달성 증명만 clamp하며
         // 걸었다. `Ked.Progression.ChapterDefinition`은 정의되지 않은 스탯을 가리키는
         // 조건을 만나면 생성을 거부하므로, 이것이 없으면 실데이터를 아예 못 싣는다.
-        // 시트에는 경계를 쓰는 writer 경로가 없어(사람이 엑셀에서 적는다) 모델을 직접
-        // 세운다 — 겨누는 것은 내보내기이지 리더가 아니다.
+        // 모델을 직접 세운다 — 겨누는 것은 내보내기다.
         var chapter = new ChapterGraphModel(
             "stats",
             string.Empty,
@@ -475,6 +444,9 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         Assert.False(trust.TryGetProperty("SourceRow", out _));
     }
 
+    // ── 기반 ────────────────────────────────────────────────────────────────
+
+    /// <summary>에피소드 하나(와 그 간선)를 뺀 사본. 검증 통과용 절단본을 만들 때 쓴다.</summary>
     private static ChapterGraphModel Trim(ChapterGraphModel chapter, string remove) => new(
         chapter.ChapterId,
         chapter.SourcePath,
@@ -484,23 +456,4 @@ public sealed class ChapterExportAndFixtureTests : IDisposable
         chapter.Stats,
         chapter.Fixtures,
         chapter.Diagnostics);
-
-    private static void WriteRows(string path, string?[][] rows)
-    {
-        using var workbook = new XLWorkbook();
-        IXLWorksheet sheet = workbook.AddWorksheet("본문");
-
-        for (int row = 0; row < rows.Length; row++)
-        {
-            for (int column = 0; column < rows[row].Length; column++)
-            {
-                if (rows[row][column] is { Length: > 0 } value)
-                {
-                    sheet.Cell(row + 1, column + 1).SetValue(value);
-                }
-            }
-        }
-
-        workbook.SaveAs(path);
-    }
 }

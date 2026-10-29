@@ -4,10 +4,11 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
-using Vn.Authoring.Chapters.Import;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Graph;
 using Vn.Authoring.Model;
+using Vn.Authoring.Script;
 using Vn.Authoring.Serialization;
 
 namespace Vn.App.Tests;
@@ -24,10 +25,10 @@ public sealed class ChapterRailTests
     {
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        // 엑셀노드 셋 — 챕터의 에피소드와 이름·표식이 짝이다.
-        AddExcelNode(session, fileId, "EP00");
-        AddExcelNode(session, fileId, "EP01");
-        AddExcelNode(session, fileId, "EP02");
+        // 에피소드 카드 셋 — 챕터의 에피소드와 이름·표식이 짝이다.
+        AddEpisodeCard(session, fileId, "EP00");
+        AddEpisodeCard(session, fileId, "EP01");
+        AddEpisodeCard(session, fileId, "EP02");
 
         graph.SupplyChapters([Chapter("ch01",
             episodes: ["EP00", "EP01", "EP02"],
@@ -105,7 +106,7 @@ public sealed class ChapterRailTests
         // 고장으로 보인다(소유자 보고 2026-08-15). 가지는 "동기화 전" 스텁에서 멈춘다.
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        AddExcelNode(session, fileId, "EP00"); // EP01은 아직 없다
+        AddEpisodeCard(session, fileId, "EP00"); // EP01은 아직 없다
 
         graph.SupplyChapters([Chapter("ch01",
             episodes: ["EP00", "EP01"],
@@ -130,20 +131,20 @@ public sealed class ChapterRailTests
         //    (소유자: 조건 노드 카드도 "종류가 하나뿐이니 가를 것이 없다").
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        DialogueNode excel = AddExcelNode(session, fileId, "EP00");
+        DialogueNode episode = AddEpisodeCard(session, fileId, "EP00");
         DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "자유씬");
         graph.Rebuild();
 
         var canvas = graph.FindControl<Canvas>("GraphCanvas")!;
-        Border excelCard = canvas.Children.OfType<Border>()
-            .Single(border => Equals(border.Tag, excel.Id));
+        Border episodeCard = canvas.Children.OfType<Border>()
+            .Single(border => Equals(border.Tag, episode.Id));
         Border freeCard = canvas.Children.OfType<Border>()
             .Single(border => Equals(border.Tag, free.Id));
 
-        Assert.NotEqual(freeCard.CornerRadius, excelCard.CornerRadius);
+        Assert.NotEqual(freeCard.CornerRadius, episodeCard.CornerRadius);
         Assert.NotEqual(
             ((Avalonia.Media.SolidColorBrush)freeCard.Background!).Color,
-            ((Avalonia.Media.SolidColorBrush)excelCard.Background!).Color);
+            ((Avalonia.Media.SolidColorBrush)episodeCard.Background!).Color);
     });
 
     [Fact]
@@ -152,7 +153,7 @@ public sealed class ChapterRailTests
         // 챕터 밖의 노드에 진행·종료를 그리는 것은 거짓말이다 — 동기화 보고가 알릴 일이다.
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        AddExcelNode(session, fileId, "EP99"); // 챕터에는 없는 에피소드
+        AddEpisodeCard(session, fileId, "EP99"); // 챕터에는 없는 에피소드
 
         graph.SupplyChapters([Chapter("ch01",
             episodes: ["EP00"],
@@ -168,15 +169,10 @@ public sealed class ChapterRailTests
     [Fact]
     public void 옵션_포트가_칩으로_이사하고_스텁과_체인이_선다() => HeadlessUi.Run(() =>
     {
-        // T2 — 실제 동기화로 옵션 줄이 있는 엑셀노드를 만든다: CHOICE + 옵션 둘.
+        // T2 — 대사가 든 에피소드 카드에서 선택지가 칩으로 선다. 칩의 주인은 챕터 간선이다.
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        string episodes = Path.Combine(Path.GetTempPath(), "vn-rail-ep", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(episodes);
-        string workbook = Path.Combine(episodes, "EP00.xlsx");
-        WriteEpisode(workbook);
-
-        // 진행 간선을 시트에서 일부러 먼저 둔다 — 그래도 화면은 선택지가 위여야 한다.
+        // 진행 간선을 일부러 먼저 둔다 — 그래도 화면은 선택지가 위여야 한다.
         ChapterEntry entry = Chapter("ch01",
             episodes: ["EP00", "EP01"],
             edges:
@@ -186,13 +182,18 @@ public sealed class ChapterRailTests
                 ("EP00", "EP01", "의심한다", null)
             ]);
 
-        EpisodeImport import = EpisodeWorkbookImporter.Run(
-            session.Editor, session.Definition, fileId,
-            Path.GetDirectoryName(workbook)!, entry.Model!);
+        // v10 — 대본은 선택지를 선언하지 않는다. 대사 두 줄뿐이다. 새 카드는 빈 줄 하나로
+        // 서므로 그 줄을 먼저 채운다 — 안 채우면 붙여넣기가 그것을 지울 후보로 본다.
+        DialogueNode ep00 = AddEpisodeCard(session, fileId, "EP00");
+        ScriptDocument script = session.Project.FindScript(ep00.ScriptId)!;
+        session.Editor.SetScriptLineText(script.Id, script.ActiveLines.First().Id, "윌로", "첫 줄");
 
-        Assert.True(import.Applied, string.Join(" / ", import.Diagnostics.Select(item => item.Message)));
+        ScenarioPasteOutcome pasted = session.Editor.ApplyScenarioText(
+            ep00.Id, "윌로: 첫 줄\n라루: 둘째 줄", session.Definition, confirmDeletes: true);
 
-        DialogueNode ep01 = AddExcelNode(session, fileId, "EP01");
+        Assert.True(pasted.Applied, string.Join(" / ", pasted.Problems));
+
+        DialogueNode ep01 = AddEpisodeCard(session, fileId, "EP01");
         ep01.Layout.X = 1200;
         ep01.Layout.Y = 60;
 
@@ -205,20 +206,18 @@ public sealed class ChapterRailTests
 
         var canvas = graph.FindControl<Canvas>("GraphCanvas")!;
 
-        // ① 엑셀노드 카드에서 옵션·기본 포트가 사라졌다 — 칩으로 이사(IF 갈래만 남는다).
-        DialogueNode excel = session.Project.EnumerateNodes().OfType<DialogueNode>()
-            .Single(node => node.MarkedEpisodeId == "EP00");
+        // ① 에피소드 카드에서 옵션·기본 포트가 사라졌다 — 칩으로 이사(IF 갈래만 남는다).
         ExpandedNodeProjection projected = GraphProjectionBuilder
             .Build(session.Project, session.Project.Files.Select(file => file.Id)
                 .ToHashSet(StringComparer.Ordinal))
             .Items.OfType<ExpandedNodeProjection>()
-            .Single(item => item.NodeId == excel.Id);
+            .Single(item => item.NodeId == ep00.Id);
 
         Assert.DoesNotContain(projected.OutputPorts,
             port => port.Kind == GraphOutputPortKind.ExecutionDefault);
         Assert.DoesNotContain(projected.OutputPorts, port => port.ExecutionPort is { IsChoice: true });
 
-        // ② 칩의 주인은 챕터 `간선` 시트다. (구판 OPTION 스텁은 v10에서 사라졌다 —
+        // ② 칩의 주인은 챕터 간선이다. (구판 OPTION 스텁은 v10에서 사라졌다 —
         //    대본이 선택지를 선언하지 않으므로 "안 이은 옵션"이라는 상태가 없다.)
         List<string> chips = canvas.Children.OfType<TextBlock>()
             .Select(block => block.Text ?? string.Empty)
@@ -227,7 +226,7 @@ public sealed class ChapterRailTests
         Assert.Contains("● 라루를 믿는다", chips);
         Assert.Contains("● 의심한다", chips);
 
-        // 순서 — 선택지(간선 시트의 행 순서)가 위, 진행이 아래 (소유자 보고: 반대면 헷갈린다).
+        // 순서 — 선택지(간선 순서)가 위, 진행이 아래 (소유자 보고: 반대면 헷갈린다).
         // EP01(엔딩)의 진행 스텁도 있으므로 EP00 분기점(같은 X)의 칩들만 본다.
         double trunkLeft = canvas.Children.OfType<TextBlock>()
             .Where(block => block.Text == "● 라루를 믿는다")
@@ -245,7 +244,7 @@ public sealed class ChapterRailTests
         // ③ 배선 — 칩에 자유 씬을 달면(칩이 부르는 그 SetExitTarget) 철도가 씬을 경유한다.
         // v10에서 선택지 출구의 열쇠는 <b>문구</b>다 — 대본 줄이 아니라(대본은 선택지를
         // 선언하지 않는다). 그래서 대본을 고쳐도 이 배선이 살아 있다.
-        session.Editor.SetExitTarget(excel.Id, ExitPortKind.Choice, "의심한다", free.Id);
+        session.Editor.SetExitTarget(ep00.Id, ExitPortKind.Choice, "의심한다", free.Id);
 
         graph.Rebuild();
 
@@ -255,7 +254,7 @@ public sealed class ChapterRailTests
                     Math.Abs(line.EndPoint.X - (700 + 105)) < 0.5);
 
         // ④ ⚠ 2026-09-17에 뒤집혔다 (R7 P-6 · 결정 ⑤). 전에는 커스텀 노드의 기본 출구
-        //    쓰기가 조용히 거절돼 씬이 곧장 (진행)으로 합류했다 — 그 거절이 곧 엑셀노드/
+        //    쓰기가 조용히 거절돼 씬이 곧장 (진행)으로 합류했다 — 그 거절이 곧 에피소드/
         //    자유노드의 구분이었고, 구분이 없어졌으므로 배선이 서고 선도 그려진다.
         DialogueNode sceneC = session.Editor.AddDialogueNode(fileId, name: "다음씬C");
         sceneC.Layout.X = 960;
@@ -286,8 +285,6 @@ public sealed class ChapterRailTests
         double webOutX = 950 + 210 + 6; // 카드 오른쪽 + 6
         Assert.Contains(canvas.Children.OfType<Avalonia.Controls.Shapes.Line>(),
             line => Math.Abs(line.StartPoint.X - webOutX) < 0.5);
-
-        Directory.Delete(episodes, recursive: true);
     });
 
     [Fact]
@@ -298,9 +295,9 @@ public sealed class ChapterRailTests
         // 철도는 여전히 대본 OPTION을 기준으로 삼아 모든 간선을 유령으로 그리고 있었다.
         (GraphEditorView graph, AuthoringSession session, string fileId) = ShowBoard("ch01");
 
-        DialogueNode ep00 = AddExcelNode(session, fileId, "EP00"); // 대본에 OPTION 줄이 없다
-        AddExcelNode(session, fileId, "EP01");
-        AddExcelNode(session, fileId, "EP02");
+        DialogueNode ep00 = AddEpisodeCard(session, fileId, "EP00"); // 대본에 OPTION 줄이 없다
+        AddEpisodeCard(session, fileId, "EP01");
+        AddEpisodeCard(session, fileId, "EP02");
 
         DialogueNode free = session.Editor.AddDialogueNode(fileId, name: "자유씬A");
         free.Layout.X = 700;
@@ -348,27 +345,9 @@ public sealed class ChapterRailTests
         Assert.Equal(free.Id, reloaded.ChoiceExits["라루를 믿는다"]);
     });
 
-    private static void WriteEpisode(string path)
-    {
-        using var workbook = new ClosedXML.Excel.XLWorkbook();
-        ClosedXML.Excel.IXLWorksheet sheet = workbook.AddWorksheet("대본");
-        string[] headers = ["인덱스", "LineId", "화자", "내용"];
-
-        for (int column = 1; column <= headers.Length; column++)
-        {
-            sheet.Cell(1, column).SetValue(headers[column - 1]);
-        }
-
-        // v15 자리 — 인덱스는 A열(1)이다.
-        sheet.Cell(2, 1).SetValue(10); sheet.Cell(2, 3).SetValue("윌로"); sheet.Cell(2, 4).SetValue("첫 줄");
-        // v10 — 대본은 선택지를 선언하지 않는다. 칩의 주인은 챕터 `간선` 시트다.
-        sheet.Cell(3, 1).SetValue(20); sheet.Cell(3, 3).SetValue("라루"); sheet.Cell(3, 4).SetValue("둘째 줄");
-        workbook.SaveAs(path);
-    }
-
     // ── 기반 ────────────────────────────────────────────────────────────────
 
-    private static DialogueNode AddExcelNode(AuthoringSession session, string fileId, string episodeId)
+    private static DialogueNode AddEpisodeCard(AuthoringSession session, string fileId, string episodeId)
     {
         DialogueNode node = session.Editor.AddDialogueNode(fileId, name: episodeId);
         node.MarkedEpisodeId = episodeId;
@@ -396,11 +375,11 @@ public sealed class ChapterRailTests
             .ToList();
 
         var model = new ChapterGraphModel(
-            chapterId, chapterId + ".xlsx", episodeList, edgeList,
+            chapterId, chapterId, episodeList, edgeList,
             Array.Empty<ChapterCondition>(), Array.Empty<ChapterStat>(),
             Array.Empty<ChapterFixture>(), Array.Empty<ChapterDiagnostic>());
 
-        return new ChapterEntry(chapterId, chapterId + ".xlsx", model, null);
+        return new ChapterEntry(chapterId, model);
     }
 
     private static (GraphEditorView Graph, AuthoringSession Session, string FileId) ShowBoard(string name)

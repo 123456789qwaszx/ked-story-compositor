@@ -16,37 +16,24 @@ namespace Vn.Authoring.Tests.Chapters;
 ///     때 조건을 <em>새로</em> 만들면 Id가 갈려 이미 매달린 갈래가 전부 고아가 된다. 같은 식이면
 ///     같은 조건이므로 <b>이름만</b> 갈아 끼운다.</item>
 ///   <item><b>화자</b> — 붙드는 것이 이름 문자열 하나뿐이다(<c>LocalizedLine.Speaker</c>).
-///     등록부에서만 갈면 그 줄들이 전부 미등록이 된다. 2026-10-29부터 바꾸는 것은 <b>프로젝트의 줄</b>이고
-///     대본 워크북은 산출물이라 <b>다시 낸다</b>(excel-boundary C4) — 셀을 고치지 않는다.</item>
+///     등록부에서만 갈면 그 줄들이 전부 미등록이 된다. 그래서 개명이 <b>프로젝트의 줄</b>을
+///     함께 바꾼다(<see cref="ProjectEditor.RenameSpeaker"/>).</item>
 /// </list>
+///
+/// (2026-10-29 · D2: 대본 워크북을 다시 내던 일과 그 검사(잠김·미룸)는 엑셀 연동과 함께 걷혔다.)
 /// </summary>
-public sealed class SpeakerAndConditionRenameTests : IDisposable
+public sealed class SpeakerAndConditionRenameTests
 {
     private static readonly GameDefinition Definition = GameDefinition.Parse("""
         { "speakers": [ { "name": "라루", "characterId": "laru" } ] }
         """)!;
-
-    private readonly string _root = Path.Combine(
-        Path.GetTempPath(), "vn-rename-carries", Guid.NewGuid().ToString("N"));
-
-    private readonly WorkbookOutput _output = new();
-
-    public SpeakerAndConditionRenameTests() => Directory.CreateDirectory(_root);
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_root))
-        {
-            Directory.Delete(_root, recursive: true);
-        }
-    }
 
     // ── 조건 라벨 ───────────────────────────────────────────────────────────
 
     /// <summary>스탯 하나를 견주는 챕터 조건 하나짜리 모델. 라벨만 갈아 끼울 수 있다.</summary>
     private static ChapterGraphModel ChapterWith(string label) => new(
         chapterId: "ch01",
-        sourcePath: "chapters/ch01.xlsx",
+        sourcePath: "ch01",
         episodes: [],
         edges: [],
         conditions: [
@@ -89,7 +76,7 @@ public sealed class SpeakerAndConditionRenameTests : IDisposable
             LineConditionTransition.EndIf()
         ]);
 
-        // 기획자가 엑셀에서 라벨을 고쳤다 — 식은 그대로다.
+        // 라벨이 바뀌었다 — 식은 그대로다.
         ChapterBoardSupply.SupplyChapterConditionsToBoard(
             editor, Definition, file.Id, ChapterWith("신뢰가 높다"));
 
@@ -124,17 +111,11 @@ public sealed class SpeakerAndConditionRenameTests : IDisposable
 
     // ── 화자 ────────────────────────────────────────────────────────────────
 
-    private sealed record World(
-        ProjectEditor Editor, string ProjectPath, DialogueNode Node, ScriptDocument Script, ScriptLine Line, string WorkbookPath);
+    private sealed record World(ProjectEditor Editor, ScriptDocument Script, ScriptLine Line);
 
-    /// <summary>
-    /// 챕터 ch01 · 그 판의 에피소드 카드 하나 · 화자가 적힌 줄 하나 · 그 카드의 대본 워크북(산출물)이
-    /// 한 번 나가 있는 프로젝트.
-    /// </summary>
-    private World BuildProject(string speaker, string episodeId = "main01.01")
+    /// <summary>챕터 ch01 · 그 판의 에피소드 카드 하나 · 화자가 적힌 줄 하나가 선 프로젝트.</summary>
+    private static World BuildProject(string speaker, string episodeId = "main01.01")
     {
-        string projectPath = Path.Combine(_root, "예제.vnproject.json");
-
         var editor = new ProjectEditor(new StoryProject());
         editor.EnsureChapter("ch01");
         string fileId = editor.EnsureChapterBoard("ch01");
@@ -145,78 +126,37 @@ public sealed class SpeakerAndConditionRenameTests : IDisposable
         ScriptLine line = script.ActiveLines.First();
         editor.SetScriptLineText(script.Id, line.Id, speaker, "문을 연다");
 
-        string folder = EpisodeLibrary.FolderFor(projectPath, "ch01")!;
-        Directory.CreateDirectory(folder);
-        string workbook = EpisodeLibrary.PathFor(folder, episodeId);
-        Assert.True(EpisodeScriptOutput.Write(editor.Project, node, workbook).Written);
-
-        return new World(editor, projectPath, node, script, line, workbook);
+        return new World(editor, script, line);
     }
 
-    private static string FirstSpeaker(string path) => EpisodeWorkbookReader.Read(path).Rows
-        .First(row => row.Speaker.Length > 0)
-        .Speaker;
-
     [Fact]
-    public void 화자_개명이_프로젝트_줄과_대본_워크북에_함께_간다()
+    public void 화자_개명이_에피소드_카드의_줄에_간다()
     {
         World world = BuildProject("라루");
 
-        SpeakerRenameOutcome outcome = SpeakerRenamer.Rename(
-            world.Editor, _output, world.ProjectPath, "라루", "라루엘");
-
-        Assert.Equal(1, outcome.ScriptLines);
-        Assert.Equal(1, outcome.WorkbooksWritten);
-        Assert.Empty(outcome.Deferred);
+        Assert.Equal(1, world.Editor.RenameSpeaker("라루", "라루엘"));
 
         Assert.Equal("라루엘", world.Script.Text(world.Line.Id, world.Script.PrimaryLocale).Speaker);
-        Assert.Equal("라루엘", FirstSpeaker(world.WorkbookPath));   // 산출물이 프로젝트를 따라왔다
     }
 
     [Fact]
-    public void 글자가_다른_이름은_건드리지_않고_파일에도_손대지_않는다()
+    public void 글자가_다른_이름은_건드리지_않는다()
     {
-        // 추측 보정 금지 — 사람이 손으로 적은 다른 이름을 툴이 고쳐 주지 않는다. 그리고 안 바뀐
-        // 파일을 다시 쓰지 않는다(내용 해시가 달라져 아무 일도 없었는데 감시가 깨어난다).
+        // 추측 보정 금지 — 사람이 손으로 적은 다른 이름을 툴이 고쳐 주지 않는다. 그리고 바뀐
+        // 것이 없으면 변경도 없다(되돌리기 기록이 쌓이고 화면이 다시 그려지는 일이 없다).
         World world = BuildProject("라루");
-        byte[] before = File.ReadAllBytes(world.WorkbookPath);
+        long revision = world.Editor.Revision;
 
-        SpeakerRenameOutcome outcome = SpeakerRenamer.Rename(
-            world.Editor, _output, world.ProjectPath, "라루X", "누구");
+        Assert.Equal(0, world.Editor.RenameSpeaker("라루X", "누구"));
 
-        Assert.Equal(0, outcome.ScriptLines);
-        Assert.Equal(0, outcome.WorkbooksWritten);
         Assert.Equal("라루", world.Script.Text(world.Line.Id, world.Script.PrimaryLocale).Speaker);
-        Assert.Equal(before, File.ReadAllBytes(world.WorkbookPath));
+        Assert.Equal(revision, world.Editor.Revision);
     }
 
     [Fact]
-    public void 엑셀이_잡고_있어도_프로젝트는_바뀌고_그_워크북은_미뤄진다()
+    public void 챕터_아닌_판의_줄도_바뀐다()
     {
-        // ⛔ 2026-10-29까지는 잠긴 대본이 하나라도 있으면 <b>시작도 안 했다</b> — 원본이 엑셀이던
-        //    시절의 규칙이다. 원본이 프로젝트인 지금, 잠긴 것은 그 파일을 지금 못 쓰는 것뿐이다.
-        World world = BuildProject("라루");
-
-        SpeakerRenameOutcome outcome;
-
-        using (new FileStream(world.WorkbookPath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
-        {
-            outcome = SpeakerRenamer.Rename(world.Editor, _output, world.ProjectPath, "라루", "라루엘");
-        }
-
-        Assert.Equal(1, outcome.ScriptLines);
-        Assert.Equal(0, outcome.WorkbooksWritten);
-        Assert.Contains("엑셀이", Assert.Single(outcome.Deferred));
-
-        Assert.Equal("라루엘", world.Script.Text(world.Line.Id, world.Script.PrimaryLocale).Speaker);
-        Assert.Equal("라루", FirstSpeaker(world.WorkbookPath));   // 옛 산출물 — 조정자가 기억했다가 따라잡는다
-        Assert.Contains(WorkbookOutput.ScriptTarget("ch01", "main01.01"), _output.Pending);
-    }
-
-    [Fact]
-    public void 챕터_아닌_판의_줄도_바뀌지만_워크북은_없다()
-    {
-        // 작가의 낙서판(챕터 아닌 판)의 카드는 진행에 안 실리고 대본 워크북도 없다 — 줄만 바뀐다.
+        // 작가의 낙서판(챕터 아닌 판)의 카드는 진행에 안 실리지만, 화자는 같은 화자다.
         var editor = new ProjectEditor(new StoryProject());
         string fileId = editor.AddStoryFile("낙서").Id;
         DialogueNode node = editor.AddDialogueNode(fileId, name: "메모");
@@ -224,12 +164,8 @@ public sealed class SpeakerAndConditionRenameTests : IDisposable
         ScriptLine line = script.ActiveLines.First();
         editor.SetScriptLineText(script.Id, line.Id, "라루", "혼잣말");
 
-        SpeakerRenameOutcome outcome = SpeakerRenamer.Rename(
-            editor, _output, Path.Combine(_root, "예제.vnproject.json"), "라루", "라루엘");
+        Assert.Equal(1, editor.RenameSpeaker("라루", "라루엘"));
 
-        Assert.Equal(1, outcome.ScriptLines);
-        Assert.Equal(0, outcome.WorkbooksWritten);
-        Assert.Empty(outcome.Deferred);
         Assert.Equal("라루엘", script.Text(line.Id, script.PrimaryLocale).Speaker);
     }
 }

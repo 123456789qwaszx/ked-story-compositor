@@ -159,5 +159,5 @@ public sealed class ChapterSceneGroupingTests
 
     private static ChapterGraphModel Chapter(
         ChapterEpisode[] episodes, ChapterEdge[] edges) =>
-        new("ch01", "ch01.xlsx", episodes, edges, [], [], [], []);
+        new("ch01", "ch01", episodes, edges, [], [], [], []);
 }

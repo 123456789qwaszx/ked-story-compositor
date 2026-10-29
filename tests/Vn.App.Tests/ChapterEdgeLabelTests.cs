@@ -3,53 +3,39 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Serialization;
 
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 사람이 툴에서 만든 <b>새 챕터</b>에서 간선과 선택지 칸이 실제 순서 그대로 도는지 —
-/// 2026-08-16 개정: 문구의 정본은 챕터 `선택지` 시트의 대본 text이고(자유 수정),
-/// 툴의 간선 편집은 선택지수만 만진다.
+/// 사람이 툴에서 만든 <b>새 챕터</b>에서 간선과 선택지 문구가 실제 순서 그대로 도는지 —
+/// 툴이 길을 놓으면 기본 문구가 함께 들어가고, 문구는 간선 패널에서 고친다.
 /// </summary>
 public sealed class ChapterEdgeLabelTests
 {
     [Fact]
-    public void 선택지_칸에_대본_text를_적으면_보이는_선택지가_된다() => HeadlessUi.Run(() =>
+    public void 툴이_이은_길에는_기본_문구가_들어간다() => HeadlessUi.Run(() =>
     {
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
-        // 사람이 하는 그대로: 노드 하나 → 그 자식 하나 (간선 + 빈 선택지 칸이 함께 생긴다).
+        // 사람이 하는 그대로: 노드 하나 → 그 자식 하나 (간선이 함께 생긴다).
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         view.SelectEpisode("new01");
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        ChapterGraphModel created = ChapterWorkbookReader.Read(project.ChapterPath);
-        ChapterEdge fresh = Assert.Single(created.Edges,
+        ChapterEdge fresh = Assert.Single(Chapter(session).Edges,
             edge => edge.FromEpisodeId == "new01" && edge.ToEpisodeId == "new02");
         // v12 — 툴이 길을 놓으면 문구가 함께 들어간다. 빈 문구는 이제 오류다.
         Assert.Equal("계속", fresh.OptionLabel);
-
-        // 기획자가 엑셀에서 하듯 간선의 `선택지` 칸에 문구를 적는다 (v9 — 문구가 곧 값이다).
-        using (var workbook = new ClosedXML.Excel.XLWorkbook(project.ChapterPath))
-        {
-            ClosedXML.Excel.IXLWorksheet edges = workbook.Worksheet(ChapterSheetNames.Edges);
-            edges.Cell(fresh.SourceRow, 4).SetValue("왼쪽 길로 간다");
-            workbook.Save();
-        }
-
-        ChapterEdge saved = ChapterWorkbookReader.Read(project.ChapterPath).Edges.Single(edge =>
-            edge.FromEpisodeId == "new01" && edge.ToEpisodeId == "new02");
-
-        Assert.Equal("왼쪽 길로 간다", saved.OptionLabel);
-        Assert.False(saved.HasNoOptionLabel);
+        Assert.False(fresh.HasNoOptionLabel);
     });
 
     [Fact]
@@ -58,14 +44,14 @@ public sealed class ChapterEdgeLabelTests
         // 소유자 보고 — 간선을 클릭한 뒤 거기 보이는 에피소드 이름을 직접 고치려 했다.
         // 그 자리는 읽기 전용이었다. 이제 누르면 그 에피소드의 속성 패널(Id [개명])로 간다.
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         view.SelectEpisode("new01");
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         view.SelectEdgeKey("new01", "new02", "계속");
@@ -91,7 +77,7 @@ public sealed class ChapterEdgeLabelTests
         view.FindControl<TextBox>("IdBox")!.Text = "ep_left";
         view.RenameSelectedEpisode();
 
-        ChapterGraphModel reread = ChapterWorkbookReader.Read(project.ChapterPath);
+        ChapterGraphModel reread = Chapter(session);
         Assert.NotNull(reread.FindEpisode("ep_left"));
         Assert.Contains(reread.Edges, edge =>
             edge.FromEpisodeId == "new01" && edge.ToEpisodeId == "ep_left");
@@ -100,36 +86,39 @@ public sealed class ChapterEdgeLabelTests
     [Fact]
     public void 다시_읽기가_끼어들어도_적던_잠금_안내문이_사라지지_않는다() => HeadlessUi.Run(() =>
     {
-        // 저장 감시는 언제든 울린다(엑셀이 파일을 건드리기만 해도). 그 사이에 적어 둔 값이
-        // 조용히 모델 값으로 되돌아가면, 사람 눈에는 "적용을 눌러도 안 바뀐다"로 보인다.
+        // 판은 언제든 다시 선다(프로젝트의 어느 변경이든 다시 읽기를 부른다). 그 사이에 적어 둔
+        // 값이 조용히 모델 값으로 되돌아가면, 사람 눈에는 "적용을 눌러도 안 바뀐다"로 보인다.
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         view.SelectEpisode("new01");
         view.AddEpisodeFromToolbar();
-        view.RefreshFromDisk();
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         view.SelectEdgeKey("new01", "new02", "계속");
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         view.FindControl<TextBox>("EdgeLockedMsgBox")!.Text = "아직 이르다";
 
-        // 적어 둔 값에 포커스가 없는 상태에서 감시가 울린다 — 모델 값으로 되돌아가면 안 된다.
-        view.RefreshFromDisk();
+        // 적어 둔 값에 포커스가 없는 상태에서 다시 읽기가 끼어든다 — 모델 값으로 되돌아가면 안 된다.
+        view.Refresh();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         view.ApplyEdgeFromPanel();
 
-        ChapterEdge saved = ChapterWorkbookReader.Read(project.ChapterPath).Edges.Single(edge =>
+        ChapterEdge saved = Chapter(session).Edges.Single(edge =>
             edge.FromEpisodeId == "new01" && edge.ToEpisodeId == "new02");
 
         Assert.Equal("아직 이르다", saved.LockedMessage);
     });
 
     // ── 기반 ────────────────────────────────────────────────────────────────
+
+    private static ChapterGraphModel Chapter(AuthoringSession session) =>
+        session.Editor.FindChapter("ch01")!.ToGraphModel("ch01");
 
     private static (ChapterGraphView View, AuthoringSession Session) Show(TempProject project)
     {
@@ -157,21 +146,18 @@ public sealed class ChapterEdgeLabelTests
 
             Directory.CreateDirectory(_directory);
 
-            ChapterWorkbookWriter.EnsureChapterWorkbook(
-                Path.Combine(_directory, ChapterLibrary.FolderName), "ch01",
-                [("trust", "신뢰"), ("anger", "분노")]);
+            // [＋ 챕터](AuthoringSession.CreateChapter)와 같은 순서 — 챕터 · 스탯 · 판.
+            var editor = new ProjectEditor(new StoryProject { Title = "간선 이름 검증" });
+            ChapterDocument chapter = editor.EnsureChapter("ch01");
+            chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 100, SourceRow: 0));
+            chapter.Stats.Add(new ChapterStat("anger", "분노", 0, 0, 100, SourceRow: 0));
+            editor.EnsureChapterBoard("ch01");
 
             ManifestPath = Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
-            ProjectStore.Save(ManifestPath, new StoryProject { Title = "간선 이름 검증" });
+            ProjectStore.Save(ManifestPath, editor.Project);
         }
 
         public string ManifestPath { get; }
-
-        public string ChapterPath =>
-            Path.Combine(_directory, ChapterLibrary.FolderName, "ch01.xlsx");
-
-        /// <summary>그 챕터의 대본 폴더 — episodes/{ChapterId}/ (2026-08-16 챕터별 격리).</summary>
-        public string EpisodesFolder => Path.Combine(_directory, "episodes", "ch01");
 
         public void Dispose()
         {

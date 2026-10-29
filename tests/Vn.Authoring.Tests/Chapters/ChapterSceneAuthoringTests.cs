@@ -1,77 +1,41 @@
 using System.Text.Json;
-using ClosedXML.Excel;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
+using Vn.Authoring.Model;
 
 namespace Vn.Authoring.Tests.Chapters;
 
-/// <summary>R1 — 엑셀 장면ID가 런타임의 저장·롤백 경계까지 보존되는지 고정한다.</summary>
-public sealed class ChapterSceneAuthoringTests : IDisposable
+/// <summary>R1 — 에피소드의 장면ID가 런타임의 저장·롤백 경계까지 보존되는지 고정한다.</summary>
+public sealed class ChapterSceneAuthoringTests
 {
-    private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), "vn-scene-authoring", Guid.NewGuid().ToString("N"));
-
-    public ChapterSceneAuthoringTests() => Directory.CreateDirectory(_directory);
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_directory))
-        {
-            Directory.Delete(_directory, recursive: true);
-        }
-    }
-
     [Fact]
-    public void 새_워크북은_장면ID를_읽고_쓴다()
+    public void 장면ID를_정하면_에피소드에_남는다()
     {
-        Assert.True(ChapterWorkbookWriter.EnsureChapterWorkbook(_directory, "ch01"));
-        string path = Path.Combine(_directory, "ch01.xlsx");
+        var editor = new ProjectEditor(new StoryProject());
+        editor.EnsureChapter("ch01");
+        editor.AddEpisode("ch01", "root", "시작", 10, 20);
 
-        Assert.True(ChapterWorkbookWriter.AddEpisode(path, "root", "시작", 10, 20).Written);
-        Assert.True(ChapterWorkbookWriter.UpdateEpisode(path, "root", sceneId: "opening").Written);
+        // 정하기 전에는 에피소드마다 고유한 퇴화 장면이다.
+        Assert.Equal("__scene_root", Assert.Single(editor.FindChapter("ch01")!.Episodes).EffectiveSceneId);
 
-        ChapterEpisode episode = Assert.Single(ChapterWorkbookReader.Read(path).Episodes);
+        editor.UpdateEpisode("ch01", "root", sceneId: "opening");
+
+        ChapterEpisode episode = Assert.Single(editor.FindChapter("ch01")!.ToGraphModel("ch01").Episodes);
         Assert.Equal("opening", episode.SceneId);
         Assert.Equal("opening", episode.EffectiveSceneId);
     }
 
     [Fact]
-    public void 구판_워크북은_백업과_함께_빈_장면ID열로_이행된다()
-    {
-        Assert.True(ChapterWorkbookWriter.EnsureChapterWorkbook(_directory, "legacy"));
-        string path = Path.Combine(_directory, "legacy.xlsx");
-        Assert.True(ChapterWorkbookWriter.AddEpisode(path, "root", "시작", 0, 0).Written);
-
-        using (var workbook = new XLWorkbook(path))
-        {
-            workbook.Worksheet(ChapterSheetNames.Episodes).Column(4).Delete();
-            workbook.Save();
-        }
-
-        ChapterWorkbookMigrator.MigrationResult migration = ChapterWorkbookMigrator.Migrate(path);
-        Assert.True(migration.Migrated);
-        Assert.True(File.Exists(path + ".bak"));
-
-        using (var workbook = new XLWorkbook(path))
-        {
-            Assert.Equal("장면ID", workbook.Worksheet(ChapterSheetNames.Episodes).Cell(1, 4).GetString());
-        }
-
-        ChapterEpisode episode = Assert.Single(ChapterWorkbookReader.Read(path).Episodes);
-        Assert.True(string.IsNullOrWhiteSpace(episode.SceneId));
-        Assert.Equal("__scene_root", episode.EffectiveSceneId);
-        Assert.False(ChapterWorkbookMigrator.Migrate(path).Migrated);
-    }
-
-    [Fact]
     public void 같은_장면의_여러_에피소드를_한_번에_다른_ID로_옮긴다()
     {
-        Assert.True(ChapterWorkbookWriter.EnsureChapterWorkbook(_directory, "bulk"));
-        string path = Path.Combine(_directory, "bulk.xlsx");
-        Assert.True(ChapterWorkbookWriter.AddEpisode(path, "a", "A", 0, 0).Written);
-        Assert.True(ChapterWorkbookWriter.AddEpisode(path, "b", "B", 100, 0).Written);
-        Assert.True(ChapterWorkbookWriter.UpdateEpisodeScenes(path, ["a", "b"], "scene-new").Written);
+        var editor = new ProjectEditor(new StoryProject());
+        editor.EnsureChapter("bulk");
+        editor.AddEpisode("bulk", "a", "A", 0, 0);
+        editor.AddEpisode("bulk", "b", "B", 100, 0);
 
-        ChapterGraphModel model = ChapterWorkbookReader.Read(path);
+        editor.UpdateEpisodeScenes("bulk", ["a", "b"], "scene-new");
+
+        ChapterGraphModel model = editor.FindChapter("bulk")!.ToGraphModel("bulk");
         Assert.All(model.Episodes, episode => Assert.Equal("scene-new", episode.SceneId));
     }
 
@@ -131,12 +95,12 @@ public sealed class ChapterSceneAuthoringTests : IDisposable
         ChapterEpisode first,
         ChapterEpisode second,
         params ChapterEdge[] edges) =>
-        new("scenes", "scenes.xlsx", [first, second], edges, [], [], [], []);
+        new("scenes", "scenes", [first, second], edges, [], [], [], []);
 
     private static ChapterGraphModel Chapter(
         ChapterEpisode first,
         ChapterEpisode second,
         ChapterEpisode third,
         params ChapterEdge[] edges) =>
-        new("scenes", "scenes.xlsx", [first, second, third], edges, [], [], [], []);
+        new("scenes", "scenes", [first, second, third], edges, [], [], [], []);
 }

@@ -60,8 +60,8 @@
 | [`handoff/current-state.md`](handoff/current-state.md) | **구현 이력** (2026-08까지) — 목적·계층 규칙·화면·코드 지도. ⚠ 현재 상태가 아니다: R-F가 전제를 뒤집었고, 머리글이 무엇이 달라졌는지 짚는다 | "왜 그렇게 만들었나"를 따질 때 |
 | [`work-orders/chapter-graph-orders.md`](work-orders/chapter-graph-orders.md) | **규격 원본.** §2 소유자 결정 15줄(G-1~G-8, 개정 포함) · §3 엑셀 규격(시트·열·구간 규칙) · §4 기능 G1–G9 | 규격의 정확한 문구가 필요할 때 |
 | [`run-log.md`](run-log.md) | 전 과정의 서술 기록. 스스로 내린 결정과 그 근거, 발견한 함정 | "왜 이렇게 됐나"를 따질 때 |
-| [`ch01.contract-sample.xlsx`](ch01.contract-sample.xlsx) | **현행 계약 표본.** Scene·Auto·조건·스탯·Via·EventKey | 새 챕터와 런타임 산출 형태를 볼 때 |
-| [`chapter-graph-sample.xlsx`](chapter-graph-sample.xlsx) | 기존 UI·이행·에피소드 회귀 테스트용 역사 견본 | 구형 데이터 호환과 기존 사례를 볼 때 |
+| [`ch01.chapter.json`](../tests/fixtures/chapter-samples/ch01.chapter.json) | **현행 계약 표본**(프로젝트 형식). Scene·Auto·조건·스탯·EventKey. 2026-10-29까지 `ch01.contract-sample.xlsx`였다 | 새 챕터와 런타임 산출 형태를 볼 때 |
+| [`ch05.chapter.json`](../tests/fixtures/chapter-samples/ch05.chapter.json) | 화면·에피소드 회귀 테스트용 견본(프로젝트 형식). 2026-10-29까지 `chapter-graph-sample.xlsx`였다 | 기존 사례를 볼 때 |
 | [`handoff/io-reference.md`](handoff/io-reference.md) · [`runtime-contract.md`](runtime-contract.md) | 런타임과의 입출력 계약 | 내보낸 JSON을 게임에 넣을 때 |
 | [`writer-guide.md`](writer-guide.md) | **옛 층**(대사 그래프) 작가용 | 대사·연출을 쓸 때 |
 
@@ -538,7 +538,7 @@ A ; B                AND (세미콜론)
 ⛔ **`cleared:`는 2026-08-25에 폐지됐습니다.** 진행 코어가 클리어 이력을 더 이상 기억하지
 않습니다. 같은 것을 **Bool 스탯(깃발)** 으로 적습니다 — `스탯` 시트에 깃발을 하나 만들고,
 그 에피소드에서 **나가는 모든 간선**의 `스탯변화`에 `깃발 true`를 적은 뒤, 관문에서는
-`깃발 == true`로 읽습니다. 견본(`docs/chapter-graph-sample.xlsx`)의 `복도완료`가 그 모양입니다.
+`깃발 == true`로 읽습니다. 견본(`tests/fixtures/chapter-samples/ch05.chapter.json`)의 `복도완료`가 그 모양입니다.
 
 ⚠ **나가는 길 하나라도 빠뜨리면 관문이 조용히 달라집니다.** 예전에는 툴이 자동으로
 세어 주던 것이라, 이관은 툴이 대신해 주지 않고 사람이 짚어야 합니다.

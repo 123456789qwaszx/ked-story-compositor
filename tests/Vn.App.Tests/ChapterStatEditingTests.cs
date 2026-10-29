@@ -4,8 +4,7 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
-using Vn.Authoring.Model;
-using Vn.Authoring.Serialization;
+using Vn.Authoring.Tests.Fixtures;
 
 namespace Vn.App.Tests;
 
@@ -13,21 +12,18 @@ namespace Vn.App.Tests;
 /// 스탯 수치를 툴에서 만진다 (2026-08-17 소유자: "챕터그래프에서도 에피소드 노드에서도
 /// 스탯 변화를 할 수 있도록 해줄래? 이건 엑셀에서 하는 것이긴 한데, 그 수치를 툴에서도").
 ///
-/// 값이 사는 곳은 그대로 챕터 엑셀 `간선` 시트다 — 손이 하나 더 생겼을 뿐이다. 그래서
-/// 확인도 언제나 <b>엑셀을 다시 읽어</b> 한다.
+/// 값이 사는 곳은 프로젝트의 챕터 간선이다(2026-10-29 · D2 — 그 전에는 챕터 엑셀이었다).
+/// 그래서 확인은 언제나 화면이 아니라 <b>프로젝트의 챕터를 다시 읽어</b> 한다.
 /// </summary>
 public sealed class ChapterStatEditingTests
 {
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
-
     [Fact]
     public void 에피소드_노드의_선택지_폼에서_스탯변화를_적는다() => HeadlessUi.Run(() =>
     {
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
-        ChapterGraphModel model = ChapterWorkbookReader.Read(project.ChapterPath);
+        ChapterGraphModel model = Reread(session);
         ChapterEdge target = model.Edges.First(edge => edge.FromEpisodeId == "main05.02");
 
         view.SelectEpisode("main05.02");
@@ -43,14 +39,14 @@ public sealed class ChapterStatEditingTests
         int added = Rows(editor);
         Add(editor);
 
-        // 드롭다운은 엑셀 `스탯` 시트에 선언된 것만 담는다.
+        // 드롭다운은 챕터에 선언된 스탯만 담는다.
         ChapterStat first = model.Stats[0];
         StatCombo(editor, added).SelectedItem = Display(first);
         AmountBox(editor, added).Text = "2";
 
         view.SubmitEdgeForm();
 
-        ChapterEdge reread = ChapterWorkbookReader.Read(project.ChapterPath).Edges
+        ChapterEdge reread = Reread(session).Edges
             .Single(edge => edge.FromEpisodeId == target.FromEpisodeId
                 && edge.ToEpisodeId == target.ToEpisodeId
                 && (edge.OptionLabel ?? string.Empty) == (target.OptionLabel ?? string.Empty));
@@ -69,11 +65,11 @@ public sealed class ChapterStatEditingTests
     [Fact]
     public void 새로_잇는_길에도_스탯변화가_같은_저장에_실린다() => HeadlessUi.Run(() =>
     {
-        // 두 번 쓰면 그 사이에 엑셀이 파일을 잡을 수 있고, 반쪽만 적힌 길이 남는다.
+        // 두 번 고치면 되돌리기가 두 걸음이 되고, 그 사이 반쪽만 적힌 길이 잠깐 진짜가 된다.
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
-        ChapterStat stat = ChapterWorkbookReader.Read(project.ChapterPath).Stats[0];
+        ChapterStat stat = Reread(session).Stats[0];
 
         view.SelectEpisode("main05.01");
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -90,7 +86,7 @@ public sealed class ChapterStatEditingTests
         view.FindControl<ComboBox>("EdgeTargetCombo")!.SelectedItem = "main05.end";
         view.SubmitEdgeForm();
 
-        ChapterEdge wired = ChapterWorkbookReader.Read(project.ChapterPath).Edges
+        ChapterEdge wired = Reread(session).Edges
             .Single(edge => edge.FromEpisodeId == "main05.01" && edge.ToEpisodeId == "main05.end");
 
         Assert.Equal(new StatDelta(stat.Key, -3), Assert.Single(wired.StatChanges));
@@ -100,9 +96,9 @@ public sealed class ChapterStatEditingTests
     public void 간선_패널에서도_같은_줄_편집기로_적는다() => HeadlessUi.Run(() =>
     {
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
-        ChapterStat stat = ChapterWorkbookReader.Read(project.ChapterPath).Stats[0];
+        ChapterStat stat = Reread(session).Stats[0];
 
         view.SelectEdgeKey("main05.02", "branch05.02A", "라루의 제안을 듣는다");
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -117,7 +113,7 @@ public sealed class ChapterStatEditingTests
 
         view.ApplyEdgeFromPanel();
 
-        ChapterEdge reread = ChapterWorkbookReader.Read(project.ChapterPath).Edges
+        ChapterEdge reread = Reread(session).Edges
             .Single(edge => edge.ToEpisodeId == "branch05.02A");
 
         Assert.Equal(
@@ -133,9 +129,9 @@ public sealed class ChapterStatEditingTests
     {
         // 소유자의 두 요청이 만나는 자리다 — 여기서 수치를 적으면 저기 카드에 폭이 뜬다.
         using var project = new TempProject();
-        (ChapterGraphView view, _) = Show(project);
+        (ChapterGraphView view, AuthoringSession session) = Show(project);
 
-        ChapterGraphModel model = ChapterWorkbookReader.Read(project.ChapterPath);
+        ChapterGraphModel model = Reread(session);
         ChapterStat stat = model.Stats[0];
         ChapterEdge target = model.Edges.Single(edge =>
             edge.FromEpisodeId == "main05.01" && edge.ToEpisodeId == "main05.02");
@@ -163,6 +159,10 @@ public sealed class ChapterStatEditingTests
     });
 
     // ── 기반 ────────────────────────────────────────────────────────────────
+
+    /// <summary>프로젝트가 든 견본 챕터를 지금 모습 그대로 다시 편다 — 화면이 아니라 원본을 본다.</summary>
+    private static ChapterGraphModel Reread(AuthoringSession session) =>
+        session.Editor.FindChapter(SampleChapters.Corridor)!.ToGraphModel(SampleChapters.Corridor);
 
     private static string Display(ChapterStat stat) =>
         string.IsNullOrWhiteSpace(stat.DisplayName) || stat.DisplayName == stat.Key
@@ -221,26 +221,15 @@ public sealed class ChapterStatEditingTests
 
     private sealed class TempProject : IDisposable
     {
-        private readonly string _directory;
+        private readonly string _directory = Path.Combine(
+            Path.GetTempPath(), "vn-chapter-stat", Guid.NewGuid().ToString("N"));
 
         public TempProject()
         {
-            _directory = Path.Combine(
-                Path.GetTempPath(), "vn-chapter-stat", Guid.NewGuid().ToString("N"));
-
-            Directory.CreateDirectory(Path.Combine(_directory, ChapterLibrary.FolderName));
-            File.Copy(SamplePath, ChapterPath);
-
-            ManifestPath = Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
-            var project = new StoryProject { Title = "스탯 편집 검증" };
-            project.Files.Add(new StoryFile("sf_main", "본편", "story/main.vnstory.json"));
-            ProjectStore.Save(ManifestPath, project);
+            ManifestPath = SampleProject.Corridor(_directory, "스탯 편집 검증");
         }
 
         public string ManifestPath { get; }
-
-        public string ChapterPath =>
-            Path.Combine(_directory, ChapterLibrary.FolderName, "ch05.xlsx");
 
         public void Dispose()
         {

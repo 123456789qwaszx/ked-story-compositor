@@ -1,6 +1,6 @@
-using ClosedXML.Excel;
 using Vn.Authoring.Chapters;
-using Path = System.IO.Path;
+using Vn.Authoring.Editing;
+using Vn.Authoring.Model;
 
 namespace Vn.Authoring.Tests.Chapters;
 
@@ -17,21 +17,8 @@ namespace Vn.Authoring.Tests.Chapters;
 ///
 /// 규격: <c>docs/work-orders/bool-stat-orders.md</c>.
 /// </summary>
-public sealed class BoolStatSetTests : IDisposable
+public sealed class BoolStatSetTests
 {
-    private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), "vn-bool-stat", Guid.NewGuid().ToString("N"));
-
-    public BoolStatSetTests() => Directory.CreateDirectory(_directory);
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_directory))
-        {
-            Directory.Delete(_directory, recursive: true);
-        }
-    }
-
     // ── 문법 ────────────────────────────────────────────────────────────────
 
     [Theory]
@@ -74,14 +61,17 @@ public sealed class BoolStatSetTests : IDisposable
     }
 
     // ── 규칙 ────────────────────────────────────────────────────────────────
+    //
+    // 2026-10-29 · D2 — 아래 셋은 리더(`VerifyBoolStatUsage`)가 저작 중에 짚던 것이다. 그 검사는
+    // 엑셀 연동과 함께 빠졌고(대신 쓸 말을 알려 주던 안내도 함께), 지금은 내보내기 관문 —
+    // 코어의 §G4 — 이 막는다. 그래서 여기서는 관문이 막는지를 잰다.
 
     [Fact]
-    public void bool에_증감을_쓰면_대신_쓸_말을_알려_준다()
+    public void bool에_증감을_쓰면_내보내기가_거부한다()
     {
-        ChapterGraphModel model = Read("met +1");
-
-        ChapterDiagnostic error = Assert.Single(Errors(model));
-        Assert.Contains("met true", error.Message, StringComparison.Ordinal);
+        Assert.Contains(Refusals(Read("met +1")), message =>
+            message.Contains("bool 스탯", StringComparison.Ordinal) &&
+            message.Contains("증감", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -89,19 +79,17 @@ public sealed class BoolStatSetTests : IDisposable
     {
         // 소유자 결정 (2026-08-19) — 지정은 bool에만 연다. 정수까지 열면 줄마다 "더할
         // 것인가 정할 것인가"를 고르게 되고, 스탯이 쌓이는 값이라는 성질이 흐려진다.
-        ChapterGraphModel model = Read("trust true");
-
-        ChapterDiagnostic error = Assert.Single(Errors(model));
-        Assert.Contains("trust +1", error.Message, StringComparison.Ordinal);
+        Assert.Contains(Refusals(Read("trust true")), message =>
+            message.Contains("숫자 스탯", StringComparison.Ordinal) &&
+            message.Contains("지정", StringComparison.Ordinal));
     }
 
     [Fact]
     public void 한_간선이_같은_깃발을_두_번_정하면_오류다()
     {
         // 증감은 여러 번이 곧 합계라 뜻이 있지만, 지정은 어느 쪽이 이기는지 아무도 모른다.
-        ChapterGraphModel model = Read("met true; met false");
-
-        Assert.Contains(Errors(model), item => item.Message.Contains("두 번 정합니다", StringComparison.Ordinal));
+        Assert.Contains(Refusals(Read("met true; met false")), message =>
+            message.Contains("두 번 정한다", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -209,6 +197,21 @@ public sealed class BoolStatSetTests : IDisposable
     private static IEnumerable<ChapterDiagnostic> Errors(ChapterGraphModel model) =>
         model.Diagnostics.Where(item => item.Severity == ChapterDiagnosticSeverity.Error);
 
+    /// <summary>내보내기가 거부돼야 한다 — 코어가 돌려준 사유들.</summary>
+    private static IReadOnlyList<string> Refusals(ChapterGraphModel model)
+    {
+        ChapterExportResult result = ChapterProgressionExporter.Export(model);
+
+        Assert.True(result.Refused);
+
+        return
+        [
+            .. result.Validation.All
+                .Where(item => item.Code == ChapterDiagnosticCode.CoreRefusedChapter)
+                .Select(item => item.Message)
+        ];
+    }
+
     /// <summary>내보내고 첫 간선 첫 스탯변화의 (Op, Amount).</summary>
     private static (string Op, int Amount) OnlyStatChange(ChapterGraphModel model)
     {
@@ -241,81 +244,39 @@ public sealed class BoolStatSetTests : IDisposable
     }
 
     /// <summary>ep1 → 끝 간선 하나에 그 스탯변화를 적은 챕터.</summary>
-    private ChapterGraphModel Read(string statChange) =>
-        Build(
-            [["ep1", "끝", statChange, "계속", null, null, "FALSE", null, null]],
-            conditions: []);
-
-    /// <summary>ep1 →(관문) 끝. 관문은 깃발이 켜져 있어야 열린다.</summary>
-    private ChapterGraphModel ReadWithGate(string? statChange, string gateLabel) =>
-        Build(
-            [
-                ["ep1", "중간", statChange, "간다", null, null, "FALSE", null, null],
-                ["중간", "끝", null, "계속", null, gateLabel, "FALSE", null, null]
-            ],
-            conditions: [[gateLabel, "met", "true", null, null]],
-            episodes: ["ep1", "중간", "끝"]);
-
-    private ChapterGraphModel Build(
-        string?[][] edgeRows,
-        string?[][] conditions,
-        string[]? episodes = null)
+    private static ChapterGraphModel Read(string statChange)
     {
-        string path = Path.Combine(_directory, $"ch{Guid.NewGuid():N}.xlsx");
-        string[] ids = episodes ?? ["ep1", "끝"];
+        ProjectEditor editor = World("ep1", "끝");
+        editor.AddEdge("ch01", "ep1", "끝", optionLabel: "계속", statChanges: statChange);
 
-        using (var workbook = new XLWorkbook())
-        {
-            Sheet(workbook, ChapterSheetNames.Episodes,
-                ["EpisodeId", "대사엔트리", "제목", "이벤트키", "X", "Y", "메모"],
-                [.. ids.Select((id, index) =>
-                    new string?[] { id, $"Story_{index}", id, null, $"{index * 200}", "0", null })]);
-
-            Sheet(workbook, ChapterSheetNames.Edges,
-                [
-                    "출발", "도착", "스탯변화", "선택지", "표시조건", "해금조건",
-                    "잠금시 숨김", "잠금 안내문", "엔딩키"
-                ],
-                edgeRows);
-
-            Sheet(workbook, ChapterSheetNames.Conditions,
-                ["라벨", "스탯", "연산자", "값", "설명"], conditions);
-
-            // `met`은 bool, `trust`는 정수 — 두 규칙이 갈리는 자리를 한 챕터에서 본다.
-            Sheet(workbook, ChapterSheetNames.Stats,
-                ["타입", "스탯키", "표시명", "초기값", "최소", "최대"],
-                [
-                    ["bool", "met", "만났음", "0", "0", "1"],
-                    [null, "trust", "신뢰", "0", "0", "5"]
-                ]);
-
-            Sheet(workbook, ChapterSheetNames.Choices, ["인덱스", "대본", "메모"], []);
-
-            workbook.SaveAs(path);
-        }
-
-        return ChapterWorkbookReader.Read(path);
+        return editor.FindChapter("ch01")!.ToGraphModel("ch01");
     }
 
-    private static void Sheet(
-        XLWorkbook workbook, string name, string?[] headers, IReadOnlyList<string?[]> rows)
+    /// <summary>ep1 →(관문) 끝. 관문은 깃발이 켜져 있어야 열린다.</summary>
+    private static ChapterGraphModel ReadWithGate(string? statChange, string gateLabel)
     {
-        IXLWorksheet sheet = workbook.AddWorksheet(name);
+        ProjectEditor editor = World("ep1", "중간", "끝");
+        editor.AddChapterCondition("ch01", gateLabel, "met == true");
+        editor.AddEdge("ch01", "ep1", "중간", optionLabel: "간다", statChanges: statChange);
+        editor.AddEdge("ch01", "중간", "끝", conditionLabel: gateLabel, optionLabel: "계속");
 
-        for (int column = 0; column < headers.Length; column++)
+        return editor.FindChapter("ch01")!.ToGraphModel("ch01");
+    }
+
+    private static ProjectEditor World(params string[] episodeIds)
+    {
+        var editor = new ProjectEditor(new StoryProject());
+        editor.EnsureChapter("ch01");
+
+        // `met`은 bool, `trust`는 정수 — 두 규칙이 갈리는 자리를 한 챕터에서 본다.
+        editor.AddChapterStat("ch01", "met", "만났음", initial: 0, minimum: 0, maximum: 1, type: ChapterStatType.Bool);
+        editor.AddChapterStat("ch01", "trust", "신뢰", initial: 0, minimum: 0, maximum: 5);
+
+        for (int index = 0; index < episodeIds.Length; index++)
         {
-            sheet.Cell(1, column + 1).SetValue(headers[column]);
+            editor.AddEpisode("ch01", episodeIds[index], episodeIds[index], index * 200, 0);
         }
 
-        for (int row = 0; row < rows.Count; row++)
-        {
-            for (int column = 0; column < rows[row].Length; column++)
-            {
-                if (rows[row][column] is { } value)
-                {
-                    sheet.Cell(row + 2, column + 1).SetValue(value);
-                }
-            }
-        }
+        return editor;
     }
 }

@@ -3,6 +3,7 @@ using Path = System.IO.Path;
 using Vn.App.Services;
 using Vn.App.Views;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Serialization;
 
@@ -22,28 +23,25 @@ public sealed class ChapterSwitchTests : IDisposable
 
     private string ManifestPath => Path.Combine(_directory, "project" + ProjectManifestJson.FileExtension);
 
-    private string ChapterFolder => Path.Combine(_directory, ChapterLibrary.FolderName);
-
     public ChapterSwitchTests()
     {
         Directory.CreateDirectory(_directory);
 
+        var editor = new ProjectEditor(new StoryProject { Title = "챕터 전환 검증" });
+
         // ch01 — 고아 에피소드가 있어 도달 불가 오류가 난다.
-        ChapterWorkbookWriter.EnsureChapterWorkbook(ChapterFolder, "ch01", [("trust", "신뢰")]);
-        string first = Path.Combine(ChapterFolder, "ch01.xlsx");
-        ChapterWorkbookWriter.AddEpisode(first, "시작", title: "", 0, 0);
-        ChapterWorkbookWriter.AddEpisode(first, "고아", title: "", 1, 1);
+        editor.EnsureChapter("ch01").Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        editor.AddEpisode("ch01", "시작", title: "", 0, 0);
+        editor.AddEpisode("ch01", "고아", title: "", 1, 1);
 
         // ch02 — 깨끗하고, 간선에 증감이 있어 도착 스탯이 카드에 떠야 한다.
-        ChapterWorkbookWriter.EnsureChapterWorkbook(ChapterFolder, "ch02", [("trust", "신뢰")]);
-        string second = Path.Combine(ChapterFolder, "ch02.xlsx");
-        ChapterWorkbookWriter.AddEpisode(second, "둘시작", title: "", 0, 0);
-        ChapterWorkbookWriter.AddEpisode(second, "둘끝", title: "", 1, 0);
-        ChapterWorkbookWriter.AddEdge(second, "둘시작", "둘끝");
-        ChapterWorkbookWriter.UpdateEdge(second, "둘시작", "둘끝", statChanges: "trust +2");
+        editor.EnsureChapter("ch02").Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        editor.AddEpisode("ch02", "둘시작", title: "", 0, 0);
+        editor.AddEpisode("ch02", "둘끝", title: "", 1, 0);
+        editor.AddEdge("ch02", "둘시작", "둘끝");
+        editor.UpdateEdge("ch02", "둘시작", "둘끝", statChanges: "trust +2");
 
-        var project = new StoryProject { Title = "챕터 전환 검증" };
-        ProjectStore.Save(ManifestPath, project);
+        ProjectStore.Save(ManifestPath, editor.Project);
     }
 
     public void Dispose()

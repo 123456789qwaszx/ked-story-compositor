@@ -1,4 +1,5 @@
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Tests.Fixtures;
 
 namespace Vn.Authoring.Tests.Chapters;
 
@@ -8,8 +9,8 @@ namespace Vn.Authoring.Tests.Chapters;
 /// </summary>
 public sealed class ChapterReachabilityTests
 {
-    private static string SamplePath => Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "chapter-graph-sample.xlsx"));
+    /// <summary>견본 챕터(ch05 복도) — <see cref="SampleChapters.Corridor"/>.</summary>
+    private static ChapterGraphModel Sample() => SampleChapters.Model(SampleChapters.Corridor);
 
     // ── 견본 — 전부 도달 가능 ───────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ public sealed class ChapterReachabilityTests
     {
         // 2026-08-14 개정 — 스탯 증감의 원천은 간선이다. 견본의 주 경로에는 스탯 관문이
         // 없으므로 전부 열린다.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
         ChapterReachabilityResult result = ChapterReachabilityProver.Prove(chapter);
 
@@ -46,10 +47,10 @@ public sealed class ChapterReachabilityTests
     [Fact]
     public void 스탯_관문_분기는_증감_없는_간선들만으로는_도달_불가이고_원인이_지목된다()
     {
-        // 견본 간선에는 스탯변화가 없으므로 trust는 초기값 0에 머문다 → 신뢰높음(trust >= 3)
+        // 견본 간선에는 trust 변화가 없으므로 trust는 초기값 0에 머문다 → 신뢰높음(trust >= 3)
         // 관문은 영원히 닫혀 있고, 증명이 그 원인 조건까지 지목한다. 간선에 증감을 적으면
         // 그 값 그대로 전이해 판정이 바뀐다 — 이것이 수치 밸런스의 저작 루프다.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
         ChapterReachabilityResult result = ChapterReachabilityProver.Prove(chapter);
 
@@ -342,7 +343,7 @@ public sealed class ChapterReachabilityTests
     {
         // 언제나 뜨는 알림은 옆에 선 진짜 오류까지 안 읽히게 만든다 (StatCountOutOfRange가
         // 그렇게 폐지됐다). 상한에 안 걸렸으면 이 코드는 없어야 한다.
-        ChapterGraphModel chapter = ChapterWorkbookReader.Read(SamplePath);
+        ChapterGraphModel chapter = Sample();
 
         ChapterReachabilityResult result = ChapterReachabilityProver.Prove(chapter);
 
@@ -392,7 +393,7 @@ public sealed class ChapterReachabilityTests
         }
 
         return new ChapterGraphModel(
-            "flags", "flags.xlsx", episodes, edges, [], stats,
+            "flags", "flags", episodes, edges, [], stats,
             Array.Empty<ChapterFixture>(), Array.Empty<ChapterDiagnostic>());
     }
 
@@ -437,7 +438,7 @@ public sealed class ChapterReachabilityTests
             .ToList();
 
         return new ChapterGraphModel(
-            "test", "test.xlsx", episodes, edgeList, parsed, stats,
+            "test", "test", episodes, edgeList, parsed, stats,
             Array.Empty<ChapterFixture>(), Array.Empty<ChapterDiagnostic>());
     }
 }

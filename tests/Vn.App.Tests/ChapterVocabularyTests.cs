@@ -9,30 +9,19 @@ namespace Vn.App.Tests;
 /// 챕터를 읽은 목록 하나에서 스탯 키·등록 화자가 세션으로 오고, 작가의 변수 후보는
 /// 그 스탯을 뺀 것이다("스탯이 변하는 자리는 간선뿐").
 /// </summary>
-public sealed class ChapterVocabularyTests : IDisposable
+public sealed class ChapterVocabularyTests
 {
-    private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), "vn-layer", Guid.NewGuid().ToString("N"));
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_directory))
-        {
-            Directory.Delete(_directory, recursive: true);
-        }
-    }
-
     [Fact]
     public void 챕터_스탯이_세션의_A계층_어휘가_된다()
     {
         // ⚠ 등록 화자는 여기서 빠졌다 (2026-08-23) — 챕터 `화자` 시트가 폐지되면서
         // "챕터에서 오는 화자 어휘"라는 것 자체가 없어졌다. 화자의 원천은 정의 파일 하나다.
-        Directory.CreateDirectory(_directory);
-        ChapterWorkbookWriter.EnsureChapterWorkbook(
-            _directory, "ch01", [("trust", "신뢰"), ("anger", "분노")]);
+        var chapter = new ChapterDocument { ChapterId = "ch01" };
+        chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
+        chapter.Stats.Add(new ChapterStat("anger", "분노", 0, 0, 10, SourceRow: 0));
 
         var session = new AuthoringSession();
-        session.SupplyChapterVocabulary(ChapterLibrary.Load(_directory));
+        session.SupplyChapterVocabulary([new ChapterEntry("ch01", chapter.ToGraphModel("ch01"))]);
 
         Assert.Equal(["anger", "trust"], session.ChapterStatKeys.OrderBy(key => key, StringComparer.Ordinal));
     }

@@ -7,7 +7,7 @@ using Vn.Authoring.Model;
 namespace Vn.Authoring.Tests.Chapters;
 
 /// <summary>
-/// A계층(기획자, 챕터 엑셀)과 B계층(작가, 시나리오 그래프)의 분리 (2026-08-17 소유자:
+/// A계층(기획자, 챕터)과 B계층(작가, 시나리오 그래프)의 분리 (2026-08-17 소유자:
 /// "시나리오 설정노드의 조건·변수·화자와 챕터 엑셀의 그것은 서로 완전히 다른 계층이야").
 ///
 /// 조건은 <b>작가가 고르는 목록에서 빠지되 이미 쓰인 것은 읽힌다</b>. 가르는 규칙은
@@ -71,7 +71,7 @@ public sealed class ChapterLayerSeparationTests
     [Fact]
     public void 이미_쓰인_챕터_조건은_이름이_보이고_출처가_붙는다()
     {
-        // 숨긴다고 "알 수 없는 조건"이 되면 그게 더 나쁘다 — 엑셀노드의 조건라벨이
+        // 숨긴다고 "알 수 없는 조건"이 되면 그게 더 나쁘다 — 대사 노드의 조건라벨이
         // 가리키는 A계층 조건은 이름이 그대로 읽히되, 왜 못 고치는지가 이름에 있다.
         Board board = BuildBoard();
 
@@ -101,7 +101,7 @@ public sealed class ChapterLayerSeparationTests
         StoryFile file = board.Project.Files.Single();
 
         var chapter = new ChapterGraphModel(
-            "ch01", "ch01.xlsx",
+            "ch01", "ch01",
             episodes: [],
             edges: [],
             conditions:

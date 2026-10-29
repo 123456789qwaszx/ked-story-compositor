@@ -263,7 +263,7 @@ public sealed class ChapterReachabilityEquivalenceTests
             .ToList();
 
         return new ChapterGraphModel(
-            "test", "test.xlsx", episodes, edgeList, parsed, stats,
+            "test", "test", episodes, edgeList, parsed, stats,
             Array.Empty<ChapterFixture>(), Array.Empty<ChapterDiagnostic>());
     }
 }
