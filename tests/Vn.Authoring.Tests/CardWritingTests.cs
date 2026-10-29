@@ -92,6 +92,40 @@ public sealed class CardWritingTests
         Assert.All(again.Plan!.Entries, entry => Assert.Equal(ScriptSyncKind.Unchanged, entry.Kind));
     }
 
+    [Theory]
+    [InlineData("라루: 하나\n[메모] 장식은 해석 못 한다")]
+    [InlineData("라루: 하나\n<<if 없는 조건 >= 1>>\n윌로: 둘\n<<endif>>")]
+    public void 엄격한_넣기는_문제가_하나라도_있으면_아무것도_넣지_않는다(string text)
+    {
+        // 카드의 글 칸은 넣은 뒤 모델의 모습으로 다시 그려진다 — 반쯤 넣으면 못 넣은 줄이 사람이 쓴
+        // 글에서 조용히 사라진다. 그래서 카드는 strict로 넣고, 문제가 있으면 글을 칸에 둔 채 사유를 보인다.
+        (ProjectEditor editor, DialogueNode node) = NewCard();
+        long revision = editor.Revision;
+
+        ScenarioPasteOutcome outcome = editor.ApplyScenarioText(node.Id, text, Definition, strict: true);
+
+        Assert.False(outcome.Applied);
+        Assert.NotEmpty(outcome.Problems);
+        Assert.Equal(revision, editor.Revision);
+
+        // 엄격하지 않으면 예전처럼 넣을 수 있는 것은 넣는다.
+        Assert.True(editor.ApplyScenarioText(node.Id, text, Definition).Applied);
+    }
+
+    [Fact]
+    public void 모양만_다른_글을_넣으면_아무것도_적지_않는다()
+    {
+        // 줄도 전환도 그대로인데 적으면 되돌리기에 빈 칸이 끼고 판이 다시 그려진다(§5-8).
+        (ProjectEditor editor, DialogueNode node) = NewCard();
+        editor.ApplyScenarioText(node.Id, "라루: 하나\n윌로: 둘", Definition);
+        long revision = editor.Revision;
+
+        ScenarioPasteOutcome again = editor.ApplyScenarioText(node.Id, "\n라루: 하나\n\n윌로: 둘\n\n", Definition);
+
+        Assert.True(again.Applied);
+        Assert.Equal(revision, editor.Revision);
+    }
+
     [Fact]
     public void 새_카드의_글_칸은_비어_있다()
     {

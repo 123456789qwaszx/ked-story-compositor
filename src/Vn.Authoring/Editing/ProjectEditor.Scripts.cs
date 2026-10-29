@@ -72,11 +72,17 @@ public sealed partial class ProjectEditor
     /// 늘). 살아 있는 줄이 빈 줄 하나뿐이면 그 줄이 새 글의 첫 줄이 된다 — 빈 줄은 아직 아무것도
     /// 아니므로 잇는 데 확신이 필요 없다.
     /// </summary>
+    /// <param name="strict">
+    /// 참이면 <b>문제가 하나라도 있을 때 아무것도 넣지 않는다</b>(해석 못 한 줄 · 못 세운 조건 · 선택 전환과의
+    /// 충돌). 카드의 글 칸이 쓴다 — 넣은 뒤 칸은 모델의 모습으로 다시 그려지므로, 반쯤 넣으면 넣지 못한 줄이
+    /// 사람이 쓴 글에서 조용히 사라진다. 거짓이면 예전처럼 넣을 수 있는 것은 넣고 나머지를 Problems로 보인다.
+    /// </param>
     public ScenarioPasteOutcome ApplyScenarioText(
         string dialogueNodeId,
         string text,
         GameDefinition definition,
-        bool confirmDeletes = false)
+        bool confirmDeletes = false,
+        bool strict = false)
     {
         ArgumentNullException.ThrowIfNull(definition);
         DialogueNode node = RequireDialogue(dialogueNodeId);
@@ -117,10 +123,26 @@ public sealed partial class ProjectEditor
             return new ScenarioPasteOutcome(parsed, plan, Applied: false, NeedsDeleteConfirmation: true, problems);
         }
 
+        // 전환은 넣기 <b>전에</b> 계획한다 — 그래야 엄격한 넣기가 문제를 보고 아무것도 안 바꾼 채 물러설 수 있다.
+        // 남는 줄의 전환은 동기화가 건드리지 않으므로(은퇴한 줄만 접힌다) 넣기 전에 읽어도 같다.
+        ScenarioTransitionPlan transitions = PlanScenarioTransitions(node, parsed, plan, definition, problems);
+
+        if (strict && problems.Count > 0)
+        {
+            return new ScenarioPasteOutcome(parsed, plan, Applied: false, NeedsDeleteConfirmation: false, problems);
+        }
+
+        // 줄도 전환도 그대로면 아무것도 적지 않는다(§5-8) — 글이 모양만 다를 때다(띄어쓰기 · 빈 줄).
+        // 출처 해시도 안 고친다: 그 해시는 "바꿀 것이 없음"을 빨리 알려는 표지일 뿐이다(ChangesNothing).
+        if (plan.IsNoOp && transitions.Lines.Count == 0 && transitions.Trailing is null)
+        {
+            return new ScenarioPasteOutcome(parsed, plan, Applied: true, NeedsDeleteConfirmation: false, problems);
+        }
+
         Batch(() =>
         {
             ApplyScriptSync(plan);
-            ApplyScenarioTransitions(node, parsed, plan, definition, problems);
+            ApplyScenarioTransitions(node, transitions);
         });
 
         return new ScenarioPasteOutcome(parsed, plan, Applied: true, NeedsDeleteConfirmation: false, problems);
@@ -137,8 +159,35 @@ public sealed partial class ProjectEditor
             : null;
     }
 
-    /// <summary>diff가 확정한 LineId 위로 조건 전환을 맞춘다. 선택 전환은 보호한다.</summary>
-    private void ApplyScenarioTransitions(
+    /// <summary>
+    /// 넣기가 바꿀 전환 — 줄마다 바뀌는 것만(<see cref="Lines"/>), 그리고 마지막 줄 뒤의 꼬리(<see cref="Trailing"/>,
+    /// null이면 그대로 둔다).
+    /// </summary>
+    private sealed record ScenarioTransitionPlan(
+        IReadOnlyList<(string LineId, List<LineConditionTransition> Desired)> Lines,
+        List<LineConditionTransition>? Trailing);
+
+    /// <summary>계획한 전환을 앉힌다 — 줄 동기화 <b>뒤</b>에 부른다(새로 끼운 줄이 있어야 거기 앉는다).</summary>
+    private void ApplyScenarioTransitions(DialogueNode node, ScenarioTransitionPlan transitions)
+    {
+        foreach ((string lineId, List<LineConditionTransition> desired) in transitions.Lines)
+        {
+            SetLineTransitions(node.Id, lineId, desired);
+        }
+
+        if (transitions.Trailing is { } trailing)
+        {
+            Mutate(() =>
+            {
+                node.TrailingTransitions.Clear();
+                node.TrailingTransitions.AddRange(trailing);
+                PruneBranchExits(node);
+            });
+        }
+    }
+
+    /// <summary>diff가 확정한 LineId 위로 조건 전환을 맞출 계획. 선택 전환은 보호한다. 아무것도 바꾸지 않는다.</summary>
+    private ScenarioTransitionPlan PlanScenarioTransitions(
         DialogueNode node,
         ScenarioParseResult parsed,
         ScriptSyncPlan plan,
@@ -151,6 +200,8 @@ public sealed partial class ProjectEditor
         Dictionary<int, string> lineIdByNewIndex = plan.Entries
             .Where(entry => entry is { NewIndex: not null, LineId: not null })
             .ToDictionary(entry => entry.NewIndex!.Value, entry => entry.LineId!);
+
+        var lines = new List<(string LineId, List<LineConditionTransition> Desired)>();
 
         for (int index = 0; index < parsed.Lines.Count; index++)
         {
@@ -197,11 +248,11 @@ public sealed partial class ProjectEditor
 
             if (!same)
             {
-                SetLineTransitions(node.Id, lineId, desired);
+                lines.Add((lineId, desired));
             }
         }
 
-        ApplyTrailingTransitions(node, parsed, conditions, problems);
+        return new ScenarioTransitionPlan(lines, PlanTrailingTransitions(node, parsed, conditions, problems));
     }
 
     /// <summary>
@@ -270,7 +321,7 @@ public sealed partial class ProjectEditor
     /// ⚠ 텍스트에 꼬리가 없으면 <b>비운다</b>. 줄에 실린 전환과 달리 이쪽은 대본이 유일한
     /// 원천이라, 안 지우면 지운 블록이 산출물에 계속 남는다.
     /// </summary>
-    private void ApplyTrailingTransitions(
+    private static List<LineConditionTransition>? PlanTrailingTransitions(
         DialogueNode node,
         ScenarioParseResult parsed,
         AvailableConditionCatalog conditions,
@@ -282,7 +333,7 @@ public sealed partial class ProjectEditor
 
         if (desired is null)
         {
-            return; // 못 세운 것이 있으면 지금 것을 그대로 둔다 — 위 Translate가 사유를 적었다.
+            return null; // 못 세운 것이 있으면 지금 것을 그대로 둔다 — 위 Translate가 사유를 적었다.
         }
 
         bool same = node.TrailingTransitions.Count == desired.Count &&
@@ -290,17 +341,7 @@ public sealed partial class ProjectEditor
                 pair.First.Kind == pair.Second.Kind &&
                 string.Equals(pair.First.ConditionId, pair.Second.ConditionId, StringComparison.Ordinal));
 
-        if (same)
-        {
-            return;
-        }
-
-        Mutate(() =>
-        {
-            node.TrailingTransitions.Clear();
-            node.TrailingTransitions.AddRange(desired);
-            PruneBranchExits(node);
-        });
+        return same ? null : desired;
     }
 
     /// <summary>

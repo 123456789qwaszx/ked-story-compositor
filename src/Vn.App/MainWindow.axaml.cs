@@ -508,6 +508,10 @@ public partial class MainWindow : Window
                 // 좌표만 바뀌었다. 카드를 다시 만들면 드래그가 끊긴다.
                 Graph.RefreshPositions();
             }
+            else if (plan.RefreshCardWriting && _session.SelectedNodeId is { } writtenNodeId)
+            {
+                Graph.RefreshWriting(writtenNodeId);
+            }
 
             if (plan.RebuildInspector)
             {
@@ -850,6 +854,9 @@ public partial class MainWindow : Window
     {
         try
         {
+            // 카드 글 칸에 넣지 않은 글이 있으면 먼저 넣는다 — Ctrl+S도 넣는 때다(D4).
+            Graph.FlushWriting();
+
             if (_session.ProjectPath is null)
             {
                 await SaveAsAsync();
@@ -869,6 +876,7 @@ public partial class MainWindow : Window
     {
         try
         {
+            Graph.FlushWriting();
             await SaveAsAsync();
         }
         catch (Exception exception)

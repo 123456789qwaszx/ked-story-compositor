@@ -28,9 +28,9 @@ public static class NodePlacement
     public const double Column = 320;
 
     /// <summary>
-    /// 아래 카드까지의 거리 — 카드(대개 90~150) + 그 아래 선택지 칩 셋(약 140) + 도착 접점과 여백.
+    /// 아래 카드까지의 거리 — 카드(글 칸을 품어 대개 150~220, D4) + 그 아래 선택지 칩 셋(약 140) + 도착 접점과 여백.
     /// </summary>
-    public const double Row = 340;
+    public const double Row = 400;
 
     /// <summary>
     /// 그 에피소드의 카드가 설 자리.

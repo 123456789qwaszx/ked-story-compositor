@@ -30,7 +30,10 @@ internal static class ProjectRefreshPlanner
                 RebuildGraph: false,
                 RefreshGraphPositions: false,
                 RebuildInspector: selectedNode is PresentationNode,
-                RefreshPreview: selectedNode is DialogueNode),
+                RefreshPreview: selectedNode is DialogueNode,
+                // 곁기둥에서 고친 글이 카드의 글 칸에도 비친다(D4) — 안 그러면 낡은 칸의 글이
+                // 다음 넣기에서 방금 고친 줄을 도로 덮는다.
+                RefreshCardWriting: selectedNode is DialogueNode),
 
             ProjectChangeKind.PresentationContent => new ProjectRefreshPlan(
                 RebuildGraph: false,
@@ -82,4 +85,5 @@ internal readonly record struct ProjectRefreshPlan(
     bool RefreshGraphPositions,
     bool RebuildInspector,
     bool RefreshPreview = false,
-    bool RefreshStagePreview = false);
+    bool RefreshStagePreview = false,
+    bool RefreshCardWriting = false);

@@ -8,11 +8,14 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Vn.App.Services;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Editing;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Graph;
 using Vn.Authoring.Model;
+using Vn.Authoring.Rendering;
 using Vn.Authoring.Results;
 
 namespace Vn.App.Views;
@@ -32,6 +35,12 @@ public partial class GraphEditorView : UserControl
     private const double PortRowHeight = 24;
     private const double CardPadding = 8;
     private const double PortRadius = 6;
+
+    // 대사 카드 안의 글 칸 (D4) — 다섯 줄 남짓. 넘치면 칸이 스크롤한다(카드 높이가 글에 따라 출렁이면
+    // 아래 레일과 선택지 칸이 쓰는 동안 들썩인다).
+    private const double WritingBoxHeight = 88;
+    private const double WritingBoxGap = 6;
+    private const string WritingTag = "writing:";
 
     private const double ProxyWidth = 250;
     private const double ProxyHeaderHeight = 50;
@@ -169,6 +178,11 @@ public partial class GraphEditorView : UserControl
     private Point _groupDragStart;
     private readonly Dictionary<string, Point> _groupStartPositions = new(StringComparer.Ordinal);
 
+    // 카드 안 글 칸 (D4 · 2026-10-29, docs/design/two-graphs.md §7 D4) — 노드마다 지금 선 칸과, 그 칸에
+    // 마지막으로 보인 글(= 모델의 글). 칸의 글이 이것과 같으면 넣을 것이 없다.
+    private readonly Dictionary<string, TextBox> _writingBoxes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _writingShown = new(StringComparer.Ordinal);
+
     // 끄는 동안의 자리 (D3 · 2026-10-29, docs/design/two-graphs.md §6-2) — 카드 · 무리 · 접힌 판
     // 어느 끌기든 프로젝트에는 <b>놓을 때 한 번</b> 적는다(되돌리기 한 칸). 그때까지 화면은 이 값을 따른다.
     private readonly Dictionary<string, Point> _dragPositions = new(StringComparer.Ordinal);
@@ -296,7 +310,12 @@ public partial class GraphEditorView : UserControl
             _session.Definition,
             CurrentFilter);
 
+        // 카드 안 글 칸에 초점이 있었으면 다시 그린 뒤 그 칸으로 돌려준다(D4) — 판을 비우기 전에 잰다.
+        WritingFocus? writing = CaptureWritingFocus();
+
         GraphCanvas.Children.Clear();
+        _writingBoxes.Clear();
+        _writingShown.Clear();
         _cards.Clear();
         _proxies.Clear();
         _edges.Clear();
@@ -331,6 +350,7 @@ public partial class GraphEditorView : UserControl
         HighlightSelection();
         RefreshMinimap();
         HandleBoardSwitch();
+        RestoreWritingFocus(writing);
     }
 
     /// <summary>
@@ -1851,6 +1871,12 @@ public partial class GraphEditorView : UserControl
             body.Children.Add(BuildPortRow(inCard[index], visual, index));
         }
 
+        // 글 칸은 포트 줄들 <b>아래</b>에 선다 — 포트의 자리 계산(PortAnchor)이 머리 바로 밑부터 센다.
+        if (node.NodeKind == GraphNodeKind.Dialogue)
+        {
+            body.Children.Add(BuildWritingBox(node.NodeId));
+        }
+
         Canvas.SetLeft(card, node.Position.X);
         Canvas.SetTop(card, node.Position.Y);
         GraphCanvas.Children.Add(card);
@@ -1862,12 +1888,237 @@ public partial class GraphEditorView : UserControl
         // 안 걷으면 탭이 바뀐 뒤에도 카드가 마우스에 붙어 따라다닌다.
         card.DoubleTapped += (_, args) =>
         {
+            if (InWritingBox(args.Source))
+            {
+                return;   // 글 칸 안의 더블클릭은 낱말 고르기다 — 무대로 튀지 않는다
+            }
+
             CancelDrag();
             args.Handled = true;
             NodeActivated?.Invoke(visual.NodeId);
         };
 
         return visual;
+    }
+
+    /// <summary>
+    /// <b>카드 안 글 칸</b> (D4 · 2026-10-29, two-graphs.md §7 D4 — 소유자: *"노드 안에 텍스트 공간이 있고 그곳에
+    /// 직접 글을 작성하는 것까지"*). 한 줄이 대사 한 줄이고 <c>화자: 대사</c>로 쓴다(화자가 없으면 지문).
+    /// 보이는 글은 <see cref="WorkingDialoguePreview.ScenarioText"/>, 넣는 길은 <see cref="ApplyWriting"/>이다.
+    ///
+    /// ⚠ 칸 안의 손짓을 카드와 판이 가로채지 않는다 — 누르기는 TextBox가 받아 끝내므로 끌기가 시작되지
+    ///   않고, 더블클릭(낱말 고르기)은 무대로 튀지 않고(<see cref="InWritingBox"/>), 휠은 칸이 스크롤한다.
+    /// </summary>
+    private TextBox BuildWritingBox(string nodeId)
+    {
+        string shown = WorkingDialoguePreview.ScenarioText(_session!.Project, nodeId, _session.Definition);
+        _writingShown[nodeId] = shown;
+
+        var box = new TextBox
+        {
+            Text = shown,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 11,
+            Height = WritingBoxHeight,
+            MinHeight = WritingBoxHeight,
+            Margin = new Thickness(0, WritingBoxGap, 0, 0),
+            Padding = new Thickness(4, 3),
+            PlaceholderText = "화자: 대사 — 한 줄이 대사 한 줄",
+            Tag = WritingTag + nodeId
+        };
+        ScrollViewer.SetVerticalScrollBarVisibility(box, Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
+        _writingBoxes[nodeId] = box;
+
+        box.GotFocus += (_, _) =>
+        {
+            if (!string.Equals(_session?.SelectedNodeId, nodeId, StringComparison.Ordinal))
+            {
+                _session?.Select(nodeId);
+            }
+        };
+
+        // 넣을지는 <b>지금</b> 판단하고(미룬 뒤에는 되돌리기 따위로 판이 바뀌었을 수 있다), 넣기는 초점이 다른 곳에
+        // <b>다 옮겨 간 뒤에</b> 한다 — 넣기가 판을 다시 그리면(줄이 늘고 줄면) 그 사이에 새로 초점을 받은 칸이
+        // 사라진다. 다시 그린 뒤에는 Rebuild가 그 칸으로 초점을 되돌린다.
+        box.LostFocus += (_, _) =>
+        {
+            if (PendingWriting(nodeId, box) is { } text)
+            {
+                Dispatcher.UIThread.Post(() => ApplyWriting(nodeId, box, text));
+            }
+        };
+
+        box.KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                // 넣지 않은 글을 버리고 마지막으로 넣은 글로 돌아간다.
+                box.Text = _writingShown.GetValueOrDefault(nodeId, shown);
+                MarkWriting(box, problem: null);
+                args.Handled = true;
+            }
+        };
+
+        return box;
+    }
+
+    /// <summary>
+    /// 칸에 넣지 않은 글이 있으면 그 글, 없으면 null — 칸의 글이 마지막으로 보인 글과 같으면 칸을 눌렀다
+    /// 나오기만 한 것이다(§5-8).
+    /// </summary>
+    private string? PendingWriting(string nodeId, TextBox box)
+    {
+        string text = box.Text ?? string.Empty;
+
+        return string.Equals(text, _writingShown.GetValueOrDefault(nodeId), StringComparison.Ordinal) ? null : text;
+    }
+
+    /// <summary>
+    /// 글 칸의 글을 넣는다 — <c>ApplyScenarioText</c>를 <b>엄격하게</b>(문제가 하나라도 있으면 아무것도 안 넣는다)
+    /// 지움 확인 없이. 지운 줄은 은퇴하고 되돌리기 한 번이면 돌아오므로, 초점 이탈에 확인을 물리지 않는다.
+    ///
+    /// 못 넣으면 글을 칸에 그대로 두고 칸을 붉게 하고 사유를 칸의 풍선과 상태줄에 보인다. 다음 초점 이탈이
+    /// 다시 넣는다. 엄격한 까닭: 넣은 뒤 칸은 모델의 모습으로 다시 그려지므로, 반쯤 넣으면 못 넣은 줄이
+    /// 사람이 쓴 글에서 조용히 사라진다.
+    /// </summary>
+    private void ApplyWriting(string nodeId, TextBox box, string text)
+    {
+        if (_session is not { } session || session.Project.FindDialogue(nodeId) is null)
+        {
+            return;
+        }
+
+        UiGuard.Run(session, "글 넣기", () =>
+        {
+            ScenarioPasteOutcome outcome = session.Editor.ApplyScenarioText(
+                nodeId, text, session.Definition, confirmDeletes: true, strict: true);
+
+            if (!outcome.Applied)
+            {
+                IReadOnlyList<string> problems = outcome.Problems.Count > 0
+                    ? outcome.Problems
+                    : ["빈 글은 넣지 않습니다 — 줄을 모두 지우려면 노드를 지우세요."];
+
+                MarkWriting(box, string.Join(Environment.NewLine, problems.Select(problem => $"• {problem}")));
+                session.SetStatus($"글을 넣지 못했습니다 — {problems[0]} (글은 칸에 그대로 있습니다)");
+                return;
+            }
+
+            // 판이 다시 그려지지 않았으면(바뀐 줄이 없다 — 글이 모양만 달랐다) 그 칸이 아직 살아 있다. 그때만
+            // 기준을 칸의 글로 옮긴다 — 다시 그렸으면 새 칸이 모델의 글을 기준으로 이미 들고 있다.
+            if (_writingBoxes.TryGetValue(nodeId, out TextBox? live) && ReferenceEquals(live, box))
+            {
+                _writingShown[nodeId] = text;
+            }
+
+            MarkWriting(box, problem: null);
+            session.SetStatus($"글을 넣었습니다 — {outcome.Summary()}. 되돌리기 한 번이면 돌아갑니다.");
+        });
+    }
+
+    /// <summary>
+    /// 저장 전에 — 초점이 있는 글 칸의 넣지 않은 글을 먼저 넣는다(Ctrl+S도 넣는 때다, §7 D4).
+    /// 셸의 저장이 부른다.
+    /// </summary>
+    internal void FlushWriting()
+    {
+        if (CaptureWritingFocus() is { Dirty: true } focus && _writingBoxes.TryGetValue(focus.NodeId, out TextBox? box))
+        {
+            ApplyWriting(focus.NodeId, box, focus.Text);
+        }
+    }
+
+    /// <summary>
+    /// 그 노드의 글 칸을 모델의 글로 다시 채운다 — 곁기둥이 줄을 고쳤을 때(판은 다시 안 그린다). 사람이 그 칸에서
+    /// 쓰는 중이거나(초점) 넣지 않은 글이 있으면 건드리지 않는다 — 쓰던 글이 사라지면 안 된다.
+    /// </summary>
+    internal void RefreshWriting(string nodeId)
+    {
+        if (_session is null ||
+            !_writingBoxes.TryGetValue(nodeId, out TextBox? box) ||
+            box.IsFocused ||
+            !string.Equals(box.Text ?? string.Empty, _writingShown.GetValueOrDefault(nodeId), StringComparison.Ordinal) ||
+            _session.Project.FindDialogue(nodeId) is null)
+        {
+            return;
+        }
+
+        string shown = WorkingDialoguePreview.ScenarioText(_session.Project, nodeId, _session.Definition);
+        _writingShown[nodeId] = shown;
+        box.Text = shown;
+    }
+
+    /// <summary>
+    /// 카드 머리나 빈 판을 누르면 글 칸의 초점을 놓는다 — 그래야 다른 노드를 고를 때 안 넣은 글이 먼저 들어간다
+    /// (§7 D4). 카드와 판은 초점을 받지 않아서, 놓지 않으면 칸이 초점을 쥔 채 다른 노드가 골라진다. 넣기는
+    /// 칸의 초점 이탈이 미뤄서 부르므로 이 누르기 처리기 안에서 판을 다시 그리지 않는다(§5-13).
+    /// </summary>
+    private void ReleaseWritingFocus()
+    {
+        if (CaptureWritingFocus() is not null)
+        {
+            WritingFocusSink.Focus();
+        }
+    }
+
+    /// <summary>못 넣은 칸은 붉게, 사유는 풍선으로. <paramref name="problem"/>이 null이면 걷는다.</summary>
+    private static void MarkWriting(TextBox box, string? problem)
+    {
+        if (problem is null)
+        {
+            box.ClearValue(BorderBrushProperty);
+            ToolTip.SetTip(box, null);
+            return;
+        }
+
+        box.BorderBrush = new SolidColorBrush(Color.FromRgb(0xDC, 0x26, 0x26));
+        ToolTip.SetTip(box, problem);
+    }
+
+    /// <summary>이 누름 · 휠이 글 칸 안에서 났는가(선택지 문구 칸도 글 칸이다).</summary>
+    private static bool InWritingBox(object? source) =>
+        (source as Visual)?.FindAncestorOfType<TextBox>(includeSelf: true) is not null;
+
+    /// <summary>판을 다시 그리기 전, 초점이 있던 글 칸 — 노드 · 글 · 커서. 넣지 않은 글이면 <see cref="Dirty"/>다.</summary>
+    private sealed record WritingFocus(string NodeId, string Text, int SelectionStart, int SelectionEnd, bool Dirty);
+
+    private WritingFocus? CaptureWritingFocus()
+    {
+        if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not TextBox { Tag: string tag } box ||
+            !tag.StartsWith(WritingTag, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        string nodeId = tag[WritingTag.Length..];
+        string text = box.Text ?? string.Empty;
+
+        return new WritingFocus(
+            nodeId, text, box.SelectionStart, box.SelectionEnd,
+            Dirty: !string.Equals(text, _writingShown.GetValueOrDefault(nodeId), StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// 다시 그린 뒤 그 노드의 새 칸으로 초점과 커서를 돌려준다. 넣지 않은 글이 있었으면 그 글도 옮긴다 —
+    /// 마지막으로 보인 글은 새 모델의 것이라, 다음 초점 이탈이 그 글을 넣는다.
+    /// </summary>
+    private void RestoreWritingFocus(WritingFocus? focus)
+    {
+        if (focus is null || !_writingBoxes.TryGetValue(focus.NodeId, out TextBox? box))
+        {
+            return;
+        }
+
+        if (focus.Dirty)
+        {
+            box.Text = focus.Text;
+        }
+
+        int length = box.Text?.Length ?? 0;
+        box.Focus();
+        box.SelectionStart = Math.Clamp(focus.SelectionStart, 0, length);
+        box.SelectionEnd = Math.Clamp(focus.SelectionEnd, 0, length);
     }
 
     private FileProxyVisual BuildFileProxy(CollapsedFileProjection file)
@@ -2596,6 +2847,11 @@ public partial class GraphEditorView : UserControl
     /// <summary>휠 — 누른 키와 무관하게 배율이다 (2026-08-18 팀장 미팅에서 Ctrl 요구가 빠졌다).</summary>
     private void OnGraphWheel(object? sender, PointerWheelEventArgs args)
     {
+        if (InWritingBox(args.Source))
+        {
+            return;   // 글 칸 위의 휠은 칸이 스크롤한다(D4)
+        }
+
         double factor = args.Delta.Y > 0 ? 1.15 : 1 / 1.15;
         ApplyZoom(_zoom * factor, args.GetPosition(GraphScroll));
         args.Handled = true;
@@ -2946,17 +3202,19 @@ public partial class GraphEditorView : UserControl
             Math.Max(0, (contentY * _zoom) - (GraphScroll.Viewport.Height / 2)));
     }
 
-    private double CardHeightOf(NodeCard card)
+    private static double CardHeightOf(NodeCard card)
     {
         return card.Visual.Bounds.Height > 0
             ? card.Visual.Bounds.Height
-            : HeaderHeight + (card.Ports.Count * PortRowHeight) + (CardPadding * 2);
+            : HeaderHeight + (card.Ports.Count * PortRowHeight) + (CardPadding * 2) +
+              (card.NodeKind == GraphNodeKind.Dialogue ? WritingBoxGap + WritingBoxHeight : 0);
     }
 
     // ── 조작 ────────────────────────────────────────────────────────────────
 
     private void OnCardPressed(NodeCard card, PointerPressedEventArgs args)
     {
+        ReleaseWritingFocus();
         _session?.Select(card.NodeId);
 
         // 범위 선택된 카드를 잡으면 무리가 함께 움직인다 (W40).
@@ -3026,6 +3284,7 @@ public partial class GraphEditorView : UserControl
         }
 
         SelectEdge(null);
+        ReleaseWritingFocus();
 
         // 빈 곳 좌클릭 = 범위 선택 시작 (W40). 이전 무리는 새 범위가 대신한다.
         if (args.GetCurrentPoint(GraphCanvas).Properties.IsLeftButtonPressed)
@@ -3374,9 +3633,7 @@ public partial class GraphEditorView : UserControl
         {
             double left = Canvas.GetLeft(card.Visual);
             double top = Canvas.GetTop(card.Visual);
-            double height = card.Visual.Bounds.Height > 0
-                ? card.Visual.Bounds.Height
-                : HeaderHeight + (card.Ports.Count * PortRowHeight) + (CardPadding * 2);
+            double height = CardHeightOf(card);
 
             if (point.X >= left && point.X <= left + CardWidth &&
                 point.Y >= top && point.Y <= top + height)
