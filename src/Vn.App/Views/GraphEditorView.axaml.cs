@@ -200,6 +200,7 @@ public partial class GraphEditorView : UserControl
 
         AddDialogueButton.Click += (_, _) => AddNode(GraphNodeKind.Dialogue);
         DeleteNodeButton.Click += (_, _) => DeleteSelectedNode();
+        ArrangeBoardButton.Click += (_, _) => ArrangeActiveBoard();
 
         // 고른 챕터의 판을 활성으로 — 그 뒤의 [+ 대사 노드]가 거기에 선다.
         // ⚠ 다시 그리기가 콤보를 맞출 때는 안 돈다(_syncingChapter) — 안 그러면
@@ -3495,6 +3496,35 @@ public partial class GraphEditorView : UserControl
         };
 
         _session.Select(node.Id);
+    }
+
+    /// <summary>
+    /// [자동 정렬] (D3-d) — 고른 챕터의 판을 위에서 아래로 다시 세운다(<see cref="NodePlacement.Arrange"/>).
+    /// <c>MoveNodes</c> 한 번이라 되돌리기 한 칸이다. 챕터 판이 아니면 말로 돌려보낸다 — 낙서판에는
+    /// 위아래를 정할 진행(챕터 간선)이 없다.
+    /// </summary>
+    private void ArrangeActiveBoard()
+    {
+        if (_session is not { } session)
+        {
+            return;
+        }
+
+        if (session.ActiveFile is not { } board || session.Editor.FindChapter(board.Name) is null)
+        {
+            session.SetStatus("자동 정렬은 챕터 판에서 합니다. 왼쪽 위 콤보에서 챕터를 고르세요.");
+            return;
+        }
+
+        UiGuard.Run(session, "자동 정렬", () =>
+        {
+            long before = session.Editor.Revision;
+            session.Editor.MoveNodes(NodePlacement.Arrange(session.Project, board.Name));
+
+            session.SetStatus(session.Editor.Revision == before
+                ? $"챕터 {board.Name}의 판은 이미 정렬된 모양입니다."
+                : $"챕터 {board.Name}의 판을 위에서 아래로 다시 세웠습니다. 되돌리기 한 번이면 돌아갑니다.");
+        });
     }
 
     private void DeleteSelectedNode()

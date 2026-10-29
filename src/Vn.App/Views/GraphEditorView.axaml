@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Vn.App.Views.GraphEditorView">
     <Grid RowDefinitions="Auto,*,Auto">
@@ -31,6 +31,12 @@
                 <Button x:Name="AddDialogueButton" Content="+ 대사 노드" />
                 <Border Width="1" Margin="4,2" Background="{DynamicResource ThemeBorderLowBrush}" />
                 <Button x:Name="DeleteNodeButton" Content="노드 삭제" />
+                <Border Width="1" Margin="4,2" Background="{DynamicResource ThemeBorderLowBrush}" />
+                <!-- [자동 정렬] (D3-d · 2026-10-29) — 챕터 그래프의 그 단추와 짝이다. 고른 챕터의 판을
+                     위에서 아래로 다시 세운다(되돌리기 한 칸). 새 카드는 처음부터 그 모양으로 서고
+                     이미 선 카드는 저절로 옮기지 않으므로, 판 전체를 고치는 일은 사람이 누를 때만이다. -->
+                <Button x:Name="ArrangeBoardButton" Content="자동 정렬"
+                        ToolTip.Tip="고른 챕터의 판을 위에서 아래로 다시 세웁니다. 다음 에피소드는 아래, 분기로 다녀갈 카드는 오른쪽. 되돌리기 한 번이면 돌아갑니다." />
                 <Border Width="1" Margin="4,2" Background="{DynamicResource ThemeBorderLowBrush}" />
                 <TextBlock Text="필터" FontSize="11" Opacity="0.6" VerticalAlignment="Center" />
                 <CheckBox x:Name="FilterDialogueCheck" Content="대사" FontSize="11" IsChecked="True" />

@@ -18,6 +18,15 @@ public static class GraphProjectionBuilder
     private const double EmptyProxyStartY = 80;
     private const double EmptyProxyGapX = 280;
 
+    /// <summary>
+    /// 카드를 그리지 않는 배관 노드인가 — 연출 노드 · 연출 공급 노드 · 챕터 조건 공급 설정노드
+    /// (까닭은 <see cref="Build"/> 안의 주석). 투영과 [자동 정렬](<see cref="NodePlacement.Arrange"/>)이
+    /// 같은 것을 부른다 — 안 그리는 노드를 정렬이 옮기면 보이지 않는 자리 다툼이 생긴다.
+    /// </summary>
+    public static bool IsHiddenPlumbing(StoryNode node, StoryFile file) =>
+        node is PresentationNode or CommandSupplyNode ||
+        ChapterBoardSupply.IsConditionSupplyNode(node, file);
+
     public static GraphProjection Build(
         StoryProject project,
         IReadOnlySet<string> expandedFileIds,
@@ -56,8 +65,7 @@ public static class GraphProjectionBuilder
                 kindByNodeId[node.Id] = KindOf(node);
                 portsByNodeId[node.Id] = BuildPorts(node, file, project, definition);
 
-                if (node is PresentationNode or CommandSupplyNode ||
-                    Chapters.ChapterBoardSupply.IsConditionSupplyNode(node, file))
+                if (IsHiddenPlumbing(node, file))
                 {
                     hiddenPlumbingNodeIds.Add(node.Id);
                 }
