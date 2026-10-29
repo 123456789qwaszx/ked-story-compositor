@@ -222,21 +222,6 @@ public sealed class BranchMarkerTests
     }
 
     [Fact]
-    public void 다녀오는_에피소드도_아래에_선택지_세_칸을_가진다()
-    {
-        // 소유자: "이 자유씬 역시 에피소드 노드이기에 아래쪽으로 선택지 3개가 뚫려 있는 상태" —
-        // 별도 기계가 아니라 <b>에피소드 선택지 3칸 바로 그것</b>이다(결정 ⑤).
-        (ProjectEditor editor, DialogueNode node, string lineId) = World();
-        DialogueNode made = editor.AddBranchMarker(node.Id, lineId);
-
-        Assert.Equal(3, Graph.GraphProjectionBuilder
-            .Build(editor.Project, new HashSet<string>(editor.Project.Files.Select(file => file.Id)))
-            .Items.OfType<Graph.ExpandedNodeProjection>()
-            .Single(item => string.Equals(item.NodeId, made.Id, StringComparison.Ordinal))
-            .OutputPorts.Count(port => port.Kind == Graph.GraphOutputPortKind.Choice));
-    }
-
-    [Fact]
     public void 되돌리기_한_번에_셋이_함께_돌아간다()
     {
         // ⛔ 갈라 두면 표식만 사라지고 <b>아무도 안 부르는 씬</b>이 판에 남는다.

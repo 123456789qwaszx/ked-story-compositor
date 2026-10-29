@@ -83,7 +83,7 @@ public static class NodeConnections
         {
             // 실행 출구는 DialogueNode만 가진다. SetNode·CommandSupplyNode는 공급자이고
             // (조건·커맨드를 주는 쪽), PresentationNode는 결과 소비자다 — 셋 다
-            // 실행 순서를 결정하지 않는다. 공급 포트는 GraphProjection이 별도로 계산한다.
+            // 실행 순서를 결정하지 않는다.
             return ports;
         }
 

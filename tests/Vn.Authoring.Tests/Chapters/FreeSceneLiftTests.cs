@@ -64,21 +64,6 @@ public sealed class FreeSceneLiftTests
     }
 
     [Fact]
-    public void 올린_카드에도_선택지_세_칸이_뚫린다()
-    {
-        // 올리는 까닭이 이것이다 — 칸은 챕터 간선을 쓰고, 간선은 양 끝이 에피소드여야 선다.
-        (ProjectEditor editor, DialogueNode free) = World();
-
-        editor.LiftFreeScenes("ch01");
-
-        Assert.Equal(3, Graph.GraphProjectionBuilder
-            .Build(editor.Project, new HashSet<string>(editor.Project.Files.Select(file => file.Id)))
-            .Items.OfType<Graph.ExpandedNodeProjection>()
-            .Single(item => string.Equals(item.NodeId, free.Id, StringComparison.Ordinal))
-            .OutputPorts.Count(port => port.Kind == Graph.GraphOutputPortKind.Choice));
-    }
-
-    [Fact]
     public void 이름이_같은_카드가_둘이면_하나만_올린다()
     {
         // ⛔ 둘 다 올리면 같은 EpisodeId가 두 번 선다 — 챕터가 통째로 못 읽히는 상태다.

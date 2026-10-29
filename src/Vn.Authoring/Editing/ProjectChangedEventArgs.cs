@@ -64,12 +64,4 @@ public sealed class ProjectChangedEventArgs : EventArgs
 
     /// <summary>편집 행이나 포트의 개수가 바뀌어 현재 Inspector를 다시 만들어야 하는가.</summary>
     public bool NeedsInspectorRebuild => Kind == ProjectChangeKind.Structure;
-
-    /// <summary>그래프 카드·포트·간선 또는 그 라벨을 다시 계산해야 하는가.</summary>
-    public bool NeedsGraphRebuild => Kind is
-        ProjectChangeKind.Structure or
-        ProjectChangeKind.ConditionDefinition or
-        ProjectChangeKind.Connections or
-        ProjectChangeKind.NodeMetadata or
-        ProjectChangeKind.Results;
 }

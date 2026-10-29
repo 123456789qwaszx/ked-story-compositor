@@ -237,7 +237,6 @@ public class EditingTests
         Assert.NotNull(change);
         Assert.Equal(ProjectChangeKind.ConditionDefinition, change!.Kind);
         Assert.False(change!.NeedsInspectorRebuild);
-        Assert.True(change!.NeedsGraphRebuild);
     }
 
     [Fact]
@@ -283,7 +282,6 @@ public class EditingTests
 
         Assert.Equal(ProjectChangeKind.DialogueContent, change!.Kind);
         Assert.False(change.NeedsInspectorRebuild);
-        Assert.False(change.NeedsGraphRebuild);
     }
 
 }
