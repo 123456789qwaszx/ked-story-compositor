@@ -586,6 +586,12 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 선택지 한 줄의 배선을 고친다 — 문구와 도착을 한 변경으로.
     /// 찾을 때는 고치기 <b>전</b>의 신원을 쓴다.
+    ///
+    /// ⭐ <b>목록의 자리를 지킨다</b> — 간선 순서가 곧 화면 순서이고 런타임 <c>OptionIndex</c>다(two-graphs.md §5-3).
+    /// 관문 · 잠금 안내 · (주지 않으면) 스탯 변화도 그대로 남는다. 걷고 새로 그으면 셋 다 잃는다.
+    ///
+    /// ⚠ 고친 신원이 다른 간선과 겹치면 던진다(<see cref="AddEdge"/>와 같은 규칙). 바뀌는 것이 없으면 아무것도
+    /// 적지 않는다(§5-8).
     /// </summary>
     public void SetEdgeRoute(
         string chapterId,
@@ -599,19 +605,30 @@ public sealed partial class ProjectEditor
     {
         ChapterDocument chapter = RequireChapter(chapterId);
         int index = RequireEdgeIndex(chapter, fromEpisodeId, currentToEpisodeId, currentOptionLabel);
+        ChapterEdge current = chapter.Edges[index];
+
+        ChapterEdge routed = current with
+        {
+            ToEpisodeId = newToEpisodeId,
+            OptionLabel = newOptionLabel,
+            StatChanges = statChanges is null ? current.StatChanges : ParseDeltas(chapter, statChanges),
+            Auto = auto ?? current.Auto
+        };
+
+        if (routed.Equals(current))
+        {
+            return;
+        }
+
+        if (HasEdge(chapter, fromEpisodeId, newToEpisodeId, newOptionLabel, exceptIndex: index))
+        {
+            throw new InvalidOperationException(
+                $"간선 {fromEpisodeId}→{newToEpisodeId}이 같은 선택지 문구로 이미 있습니다.");
+        }
 
         Mutate(() =>
         {
-            ChapterEdge edge = chapter.Edges[index];
-
-            chapter.Edges[index] = edge with
-            {
-                ToEpisodeId = newToEpisodeId,
-                OptionLabel = newOptionLabel,
-                StatChanges = statChanges is null ? edge.StatChanges : ParseDeltas(chapter, statChanges),
-                Auto = auto ?? edge.Auto
-            };
-
+            chapter.Edges[index] = routed;
             LearnChoiceLabel(chapter, newOptionLabel);
         });
     }
@@ -1547,13 +1564,7 @@ public sealed partial class ProjectEditor
         string? statChanges = null,
         bool auto = false)
     {
-        if (chapter.Edges.Any(edge =>
-                string.Equals(edge.FromEpisodeId, fromEpisodeId, StringComparison.Ordinal) &&
-                string.Equals(edge.ToEpisodeId, toEpisodeId, StringComparison.Ordinal) &&
-                string.Equals(
-                    edge.OptionLabel?.Trim() ?? string.Empty,
-                    optionLabel?.Trim() ?? string.Empty,
-                    StringComparison.Ordinal)))
+        if (HasEdge(chapter, fromEpisodeId, toEpisodeId, optionLabel))
         {
             throw new InvalidOperationException(
                 $"간선 {fromEpisodeId}→{toEpisodeId}이 같은 선택지 문구로 이미 있습니다.");
@@ -1565,6 +1576,19 @@ public sealed partial class ProjectEditor
             StatChanges = statChanges is null ? [] : ParseDeltas(chapter, statChanges)
         };
     }
+
+    /// <summary>간선의 신원 (출발, 도착, 문구)가 이미 있는가(v9). <paramref name="exceptIndex"/>의 간선은 빼고 본다.</summary>
+    private static bool HasEdge(
+        ChapterDocument chapter, string fromEpisodeId, string toEpisodeId, string? optionLabel, int exceptIndex = -1) =>
+        chapter.Edges
+            .Where((_, index) => index != exceptIndex)
+            .Any(edge =>
+                string.Equals(edge.FromEpisodeId, fromEpisodeId, StringComparison.Ordinal) &&
+                string.Equals(edge.ToEpisodeId, toEpisodeId, StringComparison.Ordinal) &&
+                string.Equals(
+                    edge.OptionLabel?.Trim() ?? string.Empty,
+                    optionLabel?.Trim() ?? string.Empty,
+                    StringComparison.Ordinal));
 
     /// <summary>
     /// 사전에 없는 낱말이면 올려 둔다 — 다음부터 드롭다운에서 고른다(옛 <c>EnsureChoiceLabel</c>).

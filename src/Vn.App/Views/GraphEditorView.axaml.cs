@@ -3238,8 +3238,14 @@ public partial class GraphEditorView : UserControl
 
         string label = LabelOf(choice, slots);
 
-        // 문구가 없는 채로 살아 있는 칸은 <b>자동 길</b> 자리다 (§2 ③-a).
-        bool auto = choice.IsEmpty && label.Length == 0;
+        // 문구가 없는 채로 살아 있는 칸은 <b>자동 길</b> 자리다 (§2 ③-a). 이미 이어진 자동 길을 옮기면
+        // 자동 길 그대로다 — 그래서 아래의 장면 검사도 받는다.
+        bool auto = choice.IsEmpty ? label.Length == 0 : choice.IsAuto;
+
+        if (string.Equals(choice.ToEpisodeId, episodeId, StringComparison.Ordinal))
+        {
+            return;   // 이어져 있던 그 카드에 도로 놓았다 — 바뀐 것이 없다(§5-8)
+        }
 
         // ⚠ <b>자동 길은 장면을 못 넘는다</b> — 장면 경계는 실제로 `Commit → Exit → Enter`라,
         //   묻지 않고 넘어가면 안 된다(`AutoEdgeCrossesScene`). 관문에서야 알면 되돌려야 하니
@@ -3260,15 +3266,20 @@ public partial class GraphEditorView : UserControl
 
         if (!choice.IsEmpty)
         {
-            // 이미 이어진 칸을 다른 노드로 옮긴 것이다 — 옛 길을 걷고 새로 긋는다.
-            _session.Editor.RemoveEdge(
-                choice.ChapterId, choice.FromEpisodeId, choice.ToEpisodeId!, choice.Label);
+            // 이미 이어진 칸을 다른 노드로 옮긴 것이다 — 그 간선의 도착만 바꾼다(D3 · two-graphs.md §6-3).
+            // ⛔ 예전에는 옛 길을 걷고 새로 그었다: 간선이 목록 끝으로 가 선택지 순서(= 런타임
+            //    OptionIndex, §5-3)가 바뀌고, 관문 · 스탯 변화를 잃고, 되돌리기도 두 칸이었다.
+            _session.Editor.SetEdgeRoute(
+                choice.ChapterId, choice.FromEpisodeId, choice.ToEpisodeId!, choice.Label,
+                episodeId, label.Length > 0 ? label : null);
         }
-
-        _session.Editor.AddEdge(
-            choice.ChapterId, choice.FromEpisodeId, episodeId,
-            optionLabel: label.Length > 0 ? label : null,
-            auto: auto);
+        else
+        {
+            _session.Editor.AddEdge(
+                choice.ChapterId, choice.FromEpisodeId, episodeId,
+                optionLabel: label.Length > 0 ? label : null,
+                auto: auto);
+        }
 
         // 그 칸의 적어 둔 문구는 이제 간선이 들고 있다 — 차례에서 하나 뺀다. 뒤엣것들이
         // 한 칸씩 앞으로 오는데, 간선이 하나 늘어 빈 칸도 한 칸씩 밀리므로 자리가 맞는다.

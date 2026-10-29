@@ -165,6 +165,48 @@ public sealed class ChapterEditingTests
     }
 
     [Fact]
+    public void 배선을_고쳐도_목록의_자리와_관문이_남는다()
+    {
+        // D3 · two-graphs.md §6-3 — 간선 순서가 곧 런타임 OptionIndex다(§5-3). 걷고 새로 그으면
+        //    목록 끝으로 가고 관문을 잃는다.
+        _editor.AddEpisode("ch01", "ep03", "지하", 400, 0);
+        _editor.AddEdge("ch01", "ep01", "ep02", optionLabel: "위로", conditionLabel: "신뢰높음");
+        _editor.AddEdge("ch01", "ep01", "ep02", optionLabel: "옆으로");
+
+        _editor.SetEdgeRoute("ch01", "ep01", "ep02", "위로", "ep03", "위로");
+
+        Assert.Equal(
+            [("ep03", "위로", "신뢰높음"), ("ep02", "옆으로", (string?)null)],
+            Chapter.Edges.Select(edge => (edge.ToEpisodeId, edge.OptionLabel, edge.ConditionLabel)));
+    }
+
+    [Fact]
+    public void 다른_간선과_겹치게_고치는_배선은_거절한다()
+    {
+        // 신원 (출발, 도착, 문구)가 겹치면 같은 버튼이 둘이다 — AddEdge와 같은 규칙.
+        _editor.AddEpisode("ch01", "ep03", "지하", 400, 0);
+        _editor.AddEdge("ch01", "ep01", "ep02", optionLabel: "간다");
+        _editor.AddEdge("ch01", "ep01", "ep03", optionLabel: "간다");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _editor.SetEdgeRoute("ch01", "ep01", "ep02", "간다", "ep03", "간다"));
+
+        Assert.Equal(["ep02", "ep03"], Chapter.Edges.Select(edge => edge.ToEpisodeId));
+    }
+
+    [Fact]
+    public void 바뀌는_것이_없는_배선은_적지_않는다()
+    {
+        _editor.AddEdge("ch01", "ep01", "ep02", optionLabel: "간다");
+        int changes = 0;
+        _editor.Changed += (_, _) => changes++;
+
+        _editor.SetEdgeRoute("ch01", "ep01", "ep02", "간다", "ep02", "간다");
+
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
     public void 간선_속성은_준_것만_바뀐다()
     {
         _editor.AddEdge("ch01", "ep01", "ep02", optionLabel: "간다", conditionLabel: "신뢰높음");

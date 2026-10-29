@@ -263,6 +263,35 @@ public sealed class ChoiceSlotTests : IDisposable
     });
 
     [Fact]
+    public void 이어진_칸을_다른_카드로_옮겨도_순서와_스탯_변화가_남고_되돌리기_한_칸이다() => HeadlessUi.Run(() =>
+    {
+        // D3 · two-graphs.md §6-3 — 예전에는 옛 길을 걷고 새로 그어서, 옮긴 선택지가 목록 끝으로
+        //    가고(= 런타임 OptionIndex가 바뀐다) 스탯 변화를 잃고 되돌리기도 두 칸이었다.
+        (GraphEditorView graph, AuthoringSession session) = Show();
+        session.Editor.AddEpisode("ch01", "b", title: "b", 0, 0);
+        session.Editor.MoveNode(
+            EpisodeNaming.CardFor(session.Project, "ch01", "b")!.Id, 640, 0);
+        session.Editor.AddChapterStat("ch01", "trust", maximum: 10);
+        session.Editor.AddEdge("ch01", "root", "a", optionLabel: "왼쪽으로", statChanges: "trust +1");
+        session.Editor.AddEdge("ch01", "root", "a", optionLabel: "오른쪽으로");
+        graph.Rebuild();
+
+        Drag(graph, session, "root", slot: 0, onto: "b");
+
+        IReadOnlyList<ChapterEdge> edges = session.Editor.FindChapter("ch01")!.Edges;
+        Assert.Equal(
+            [("b", "왼쪽으로"), ("a", "오른쪽으로")],
+            edges.Select(edge => (edge.ToEpisodeId, edge.OptionLabel)));
+        Assert.Equal("trust", Assert.Single(edges[0].StatChanges).Key);
+
+        session.Editor.Undo();
+
+        Assert.Equal(
+            [("a", "왼쪽으로"), ("a", "오른쪽으로")],
+            session.Editor.FindChapter("ch01")!.Edges.Select(edge => (edge.ToEpisodeId, edge.OptionLabel)));
+    });
+
+    [Fact]
     public void 다른_챕터의_노드에는_못_놓고_이유를_말한다() => HeadlessUi.Run(() =>
     {
         // ⚠ 간선은 챕터 안의 길이다. 조용히 무시하면 사람은 손이 미끄러진 줄 안다.
