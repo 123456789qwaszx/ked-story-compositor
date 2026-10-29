@@ -82,11 +82,4 @@ public class ProjectRefreshPlannerTests
         Assert.False(plan.RebuildInspector);
     }
 
-    [Fact]
-    public void 좌표_이동은_아무것도_다시_하지_않는다()
-    {
-        Assert.Equal(default, ProjectRefreshPlanner.Plan(
-            ProjectChangeKind.Layout,
-            new PresentationNode(name: "연출")));
-    }
 }

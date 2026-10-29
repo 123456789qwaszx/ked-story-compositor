@@ -82,18 +82,6 @@ public class EditingTests
     }
 
     [Fact]
-    public void 그래프에서_노드를_옮겨도_파일_순서는_그대로다()
-    {
-        var sample = new Sample();
-        List<string> order = sample.Project.EnumerateNodes().Select(node => node.Id).ToList();
-
-        sample.Editor.MoveNode(sample.TargetB.Id, 10, 20);
-
-        Assert.Equal(order, sample.Project.EnumerateNodes().Select(node => node.Id));
-        Assert.Equal(10, sample.TargetB.Layout.X);
-    }
-
-    [Fact]
     public void 되돌리기가_편집을_되살린다()
     {
         var sample = new Sample();
@@ -107,48 +95,6 @@ public class EditingTests
 
         sample.Editor.Redo();
         Assert.Equal("고친 뒤", TextOf(sample, line));
-    }
-
-    [Fact]
-    public void 끌어_놓은_무리는_되돌리기_한_칸으로_돌아온다()
-    {
-        // D3 · §6-2 — 그래프는 끄는 동안 화면만 옮기고 놓을 때 MoveNodes를 한 번 부른다.
-        //    예전에는 포인터마다 기록 없이 적어서 끈 자리를 되돌릴 수 없었다.
-        var sample = new Sample();
-        (double X, double Y) dialogue = (sample.Dialogue.Layout.X, sample.Dialogue.Layout.Y);
-        (double X, double Y) target = (sample.TargetB.Layout.X, sample.TargetB.Layout.Y);
-        int notifications = 0;
-        sample.Editor.Changed += (_, _) => notifications++;
-
-        sample.Editor.MoveNodes(new Dictionary<string, (double X, double Y)>
-        {
-            [sample.Dialogue.Id] = (dialogue.X + 400, dialogue.Y + 300),
-            [sample.TargetB.Id] = (target.X + 400, target.Y + 300)
-        });
-
-        Assert.Equal(1, notifications);
-
-        sample.Editor.Undo();
-
-        // 되돌리기는 스냅샷을 새로 푼다 — 노드는 Id로 다시 찾는다(§5-11).
-        StoryNode restoredDialogue = sample.Project.FindNode(sample.Dialogue.Id)!;
-        StoryNode restoredTarget = sample.Project.FindNode(sample.TargetB.Id)!;
-        Assert.Equal(dialogue, (restoredDialogue.Layout.X, restoredDialogue.Layout.Y));
-        Assert.Equal(target, (restoredTarget.Layout.X, restoredTarget.Layout.Y));
-    }
-
-    [Fact]
-    public void 제자리에_놓은_끌기는_되돌리기에_남지_않는다()
-    {
-        // 카드를 눌렀다 놓기만 한 것(선택)이 되돌리기 한 칸을 먹으면 앞선 편집이 한 번 늦게 돌아온다.
-        var sample = new Sample();
-        string line = sample.Line("처음");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, string.Empty, "고친 뒤");
-
-        sample.Editor.MoveNode(sample.Dialogue.Id, sample.Dialogue.Layout.X, sample.Dialogue.Layout.Y);
-
-        sample.Editor.Undo();
-        Assert.Equal("처음", TextOf(sample, line));
     }
 
     [Fact]
@@ -240,7 +186,7 @@ public class EditingTests
     }
 
     [Fact]
-    public void 조건_수정은_그래프_라벨과_Dialogue_선택지에_즉시_반영된다()
+    public void 조건_수정은_출구_라벨에_즉시_반영된다()
     {
         var sample = new Sample();
         string opener = sample.Line(
@@ -258,11 +204,6 @@ public class EditingTests
             NodeConnections.PortsOf(sample.Dialogue, sample.Project),
             port => port.Kind == ExitPortKind.Branch);
         Assert.Equal("호감 매우 높음", branchPort.Label);
-
-        ConditionChoice choice = Assert.Single(
-            ConditionChoices.For(preceding: null, sample.Dialogue, sample.Project),
-            item => string.Equals(item.ConditionId, sample.ConditionA.Id, StringComparison.Ordinal));
-        Assert.Equal("호감 매우 높음", choice.Label);
     }
 
     // ⛔ <b>assignment 알림 검사 셋은 2026-09-17에 걷혔다</b> (작가 변수 폐지). 설정노드가

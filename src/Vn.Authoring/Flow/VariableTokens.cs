@@ -9,9 +9,8 @@ namespace Vn.Authoring.Flow;
 ///
 /// ⛔ <b>더 이상 "변수를 다루는" 자리가 아니다</b> (2026-09-17). 옛 머리글이 적어 둔 두
 /// 소비자 <c>Tier1Namespace</c>(챕터 접두)와 <c>ProjectEditor.SetAssignments</c>(개명 전파)는
-/// <b>둘 다 작가 변수와 함께 삭제됐다</b>. 갈아 끼우던 <c>Rewrite</c>도 그때 함께 죽었다 —
-/// 스탯 키 개명은 이제 문법을 아는 <see cref="Chapters.ConditionExpressionParser.ReplaceStatKey"/>가
-/// 한다.
+/// <b>둘 다 작가 변수와 함께 삭제됐다</b>. 갈아 끼우던 <c>Rewrite</c>도 그때 함께 죽었다.
+/// (스탯 키 개명은 ked-story-director의 일이다 — 이 툴은 원고를 읽기만 한다.)
 ///
 /// <b>남은 소비자는 하나다</b> — <c>YarnBundleEmitter.ValidateProgressionStatReferences</c>.
 /// 쓰임이 뒤집혔다: 예전에는 <i>변수를 고치려고</i> 찾았고, 지금은 <b>사람이 손으로 적은

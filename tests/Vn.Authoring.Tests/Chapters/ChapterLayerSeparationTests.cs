@@ -42,33 +42,6 @@ public sealed class ChapterLayerSeparationTests
     }
 
     [Fact]
-    public void 챕터_조건은_작가가_고르는_목록에서_빠진다()
-    {
-        Board board = BuildBoard();
-
-        AvailableConditionCatalog catalog = AvailableConditionResolver.Resolve(
-            board.Project, board.Dialogue.Id);
-
-        // 둘 다 읽히지만 종류가 갈린다.
-        Assert.Equal(
-            AvailableConditionSourceKind.ChapterLayer,
-            catalog.Conditions.Single(item => item.Name == "신뢰높음").SourceKind);
-        Assert.Equal(
-            AvailableConditionSourceKind.SetNode,
-            catalog.Conditions.Single(item => item.Name == "우호적").SourceKind);
-
-        // 고를 수 있는 것은 작가의 것뿐이다.
-        Assert.Equal(["우호적"], catalog.Selectable.Select(item => item.Name));
-
-        // 조건 고르기 목록에도 챕터 조건이 없다.
-        IReadOnlyList<ConditionChoice> choices = ConditionChoices.For(
-            preceding: null, board.Dialogue, board.Project, GameDefinition.Empty);
-
-        Assert.DoesNotContain(choices, choice => choice.Label.Contains("신뢰높음"));
-        Assert.Contains(choices, choice => choice.Label == "우호적");
-    }
-
-    [Fact]
     public void 이미_쓰인_챕터_조건은_이름이_보이고_출처가_붙는다()
     {
         // 숨긴다고 "알 수 없는 조건"이 되면 그게 더 나쁘다 — 대사 노드의 조건라벨이

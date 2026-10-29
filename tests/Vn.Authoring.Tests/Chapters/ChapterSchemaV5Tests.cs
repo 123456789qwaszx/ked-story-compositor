@@ -110,7 +110,8 @@ public sealed class ChapterSchemaV5Tests
         // (`ChapterStructureCheck`)로 옮겨 왔다. 내보내기 관문(코어 §G4)보다 먼저, 고치는 중에 짚는다.
         _editor.AddChapterStat("ch01", "seen", "프롤로그", type: ChapterStatType.Bool);
         _editor.AddChapterCondition("ch01", "이상한조건", "seen >= 1");
-        _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "seen +1", matchOptionLabel: "계속");
+        ManuscriptFixture.Edge(_editor.Project, "ch01", "ep1", "ep2", "계속", edge =>
+            edge with { StatChanges = ManuscriptFixture.Deltas(_editor.Project, "ch01", "seen +1") });
 
         ChapterGraphModel model = Model();
 

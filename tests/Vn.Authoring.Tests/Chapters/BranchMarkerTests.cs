@@ -179,7 +179,7 @@ public sealed class BranchMarkerTests
         // 곁가지는 제 본줄 옆에 있어야 판에서 읽힌다 — 장면을 안 주면 `장면 밖`으로 밀려
         // 챕터 프레임 바깥에 혼자 선다.
         (ProjectEditor editor, DialogueNode node, string lineId) = World();
-        editor.UpdateEpisode("ch01", "root", sceneId: "sc_아침");
+        ManuscriptFixture.Episode(editor.Project, "ch01", "root", episode => episode with { SceneId = "sc_아침" });
 
         DialogueNode made = editor.AddBranchMarker(node.Id, lineId);
 

@@ -47,10 +47,7 @@ public enum ProjectChangeKind
     /// <summary>
     /// 노드의 이름처럼 그래프와 참조 표시에는 영향을 주지만 현재 편집 행을 다시 만들 필요는 없는 값이 바뀌었다.
     /// </summary>
-    NodeMetadata,
-
-    /// <summary>그래프에서의 좌표만 바뀌었다.</summary>
-    Layout
+    NodeMetadata
 }
 
 public sealed class ProjectChangedEventArgs : EventArgs

@@ -47,9 +47,9 @@ internal sealed class LiveOutputService
 
         session.Changed += (_, e) =>
         {
-            // 좌표 이동은 산출물을 바꾸지 않는다. 상태줄 알림(Content)로 재무장하면
-            // 쓰기 실패 알림이 다시 쓰기를 부르는 되먹임이 생기므로 그것도 제외한다.
-            if (e.Kind is ProjectChangeKind.Layout or ProjectChangeKind.Content)
+            // 상태줄 알림(Content)로 재무장하면 쓰기 실패 알림이 다시 쓰기를 부르는 되먹임이
+            // 생기므로 제외한다.
+            if (e.Kind is ProjectChangeKind.Content)
             {
                 return;
             }

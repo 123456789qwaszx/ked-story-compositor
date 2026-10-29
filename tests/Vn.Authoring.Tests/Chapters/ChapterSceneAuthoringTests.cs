@@ -18,25 +18,11 @@ public sealed class ChapterSceneAuthoringTests
         // 정하기 전에는 에피소드마다 고유한 퇴화 장면이다.
         Assert.Equal("__scene_root", Assert.Single(editor.FindChapter("ch01")!.Episodes).EffectiveSceneId);
 
-        editor.UpdateEpisode("ch01", "root", sceneId: "opening");
+        ManuscriptFixture.Episode(editor.Project, "ch01", "root", episode => episode with { SceneId = "opening" });
 
         ChapterEpisode episode = Assert.Single(editor.FindChapter("ch01")!.ToGraphModel("ch01").Episodes);
         Assert.Equal("opening", episode.SceneId);
         Assert.Equal("opening", episode.EffectiveSceneId);
-    }
-
-    [Fact]
-    public void 같은_장면의_여러_에피소드를_한_번에_다른_ID로_옮긴다()
-    {
-        var editor = new ProjectEditor(new StoryProject());
-        editor.EnsureChapter("bulk");
-        editor.AddEpisode("bulk", "a", "A", 0, 0);
-        editor.AddEpisode("bulk", "b", "B", 100, 0);
-
-        editor.UpdateEpisodeScenes("bulk", ["a", "b"], "scene-new");
-
-        ChapterGraphModel model = editor.FindChapter("bulk")!.ToGraphModel("bulk");
-        Assert.All(model.Episodes, episode => Assert.Equal("scene-new", episode.SceneId));
     }
 
     [Fact]

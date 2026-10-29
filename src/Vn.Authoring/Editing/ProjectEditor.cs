@@ -163,13 +163,7 @@ public sealed partial class ProjectEditor
         Mutate(() => RemoveFileCore(file));
     }
 
-    /// <summary>
-    /// 판 하나를 걷는 <b>알맹이</b> — <see cref="Mutate"/> 밖이다.
-    ///
-    /// ⚠ 챕터를 지울 때 판과 챕터가 <b>한 번의 변경</b>이어야 해서 갈라 뒀다
-    /// (<see cref="RemoveChapterWithBoard"/>). 되돌리기 한 번에 둘 중 하나만 돌아오면
-    /// 챕터는 있는데 판이 없는(또는 그 반대) 상태가 남는다.
-    /// </summary>
+    /// <summary>판 하나를 걷는 <b>알맹이</b> — <see cref="Mutate"/> 밖이다.</summary>
     private void RemoveFileCore(StoryFile file)
     {
         Project.Files.Remove(file);
@@ -334,10 +328,8 @@ public sealed partial class ProjectEditor
     /// 이 노드가 질 <b>에피소드</b>를 짓는다 (R7 P-6). 챕터 판이 아니면 둘 다 <c>null</c>이다 —
     /// 작가의 낙서판에는 챕터가 없고, 거기 세운 노드는 진행에 안 실린다.
     ///
-    /// ⚠ <b>이미 있는 에피소드면 짓지 않고 표식만 붙인다.</b> 챕터 그래프에서 먼저 만든
-    /// 에피소드에 대본을 다는 것이(그리고 열 때 카드 없는 에피소드에 빈 카드를 세우는 것이 —
-    /// <see cref="AlignBoardsWithChapters"/>) 정확히 그
-    /// 자리다 — 거기서 또 지으면 에피소드 하나에 카드가 둘 선다.
+    /// ⚠ <b>이미 있는 에피소드면 짓지 않고 표식만 붙인다.</b> 챕터에 먼저 적힌 에피소드에
+    /// 대본을 다는 것이 정확히 그 자리다 — 거기서 또 지으면 에피소드 하나에 카드가 둘 선다.
     ///
     /// ⚠ 임포터는 노드를 <b>EpisodeId가 아니라 `대사엔트리`로</b> 짓는다. 그래서 찾는 일은
     /// <see cref="EpisodeNaming.EpisodeFor"/>에 맡긴다 — 여기서 이름만 맞춰 보면 `대사엔트리`가
@@ -389,10 +381,8 @@ public sealed partial class ProjectEditor
     /// ⛔ <b>조건을 걸지 않는다.</b> 연출 그래프는 "어디서 갈라지는가"만 짚는다 — 성립하든
     /// 말든 다녀오고, 다녀온 씬이 제 첫머리에서 보고 아니면 곧바로 돌아온다.
     ///
-    /// ⭐ <b>조건을 채우는 창구는 챕터 그래프다</b> (2026-09-18에 섰다 — 그전에는 "이후의
-    /// 다른 탭"이라고만 적혀 있었다). 판의 점선을 누르면 오른쪽에 조건 한 칸이 열리고,
-    /// 그 값은 <b>다녀갈 에피소드의 첫머리</b>에 적힌다
-    /// (<see cref="Chapters.BranchEntryCondition"/>). 부르는 쪽 대본은 그대로다.
+    /// ⭐ <b>조건은 다녀갈 에피소드의 첫머리</b>에 적힌다 — 부르는 쪽 대본은 그대로다. 그 조건을
+    /// 채우는 창구(챕터 그래프의 분기 패널)는 ked-story-director에 있다.
     ///
     /// ⚠ <b>그냥 에피소드다</b> (R7 P-6 · 결정 ⑤가 2026-09-17에 뒤집었다 — 전에는 자유 씬).
     /// 진행에 실리며, 아래에 선택지 3칸이 뚫린다. <b>출발과 같은
@@ -567,45 +557,6 @@ public sealed partial class ProjectEditor
         }
     }
 
-    /// <summary>노드 하나의 자리를 옮긴다 — <see cref="MoveNodes"/>의 한 칸짜리다.</summary>
-    public void MoveNode(string nodeId, double x, double y) =>
-        MoveNodes(new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal) { [nodeId] = (x, y) });
-
-    /// <summary>
-    /// 여러 노드의 자리를 <b>한 번의 변경으로</b> 옮긴다 — 끌기를 놓을 때와 [자동 정렬]이 쓴다
-    /// (2026-10-29 · D3, <c>docs/design/two-graphs.md</c> §6-2).
-    ///
-    /// <b>되돌리기 한 칸이다.</b> 예전에는 그래프가 포인터가 움직일 때마다 기록 없이 적었다 —
-    /// 끈 자리는 되돌릴 수 없었고, 앞선 편집을 되돌리면 끈 자리까지 조용히 돌아갔다. 이제 그래프는
-    /// 끄는 동안 화면만 옮기고 놓을 때 여기를 한 번 부른다(챕터 그래프의 <c>MoveEpisodes</c>와 같다).
-    ///
-    /// 없는 노드는 건너뛰고, 실제로 달라진 자리가 없으면 아무것도 적지 않는다(§5-8).
-    /// </summary>
-    public void MoveNodes(IReadOnlyDictionary<string, (double X, double Y)> positions)
-    {
-        ArgumentNullException.ThrowIfNull(positions);
-
-        List<(StoryNode Node, double X, double Y)> moves = positions
-            .Select(pair => (Node: Project.FindNode(pair.Key), pair.Value.X, pair.Value.Y))
-            .Where(move => move.Node is not null && (move.Node.Layout.X != move.X || move.Node.Layout.Y != move.Y))
-            .Select(move => (move.Node!, move.X, move.Y))
-            .ToList();
-
-        if (moves.Count == 0)
-        {
-            return;
-        }
-
-        Mutate(ProjectChangeKind.Layout, () =>
-        {
-            foreach ((StoryNode node, double x, double y) in moves)
-            {
-                node.Layout.X = x;
-                node.Layout.Y = y;
-            }
-        });
-    }
-
     // ── 줄에 얹는 대사 논리 ────────────────────────────────────────────────
     //
     // 줄 자체를 만들고 지우고 옮기는 명령은 여기 없다. 그것은 대본의 일이고
@@ -680,55 +631,6 @@ public sealed partial class ProjectEditor
         // 반대로 하면 아직 출구가 매달려 있어 빈 항목이 남는다.
         PruneBranchExits(node);
         PruneLineExtensions(node);
-    }
-
-    /// <summary>
-    /// <b>이 노드가 통째로 도는 조건</b>을 건다 — 첫 줄에 <c>BeginIf</c>, 마지막 줄 뒤에
-    /// <c>EndIf</c> (2026-09-18). <c>null</c>이면 걷는다.
-    ///
-    /// <b>분기 에피소드의 첫머리 조건</b>이 사는 자리다 (R7 P-5 · 2026-09-18 소유자:
-    /// *"Detour로 조건 분기가 일어나는 마커를 끼워두고 그곳에서 조건과 내용을 추가한다는게
-    /// 유지보수 측면에서 얼마나 유리한지"*). 부르는 쪽 대본에는 <c>&lt;&lt;detour&gt;&gt;</c>
-    /// 한 줄뿐이고 <b>조건과 내용이 다녀올 곳에 함께</b> 있다 — 짝 맞출 <c>If</c>/<c>EndIf</c>가
-    /// 남의 대본에 흩어지지 않는다.
-    ///
-    /// ⭐ <b>성립하면 돈다</b>(허가). 조건이 거짓이면 본문이 통째로 건너뛰이고, 노드 끝이
-    /// 곧 <c>&lt;&lt;return&gt;&gt;</c>이라 곧바로 돌아간다. 모델에 부정(<c>not</c>)이 없으므로
-    /// 이 극성이 곧 저장 형태다.
-    ///
-    /// ⚠ <b>한 번의 변경이다.</b> 줄과 꼬리를 따로 쓰면 되돌리기가 둘로 쪼개져, 한 번 물렀을 때
-    /// <c>BeginIf</c>만 남은 <b>짝 없는 상태</b>가 판에 선다.
-    ///
-    /// ⚠ 첫 줄의 기존 전환은 <b>덮는다</b>. 덮어도 되는 모양인지는 부르는 쪽
-    /// (<see cref="Chapters.BranchEntryCondition"/>)이 먼저 재고 온다.
-    /// </summary>
-    public void SetEntryCondition(string nodeId, string? conditionId)
-    {
-        DialogueNode node = RequireDialogue(nodeId);
-
-        if (Project.FindScript(node.ScriptId)?.ActiveLines.FirstOrDefault() is not { } first)
-        {
-            throw new InvalidOperationException(
-                "대본이 비어 있어 조건을 걸 자리가 없습니다 — 첫 줄을 먼저 쓰세요.");
-        }
-
-        DialogueLineExtension? existing = node.FindExtension(first.Id);
-
-        Mutate(() =>
-        {
-            WriteLineTransitions(
-                node,
-                first.Id,
-                existing,
-                conditionId is null ? [] : [LineConditionTransition.BeginIf(conditionId)]);
-
-            node.TrailingTransitions.Clear();
-
-            if (conditionId is not null)
-            {
-                node.TrailingTransitions.Add(LineConditionTransition.EndIf());
-            }
-        });
     }
 
     private void SetLineTransitionLegacy(string nodeId, string lineId, LineConditionTransition? transition)

@@ -7,7 +7,7 @@ namespace Vn.Authoring.Tests.Chapters;
 
 /// <summary>
 /// 간선 `스탯변화` (2026-08-14 소유자 결정) — 스탯이 변하는 유일한 자리는 에피소드 사이,
-/// 간선을 타는 순간의 1회 커밋이다. 편집→모델→픽스처 걷기→내보내기가 한 값을 본다.
+/// 간선을 타는 순간의 1회 커밋이다. 모델→도달성 증명→내보내기(무대의 챕터 재생이 읽는 JSON)가 한 값을 본다.
 /// </summary>
 public sealed class ChapterEdgeStatTests
 {
@@ -33,19 +33,8 @@ public sealed class ChapterEdgeStatTests
         _editor.AddEpisode("ch01", "ep3", title: "", 2, 0);
         _editor.AddEdge("ch01", "ep2", "ep3", optionLabel: "계속", conditionLabel: "신뢰높음");
         _editor.AddChapterCondition("ch01", "신뢰높음", "trust >= 3");
-        _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "trust +3", matchOptionLabel: "계속");
-    }
-
-    [Fact]
-    public void 간선_스탯변화를_적으면_모델에_그대로_담긴다()
-    {
-        _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "trust +2", matchOptionLabel: "계속");
-
-        ChapterEdge edge = Assert.Single(Model().Edges);
-
-        StatDelta delta = Assert.Single(edge.StatChanges);
-        Assert.Equal("trust", delta.Key);
-        Assert.Equal(2, delta.Amount);
+        ManuscriptFixture.Edge(_editor.Project, "ch01", "ep1", "ep2", "계속", edge =>
+            edge with { StatChanges = ManuscriptFixture.Deltas(_editor.Project, "ch01", "trust +3") });
     }
 
     [Fact]
@@ -54,29 +43,10 @@ public sealed class ChapterEdgeStatTests
         // 2026-10-29 · D2 — 예전에는 셀에 원문이 남고 리더가 다음 읽기에 오류로 짚었다.
         // 이제 다시 읽는 일이 없으므로 편집기가 적는 자리에서 막는다.
         InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-            _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "karma +1", matchOptionLabel: "계속"));
+            _editor.AddEdge("ch01", "ep2", "ep1", optionLabel: "되돌아간다", statChanges: "karma +1"));
 
         Assert.Contains("karma", error.Message);
         Assert.Empty(Assert.Single(Model().Edges).StatChanges);
-    }
-
-    [Fact]
-    public void 픽스처_걷기가_간선_증감을_커밋하며_걷는다()
-    {
-        // ep1 →(+3)→ ep2 →(신뢰높음 관문)→ ep3. 시작 trust 0이라도 첫 간선에서 +3이
-        // 커밋되므로 ep2에서 관문이 열려 있어야 한다 — 걷기가 증감을 반영한다는 증거.
-        AddGatedThirdEpisode();
-
-        ChapterGraphModel model = Model();
-        var fixture = new ChapterFixture(
-            "기본", IsActive: true,
-            new Dictionary<string, int>(StringComparer.Ordinal),
-            Array.Empty<ChapterFixtureChoice>(), SourceRow: 2);
-
-        FixtureWalkResult walk = ChapterFixtureWalker.Walk(model, fixture);
-
-        Assert.Equal(["ep1", "ep2", "ep3"], walk.EpisodeIds);
-        Assert.Null(walk.StoppedBecause);
     }
 
     [Fact]
@@ -116,31 +86,13 @@ public sealed class ChapterEdgeStatTests
         _editor.AddEdge("ch01", "ep2", "ep1", optionLabel: "믿는다");
         // v12 — 툴이 놓는 첫 길에 "계속"이 들어가므로 사전 낱말이 셋이다.
         Assert.Equal(3, Model().ChoiceOptions.Count);
-
-        // 길을 지워도 문구는 사전에 남는다(어휘집이지 배선이 아니다).
-        _editor.RemoveEdge("ch01", "ep1", "ep2", "무시한다");
-        ChapterGraphModel after = Model();
-        Assert.Equal(3, after.Edges.Count);
-        Assert.Contains(after.ChoiceOptions, option => option.Text == "무시한다");
-    }
-
-    [Fact]
-    public void 선택지_수정은_문구와_도착을_한_번에_옮긴다()
-    {
-        _editor.AddEpisode("ch01", "ep3", title: "", 2, 0);
-        _editor.AddEdge("ch01", "ep1", "ep2", optionLabel: "믿는다");
-
-        _editor.SetEdgeRoute("ch01", "ep1", "ep2", "믿는다", "ep3", "의심한다");
-
-        ChapterEdge moved = Assert.Single(Model().Edges, edge => edge.ToEpisodeId == "ep3");
-        Assert.Equal("ep3", moved.ToEpisodeId);
-        Assert.Equal("의심한다", moved.OptionLabel);
     }
 
     [Fact]
     public void 내보내기에_간선_스탯변화가_실린다()
     {
-        _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "trust +2", matchOptionLabel: "계속");
+        ManuscriptFixture.Edge(_editor.Project, "ch01", "ep1", "ep2", "계속", edge =>
+            edge with { StatChanges = ManuscriptFixture.Deltas(_editor.Project, "ch01", "trust +2") });
 
         ChapterExportResult result = ChapterProgressionExporter.Export(Model());
 

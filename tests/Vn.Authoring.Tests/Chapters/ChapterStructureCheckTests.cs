@@ -137,24 +137,6 @@ public sealed class ChapterStructureCheckTests
     // ── 깃발(bool) 스탯 ─────────────────────────────────────────────────────
 
     [Fact]
-    public void 편집기는_깃발의_범위를_0에서_1로_고정한다()
-    {
-        // 옛 리더가 하던 일이다 — 최소·최대 칸을 읽지 않고 0·1로 고정했다.
-        var editor = new ProjectEditor(new StoryProject());
-        editor.EnsureChapter("ch01");
-
-        ChapterStat added = editor.AddChapterStat("ch01", "met", initial: 5, maximum: 100, type: ChapterStatType.Bool);
-
-        Assert.Equal((0, 1, 1), (added.Minimum, added.Maximum, added.Initial));
-
-        editor.AddChapterStat("ch01", "trust", maximum: 10);
-        editor.UpdateChapterStat("ch01", "trust", type: ChapterStatType.Bool);
-
-        ChapterStat changed = editor.FindChapter("ch01")!.Stats.Single(stat => stat.Key == "trust");
-        Assert.Equal((0, 1, 0), (changed.Minimum, changed.Maximum, changed.Initial));
-    }
-
-    [Fact]
     public void 범위가_어긋난_깃발은_오류다()
     {
         ChapterGraphModel model = Chapter(

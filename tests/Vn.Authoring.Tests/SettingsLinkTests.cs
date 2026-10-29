@@ -82,17 +82,6 @@ public class SettingsLinkTests
             catalog.Conditions,
             condition => condition.Id == foreignCondition.Id);
 
-        IReadOnlyList<ConditionChoice> choices = ConditionChoices.For(
-            preceding: null,
-            dialogue,
-            project,
-            definition);
-
-        Assert.Contains(choices, choice => choice.ConditionId == "global_difficulty");
-        Assert.Contains(choices, choice => choice.ConditionId == firstCondition.Id);
-        Assert.Contains(choices, choice => choice.ConditionId == secondCondition.Id);
-        Assert.DoesNotContain(choices, choice => choice.ConditionId == foreignCondition.Id);
-
         ScriptDocument script = editor.AddScript("전역 조건 대본");
         editor.SetDialogueScript(dialogue.Id, script.Id);
         ScriptLine globalLine = editor.InsertScriptLine(script.Id);
@@ -180,19 +169,6 @@ public class SettingsLinkTests
             flow.Problems,
             item => item.Kind == FlowProblemKind.UnavailableCondition);
         Assert.Equal(scriptLine.Id, problem.LineId);
-
-        IReadOnlyList<ConditionChoice> choices = ConditionChoices.For(
-            preceding: null,
-            dialogue,
-            project,
-            definition: null,
-            currentTransition: dialogue.FindExtension(scriptLine.Id)!.Transition);
-        ConditionChoice current = ConditionChoices.Current(
-            choices, dialogue.FindExtension(scriptLine.Id)!.Transition);
-
-        Assert.False(current.IsAvailable);
-        Assert.Equal(foreignCondition.Id, current.ConditionId);
-        Assert.Contains("사용할 수 없음", current.Label, StringComparison.Ordinal);
 
         ExitPort branch = NodeConnections.PortsOf(dialogue, project)
             .Single(port => port.Kind == ExitPortKind.Branch);

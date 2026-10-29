@@ -4,8 +4,8 @@ namespace Vn.Authoring.Chapters;
 /// 에피소드 하나.
 ///
 /// ⚠ 옛 주석은 <i>"위치는 엑셀이 소유하고 뷰는 읽기만 한다 (G-2)"</i>였다. 2026-09-16에
-/// 그 전제가 뒤집혔다(R-F) — 자리의 주인은 이제 프로젝트이고
-/// <c>ProjectEditor.MoveEpisode</c>가 고친다. <see cref="X"/>·<see cref="Y"/>에 setter가
+/// 그 전제가 뒤집혔다(R-F) — 자리의 주인은 이제 프로젝트이고 ked-story-director의 챕터 그래프가
+/// 고친다(이 툴은 읽기만 한다). <see cref="X"/>·<see cref="Y"/>에 setter가
 /// 없는 것은 그대로지만, 이유가 "남의 값이라서"가 아니라 <b>레코드라서</b>다(<c>with</c>로 바꾼다).
 /// </summary>
 /// <param name="Index">"05"·"05A"·"★"처럼 사람이 붙이는 표시용 순번. 숫자가 아니어도 된다.</param>
@@ -249,17 +249,6 @@ public sealed class ChapterGraphModel
     /// <summary>`선택지` 시트 — 챕터가 함께 쓰는 문구 사전 (v9). 인덱스 순으로 선다.</summary>
     public IReadOnlyList<ChapterChoiceOption> ChoiceOptions { get; }
 
-    /// <summary>
-    /// 고를 수 있는 문구들 — 사전에 적힌 것 + 간선이 이미 쓰고 있는 것의 합집합(중복 제거).
-    /// 사전에 없는 문구를 손으로 고친 파일에서도 툴의 드롭다운이 그 값을 잃지 않는다.
-    /// </summary>
-    public IReadOnlyList<string> ChoiceLabels =>
-        field ??= ChoiceOptions.Select(option => option.Text)
-            .Concat(Edges.Select(edge => edge.OptionLabel ?? string.Empty))
-            .Where(text => !string.IsNullOrWhiteSpace(text))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
     public IReadOnlyList<ChapterDiagnostic> Diagnostics { get; }
 
     public bool HasErrors =>
@@ -281,12 +270,6 @@ public sealed class ChapterGraphModel
     public ChapterCondition? FindCondition(string label) =>
         Conditions.FirstOrDefault(item => string.Equals(item.Label, label, StringComparison.Ordinal));
 
-    /// <summary>그 에피소드에 오류 진단이 붙어 있는가. 뷰가 노드에 표식을 다는 근거다.</summary>
-    public bool EpisodeHasError(ChapterEpisode episode) =>
-        Diagnostics.Any(item =>
-            item.Severity == ChapterDiagnosticSeverity.Error &&
-            item.Row == episode.SourceRow &&
-            string.Equals(item.Sheet, ChapterSheetNames.Episodes, StringComparison.Ordinal));
 }
 
 /// <summary>시트 이름 한 곳. 리더와 뷰·테스트가 같은 문자열을 본다.</summary>

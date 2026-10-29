@@ -16,7 +16,7 @@ public class SerializationTests
         sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Branch, l1, sample.TargetA.Id);
         sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Branch, l3, sample.TargetB.Id);
         sample.Editor.SetExitTarget(sample.Dialogue.Id, ExitPortKind.Default, null, sample.TargetDefault.Id);
-        sample.Editor.MoveNode(sample.Dialogue.Id, 120, 340);
+        sample.Dialogue.Layout = new NodeLayout { X = 120, Y = 340 };
 
         StoryProject reloaded = ProjectSnapshotCodec.Decode(ProjectSnapshotCodec.Encode(sample.Project));
         StoryFile reloadedFile = Assert.Single(reloaded.Files);

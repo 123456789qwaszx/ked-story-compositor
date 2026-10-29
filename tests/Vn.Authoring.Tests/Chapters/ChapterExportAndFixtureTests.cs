@@ -311,44 +311,6 @@ public sealed class ChapterExportAndFixtureTests
     // ── G6 — 픽스처 경로 ────────────────────────────────────────────────────
 
     [Fact]
-    public void 픽스처를_바꾸면_경로가_바뀐다()
-    {
-        // Gate C 2번의 절반 — "픽스처 전환 시 경로 하이라이트가 바뀐다"의 데이터 쪽.
-        ChapterGraphModel chapter = Sample();
-
-        ChapterFixture basic = chapter.Fixtures.Single(fixture => fixture.Name == "기본 루트");
-        ChapterFixture trust = chapter.Fixtures.Single(fixture => fixture.Name == "신뢰 루트");
-
-        FixtureWalkResult basicWalk = ChapterFixtureWalker.Walk(chapter, basic);
-        FixtureWalkResult trustWalk = ChapterFixtureWalker.Walk(chapter, trust);
-
-        // 기본 루트(trust 0): 신뢰 분기가 닫혀 곧장 문 너머로.
-        Assert.Equal(["main05.01", "main05.02", "main05.03", "main05.end"], basicWalk.EpisodeIds);
-
-        // 신뢰 루트(trust 5): 고정 선택이 라루의 제안으로 — 경로가 다르다.
-        Assert.Equal(
-            ["main05.01", "main05.02", "branch05.02A", "main05.03", "main05.end"],
-            trustWalk.EpisodeIds);
-
-        Assert.NotEqual(basicWalk.EpisodeIds, trustWalk.EpisodeIds);
-    }
-
-    [Fact]
-    public void 갈래에_고정_선택이_없으면_어디를_적으라고_말한다()
-    {
-        ChapterGraphModel chapter = Sample();
-        ChapterFixture trust = chapter.Fixtures.Single(fixture => fixture.Name == "신뢰 루트");
-
-        var noChoice = trust with { Choices = Array.Empty<ChapterFixtureChoice>() };
-
-        FixtureWalkResult walk = ChapterFixtureWalker.Walk(chapter, noChoice);
-
-        Assert.NotNull(walk.StoppedBecause);
-        Assert.Contains("고정 선택이 없습니다", walk.StoppedBecause);
-        Assert.Contains("main05.02→", walk.StoppedBecause);
-    }
-
-    [Fact]
     public void 수입기가_믿어야_하는_JSON_규약을_고정한다()
     {
         // 런타임 계약서 §G (2026-08-17) — 수입기가 없는 동안 조용히 어긋날 자리 셋을 못 박는다.
@@ -362,10 +324,9 @@ public sealed class ChapterExportAndFixtureTests
         editor.AddEpisode("gd", "ep2", "둘째", 200, 0);
         editor.AddChapterCondition("gd", "신뢰0이상", "trust >= 0");
         editor.AddChapterCondition("gd", "신뢰초과", "trust > 1");
-        editor.AddEdge("gd", "ep1", "ep2", optionLabel: "믿는다");
-        editor.UpdateEdge("gd", "ep1", "ep2",
-            visibleConditionLabel: "신뢰0이상", conditionLabel: "신뢰초과",
-            statChanges: "trust +2", matchOptionLabel: "믿는다");
+        editor.AddEdge("gd", "ep1", "ep2", optionLabel: "믿는다", conditionLabel: "신뢰초과", statChanges: "trust +2");
+        ManuscriptFixture.Edge(editor.Project, "gd", "ep1", "ep2", "믿는다", edge =>
+            edge with { VisibleConditionLabel = "신뢰0이상" });
         // 관문 없는 길 하나 — 이게 없으면 ep2가 도달 불가라 내보내기가 거부된다(Gate C 3번).
         editor.AddEdge("gd", "ep1", "ep2", optionLabel: "무시한다");
 

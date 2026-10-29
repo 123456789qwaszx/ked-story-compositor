@@ -210,8 +210,7 @@ public sealed class DialogueLineExtension
     /// 보다는 Detour로 조건 분기가 일어나는 마커를 끼워두고 그곳에서 조건과 내용을
     /// 추가한다는게 유지보수 측면에서 얼마나 유리한지 알것입니다."* 짝을 맞춰야 하는 구역이
     /// <b>부르는 쪽 대본에 흩어지지 않는다</b> — 조건과 내용이 다녀갈 곳에 함께 산다.
-    /// 그 조건을 채우는 창구는 챕터 그래프의 분기 패널이다
-    /// (<see cref="Chapters.BranchEntryCondition"/>).
+    /// 그 조건을 채우는 창구는 챕터 그래프의 분기 패널이다(ked-story-director).
     ///
     /// ⚠ <b>전환(<see cref="Transitions"/>)이 아니다.</b> 전환은 전부 <b>구역</b>이고
     /// (<c>Begin…</c>/<c>End…</c> 쌍이 줄들을 감싼다), 이것은 <b>줄 사이에 끼는 카드 한 장</b>

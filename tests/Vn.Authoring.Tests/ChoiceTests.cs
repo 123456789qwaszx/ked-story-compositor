@@ -106,17 +106,9 @@ public class ChoiceTests
         Assert.Empty(flow.Problems);
         Assert.Equal(0, flow.Lines.Single(line => line.Line.LineId == combined).Depth); // 둘 다 닫혔다
 
-        // 중첩 선택지 안의 드롭다운에는 결합 종료 항목이 제시된다.
+        // 그 줄 앞은 조건 안의 선택지다 — 한 줄로 둘을 닫는 자리다.
         ResolvedLine inside = flow.Lines.Single(line => line.Line.LineId == combined);
         Assert.True(inside.PrecedingBranch is { IsChoice: true } && inside.PrecedingDepth == 2);
-        IReadOnlyList<ConditionChoice> choices = ConditionChoices.For(
-            inside.PrecedingBranch,
-            sample.Dialogue,
-            sample.Project,
-            choiceInsideCondition: true);
-        Assert.Contains(choices, choice =>
-            choice.Kind == ConditionChoiceKind.EndIf &&
-            choice.Label == ConditionChoices.EndChoiceAndIfLabel);
 
         sample.Editor.PublishDialogue(sample.Dialogue.Id); // 발행도 막히지 않는다
         _ = body;

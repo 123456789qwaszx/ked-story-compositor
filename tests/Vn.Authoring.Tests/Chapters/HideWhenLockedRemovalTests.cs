@@ -34,7 +34,8 @@ public sealed class HideWhenLockedRemovalTests
         editor.AddEpisode("ch01", "끝", "끝 화", 200, 0);
         editor.AddChapterCondition("ch01", "신뢰높음", "trust >= 3");
         editor.AddEdge("ch01", "시작", "끝", conditionLabel: "신뢰높음", optionLabel: "계속");
-        editor.UpdateEdge("ch01", "시작", "끝", lockedMessage: "신뢰가 부족하다", matchOptionLabel: "계속");
+        ManuscriptFixture.Edge(editor.Project, "ch01", "시작", "끝", "계속", edge =>
+            edge with { LockedMessage = "신뢰가 부족하다" });
 
         ChapterExportResult export = ChapterProgressionExporter.Export(
             editor.FindChapter("ch01")!.ToGraphModel("ch01"));
