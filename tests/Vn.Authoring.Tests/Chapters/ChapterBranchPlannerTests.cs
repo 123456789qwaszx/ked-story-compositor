@@ -3,7 +3,7 @@ using Vn.Authoring.Chapters;
 namespace Vn.Authoring.Tests.Chapters;
 
 /// <summary>
-/// 깊이 기반 분기 배치 (챕터 v2 8단계). 소유자 피드백 그대로의 사례를 고정한다:
+/// 깊이 기반 분기 배치 (챕터 v2 8단계 · 2026-10-29 D3부터 깊이가 아래로 간다). 소유자 피드백 그대로의 사례를 고정한다:
 /// "root에서 뻗어나온 두 에피소드 둘이서 다시 연결되는" 합류가 터무니없어 보이지 않아야 하고,
 /// 서로 다른 부모의 자식이 겹치지 않아야 한다.
 /// </summary>
@@ -42,13 +42,13 @@ public sealed class ChapterBranchPlannerTests
     }
 
     [Fact]
-    public void 서로_다른_부모의_자식이_같은_열에서_겹치지_않는다()
+    public void 서로_다른_부모의_자식이_같은_줄에서_겹치지_않는다()
     {
-        // 옛 결함 그대로의 사례: 같은 열의 두 부모(a, b)가 각자 자식을 만들면
-        // 옛 규칙(부모Y + 형제수×110)으로는 정확히 같은 자리에 겹쳤다.
+        // 옛 결함 그대로의 사례: 같은 깊이의 두 부모(a, b)가 각자 자식을 만들면
+        // 옛 규칙(부모 자리 + 형제 수 × 간격)으로는 정확히 같은 자리에 겹쳤다.
         var episodes = new List<ChapterEpisode>
         {
-            Episode("root", 0, 0), Episode("a", 220, 0), Episode("b", 220, 110)
+            Episode("root", 0, 0), Episode("a", 0, 170), Episode("b", 220, 170)
         };
         var edges = new List<ChapterEdge> { Edge("root", "a"), Edge("root", "b") };
 
@@ -60,23 +60,24 @@ public sealed class ChapterBranchPlannerTests
         (double bx, double by) = ChapterBranchPlanner.SuggestPlacement(
             Model(episodes, edges), "b");
 
-        Assert.Equal(ax, bx);                                  // 같은 깊이 → 같은 열
-        Assert.True(Math.Abs(ay - by) >= ChapterBranchPlanner.RowHeight,
-            $"두 자식이 겹쳤다: a1의 Y={ay}, b1의 Y={by}");
+        Assert.Equal(ay, by);                                  // 같은 깊이 → 같은 줄
+        Assert.True(Math.Abs(ax - bx) >= ChapterBranchPlanner.SiblingSpacing,
+            $"두 자식이 겹쳤다: a1의 X={ax}, b1의 X={bx}");
     }
 
     [Fact]
-    public void 제안_열은_깊이가_정한다_부모가_왼쪽에_있어도()
+    public void 제안_줄은_깊이가_정한다_부모가_위에_있어도()
     {
-        // 부모가 손으로 왼쪽에 옮겨져 있어도 새 노드는 자기 깊이 열로 간다 —
+        // 부모가 손으로 위로 옮겨져 있어도 새 노드는 자기 깊이 줄로 간다 —
         // depth 구분이 배치에서 무너지지 않는다.
         ChapterGraphModel model = Model(
-            [Episode("root", 0, 0), Episode("mid", 40, 110)],   // mid를 root 근처로 끌어다 둠
+            [Episode("root", 0, 0), Episode("mid", 110, 40)],   // mid를 root 근처로 끌어다 둠
             [Edge("root", "mid")]);
 
-        (double x, _) = ChapterBranchPlanner.SuggestPlacement(model, "mid");
+        (double x, double y) = ChapterBranchPlanner.SuggestPlacement(model, "mid");
 
-        Assert.Equal(2 * ChapterBranchPlanner.ColumnWidth, x);  // depth(mid)=1 → 열 2
+        Assert.Equal(2 * ChapterBranchPlanner.DepthSpacing, y);  // depth(mid)=1 → 줄 2
+        Assert.Equal(110d, x);                                   // 부모 바로 아래에서 시작한다
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public sealed class ChapterBranchPlannerTests
     }
 
     [Fact]
-    public void 화면_배치는_열이_깊이고_고아는_아래_줄에_선다()
+    public void 화면_배치는_줄이_깊이고_고아는_맨_아래_줄에_선다()
     {
         // 이 배치는 저장된 X·Y와 무관하게 흐름이 자리를 정한다(v3 — 지금은 처음 심을 때만 쓴다).
         ChapterGraphModel model = Model(
@@ -104,18 +105,18 @@ public sealed class ChapterBranchPlannerTests
         IReadOnlyDictionary<string, (double X, double Y)> placed =
             ChapterBranchPlanner.Layout(model);
 
-        // 열 = 깊이 (원점 기준). 합류 c는 열 2.
+        // 줄 = 깊이 (원점 기준). 합류 c는 줄 2.
         Assert.Equal((0d, 0d), placed["root"]);
-        Assert.Equal(220d, placed["a"].X);
-        Assert.Equal(220d, placed["b"].X);
-        Assert.Equal(440d, placed["c"].X);
+        Assert.Equal(ChapterBranchPlanner.DepthSpacing, placed["a"].Y);
+        Assert.Equal(ChapterBranchPlanner.DepthSpacing, placed["b"].Y);
+        Assert.Equal(2 * ChapterBranchPlanner.DepthSpacing, placed["c"].Y);
 
-        // 같은 열 안 순서 = 에피소드를 적은 순서 (a가 b보다 먼저 적힘).
-        Assert.Equal(0d, placed["a"].Y);
-        Assert.Equal(ChapterBranchPlanner.RowHeight, placed["b"].Y);
+        // 같은 줄 안 순서 = 에피소드를 적은 순서 (a가 b보다 먼저 적힘).
+        Assert.Equal(0d, placed["a"].X);
+        Assert.Equal(ChapterBranchPlanner.SiblingSpacing, placed["b"].X);
 
         // 간선 없는 고아는 그래프 아래 줄에 따로 선다 — 겹쳐 숨기지 않는다.
-        Assert.True(placed["orphan"].Y > placed["b"].Y + ChapterBranchPlanner.RowHeight,
+        Assert.True(placed["orphan"].Y > placed["c"].Y + ChapterBranchPlanner.DepthSpacing,
             $"고아가 그래프와 겹친다: Y={placed["orphan"].Y}");
     }
 }

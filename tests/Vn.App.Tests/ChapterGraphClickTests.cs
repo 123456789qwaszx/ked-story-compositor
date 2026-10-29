@@ -150,9 +150,12 @@ public sealed class ChapterGraphClickTests
         Assert.All(session.Editor.FindChapter("ch05")!.Episodes,
             episode => Assert.Equal((0.0, 0.0), (episode.X, episode.Y)));
 
-        // ② 그래도 카드는 흩어져 보인다 — 빌린 배치다.
-        List<double> lefts = ids.Select(id => Canvas.GetLeft(Card(canvas, id))).ToList();
-        Assert.True(lefts.Distinct().Count() > 1);
+        // ② 그래도 카드는 흩어져 보인다 — 빌린 배치다. (D3부터 깊이가 아래로 가서 한 줄기 챕터는
+        //    X가 모두 같을 수 있다 — 자리 전체로 본다.)
+        List<(double, double)> places = ids
+            .Select(id => (Canvas.GetLeft(Card(canvas, id)), Canvas.GetTop(Card(canvas, id))))
+            .ToList();
+        Assert.Equal(places.Count, places.Distinct().Count());
 
         // ③ 사람이 처음 옮기는 그 손과 함께 판 전체가 적힌다. 하나만 적으면 나머지는
         //    다음 그리기에서 도로 한 점에 포개진다.

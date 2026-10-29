@@ -42,7 +42,7 @@ public sealed class ChapterGraphNavigationTests : IDisposable
         for (int index = 0; index < 8; index++)
         {
             string id = $"ep{index}";
-            editor.AddEpisode("ch01", id, title: "", index * ChapterBranchPlanner.ColumnWidth, 0);
+            editor.AddEpisode("ch01", id, title: "", index * ChapterBranchPlanner.SiblingSpacing, 0);
 
             if (previous.Length > 0)
             {
