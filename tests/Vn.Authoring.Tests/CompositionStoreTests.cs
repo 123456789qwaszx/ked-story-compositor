@@ -185,10 +185,9 @@ public sealed class CompositionStoreTests : IDisposable
     {
         var editor = new ProjectEditor(new StoryProject { Title = "원고" });
         StoryFile board = editor.AddStoryFile("ch01");
-        ScriptDocument script = editor.AddScript("본문");
-        DialogueNode dialogue = editor.AddDialogueNode(board.Id, name: "ep01", scriptId: script.Id);
-        ScriptLine line = editor.InsertScriptLine(script.Id);
-        editor.SetScriptLineText(script.Id, line.Id, "라루", "첫 줄");
+        DialogueNode dialogue = editor.AddDialogueNode(board.Id, name: "ep01");
+        ScriptLine line = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
+        editor.SetScriptLineText(dialogue.Id, line.Id, "라루", "첫 줄");
 
         if (withPresentation)
         {

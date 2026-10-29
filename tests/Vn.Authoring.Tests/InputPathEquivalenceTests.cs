@@ -26,9 +26,9 @@ public class InputPathEquivalenceTests
     {
         var sample = new Sample();
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
         string second = sample.Line("둘째 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, second, "윌로", "둘째 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, second, "윌로", "둘째 줄");
 
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
         PresentationNode node = sample.Editor.AddPresentationNode(sample.File.Id, name: "연출");

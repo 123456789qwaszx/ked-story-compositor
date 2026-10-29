@@ -51,14 +51,13 @@ public sealed class ChoiceEndingPublishTests : IDisposable
         string fileId = file.Id;
 
         DialogueNode node = editor.AddDialogueNode(fileId, name: "Story_choice_end");
-        string scriptId = editor.EnsureDialogueScript(node.Id).Id;
-        string firstLine = editor.Project.FindScript(scriptId)!.ActiveLines.First().Id;
-        editor.SetScriptLineText(scriptId, firstLine, "윌로", "어떻게 할래?");
+        string firstLine = node.Script.ActiveLines.First().Id;   // 카드는 빈 첫 줄을 들고 선다
+        editor.SetScriptLineText(node.Id, firstLine, "윌로", "어떻게 할래?");
 
-        string optionA = editor.InsertScriptLine(scriptId).Id;
-        string optionB = editor.InsertScriptLine(scriptId).Id;
-        editor.SetScriptLineText(scriptId, optionA, string.Empty, "라루의 제안을 듣는다");
-        editor.SetScriptLineText(scriptId, optionB, string.Empty, "혼자 문을 연다");
+        string optionA = editor.InsertScriptLine(node.Id).Id;
+        string optionB = editor.InsertScriptLine(node.Id).Id;
+        editor.SetScriptLineText(node.Id, optionA, string.Empty, "라루의 제안을 듣는다");
+        editor.SetScriptLineText(node.Id, optionB, string.Empty, "혼자 문을 연다");
 
         editor.SetLineTransition(node.Id, optionA, LineConditionTransition.BeginChoice());
         editor.SetLineTransition(node.Id, optionB, LineConditionTransition.BeginNextOption());
@@ -71,8 +70,8 @@ public sealed class ChoiceEndingPublishTests : IDisposable
         // 첫 옵션만 작가의 곁가지로 잇는다. 나머지는 안 잇는다(= 그 자리에서 에피소드 종료).
         DialogueNode side = editor.AddDialogueNode(fileId, name: "곁가지_창고");
         editor.SetScriptLineText(
-            editor.EnsureDialogueScript(side.Id).Id,
-            editor.Project.FindScript(side.ScriptId)!.ActiveLines.First().Id,
+            side.Id,
+            side.Script.ActiveLines.First().Id,
             "라루", "여긴 창고야.");
         editor.SetExitTarget(node.Id, Vn.Authoring.Flow.ExitPortKind.Branch, options[0].LineId, side.Id);
 

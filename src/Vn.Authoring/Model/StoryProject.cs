@@ -9,10 +9,12 @@ namespace Vn.Authoring.Model;
 ///
 /// 세 종류의 데이터가 한 지붕 아래 있고, 서로 겹치지 않는다.
 /// <code>
-/// Scripts       작가의 대본에서 나온 줄 정체성과 locale별 화자·대사   ← 대사 본문의 유일한 원본
-/// Files/Nodes   그 줄들에 얹는 대사 논리와 연출, 그리고 실행 흐름
+/// Files/Nodes   대사 카드 — 제 대본(줄 정체성과 locale별 화자·대사)과 그 줄들에 얹는 대사 논리, 연출, 실행 흐름
 /// Results       얼어붙은 발행 결과와 그 조합                        ← 불변, 추가만 가능
 /// </code>
+///
+/// ⛔ 대본은 2026-10-29까지 카드와 따로 선 목록(<c>Scripts</c>)이었고 카드가 Id로 가리켰다. 카드가 제 대본을 직접
+/// 든다(<see cref="DialogueNode.Script"/> · director <c>docs/plans/script-merge.md</c>).
 ///
 /// 프로젝트는 여러 <see cref="StoryFile"/>을 가지고, 각 파일이 노드를 소유한다.
 /// 프로젝트 전체 노드 순서가 필요할 때는 <see cref="EnumerateNodes"/>를 사용한다.
@@ -21,13 +23,19 @@ namespace Vn.Authoring.Model;
 public sealed class StoryProject
 {
     /// <summary>
-    /// 대본 산출물·발행 결과·RuntimeComposition을 도입한 형식 버전.
+    /// 원고의 지금 형식 — <b>4</b>: 카드의 대본이 판 파일 안에 든다(2026-10-29 · director가 쓴다).
+    ///
+    /// 형식 3(<see cref="LegacyScriptFilesFormatVersion"/>)은 대본을 <c>script/*.vnscript.json</c>에 따로 두고 카드가 Id로
+    /// 가리켰다. 이 툴은 둘 다 읽는다 — 원고를 쓰는 것은 director이고, 옮겨 쓰는 것도 director다.
     ///
     /// 버전 2 이하는 화자·대사를 DialogueNode가 직접 소유했고 Presentation이 편집 중인
     /// 노드를 실시간으로 읽었다. 그 데이터를 새 의미로 자동 해석하면 어느 줄이 어느 LineId인지
     /// 도구가 임의로 정하게 된다. 그래서 <b>읽지 않고 명시적으로 거부한다.</b>
     /// </summary>
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
+
+    /// <summary>대본을 따로 저장하던 형식(대본 산출물 · 발행 결과 · RuntimeComposition을 도입한 버전). 읽을 수 있다.</summary>
+    public const int LegacyScriptFilesFormatVersion = 3;
 
     /// <summary>이 버전 이하는 읽지 않는다.</summary>
     public const int LastUnsupportedFormatVersion = 2;
@@ -35,9 +43,6 @@ public sealed class StoryProject
     public int FormatVersion { get; set; } = CurrentFormatVersion;
 
     public string Title { get; set; } = "새 프로젝트";
-
-    /// <summary>작가의 대본에서 나온 산출물. 화자·대사의 유일한 수정 가능한 원본이다.</summary>
-    public List<ScriptDocument> Scripts { get; init; } = new();
 
     public List<StoryFile> Files { get; init; } = new();
 
@@ -48,7 +53,7 @@ public sealed class StoryProject
     /// ⛔ 이 목록이 서기 전까지 그 값들의 주인은 <c>chapters/{Id}.xlsx</c>였다 — 툴은
     /// 셀을 고치고 파일을 다시 읽었다. 이제 주인이 여기이고 워크북은 <b>산출물</b>이다.
     ///
-    /// ⚠ <b>대본과 짝을 이룬다.</b> <see cref="Scripts"/>가 대사 본문의 원본이듯 이쪽이
+    /// ⚠ <b>대본과 짝을 이룬다.</b> 카드의 대본(<see cref="DialogueNode.Script"/>)이 대사 본문의 원본이듯 이쪽이
     /// 구조의 원본이고, 둘을 잇는 것은 <c>DialogueNode.MarkedEpisodeId</c>다.
     /// </summary>
     public List<ChapterDocument> Chapters { get; init; } = new();
@@ -157,17 +162,12 @@ public sealed class StoryProject
 
     public PresentationNode? FindPresentation(string? nodeId) => FindNode(nodeId) as PresentationNode;
 
-    public ScriptDocument? FindScript(string? scriptId)
-    {
-        return scriptId is null
-            ? null
-            : Scripts.FirstOrDefault(
-                script => string.Equals(script.Id, scriptId, StringComparison.Ordinal));
-    }
+    /// <summary>모든 대사 카드의 대본 — 카드 순서대로.</summary>
+    public IEnumerable<ScriptDocument> EnumerateScripts() =>
+        EnumerateNodes().OfType<DialogueNode>().Select(node => node.Script);
 
-    /// <summary>이 대사 노드가 읽는 대본. 노드가 없거나 대본을 고르지 않았으면 null이다.</summary>
-    public ScriptDocument? ScriptOf(string? dialogueNodeId) =>
-        FindScript(FindDialogue(dialogueNodeId)?.ScriptId);
+    /// <summary>이 대사 카드가 든 대본. 그런 카드가 없으면 null이다.</summary>
+    public ScriptDocument? ScriptOf(string? dialogueNodeId) => FindDialogue(dialogueNodeId)?.Script;
 
     public RuntimeComposition? FindComposition(string? compositionId)
     {
@@ -219,7 +219,6 @@ public sealed class StoryProject
             QuickCommands = QuickCommands?.Select(chip => chip.Copy()).ToList(),
             ExportFormats = ExportFormats.Clone(),
             OutputPath = OutputPath,
-            Scripts = Scripts.Select(script => script.Clone()).ToList(),
             Files = Files.Select(file => file.Clone()).ToList(),
             Links = Links.Select(link => link.Clone()).ToList(),
             WriterSpeakers = WriterSpeakers.Select(speaker => speaker.Clone()).ToList(),

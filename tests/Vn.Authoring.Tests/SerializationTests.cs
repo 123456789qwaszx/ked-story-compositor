@@ -122,7 +122,7 @@ public class SerializationTests
     {
         var sample = new Sample();
         string line = sample.Line("안녕하세요");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "윌로", "안녕하세요");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "윌로", "안녕하세요");
 
         string first = ProjectSnapshotCodec.Encode(sample.Project);
         string second = ProjectSnapshotCodec.Encode(sample.Project);
@@ -223,19 +223,17 @@ public class SerializationTests
         string directory = TempDirectory();
         string manifestPath = Path.Combine(directory, "project" + ProjectManifestJson.FileExtension);
         var project = new StoryProject { Title = "부분 변경" };
-        var firstScript = new ScriptDocument("sc_a", "A 대본");
+        var firstScript = new ScriptDocument();
         firstScript.Lines.Add(new ScriptLine("ln_a"));
         firstScript.RequireLocale(firstScript.PrimaryLocale).Entries["ln_a"] = new LocalizedLine("", "처음");
-        var secondScript = new ScriptDocument("sc_b", "B 대본");
+        var secondScript = new ScriptDocument();
         secondScript.Lines.Add(new ScriptLine("ln_b"));
         secondScript.RequireLocale(secondScript.PrimaryLocale).Entries["ln_b"] = new LocalizedLine("", "고정");
-        project.Scripts.Add(firstScript);
-        project.Scripts.Add(secondScript);
 
         var first = new StoryFile("sf_a", "A", "story/a.vnstory.json");
         var second = new StoryFile("sf_b", "B", "story/b.vnstory.json");
-        first.Nodes.Add(new DialogueNode("nd_a", "A") { ScriptId = "sc_a" });
-        second.Nodes.Add(new DialogueNode("nd_b", "B") { ScriptId = "sc_b" });
+        first.Nodes.Add(new DialogueNode("nd_a", "A") { Script = firstScript });
+        second.Nodes.Add(new DialogueNode("nd_b", "B") { Script = secondScript });
         project.Files.Add(first);
         project.Files.Add(second);
 
@@ -243,8 +241,9 @@ public class SerializationTests
         {
             ProjectStore.Save(manifestPath, project);
             string manifestBefore = File.ReadAllText(manifestPath);
-            string firstPath = Path.Combine(directory, "script", "sc_a.vnscript.json");
-            string secondPath = Path.Combine(directory, "script", "sc_b.vnscript.json");
+            // 원고 형식 4 — 대본은 카드와 함께 판 파일에 든다. 줄 하나를 고치면 그 카드의 판만 바뀐다.
+            string firstPath = Path.Combine(directory, "story", "a.vnstory.json");
+            string secondPath = Path.Combine(directory, "story", "b.vnstory.json");
             string firstBefore = File.ReadAllText(firstPath);
             string secondBefore = File.ReadAllText(secondPath);
 

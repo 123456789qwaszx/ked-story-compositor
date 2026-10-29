@@ -35,8 +35,8 @@ public class PublishTests
         DialogueResult v1 = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
         string hashBefore = v1.Identity.ContentHash;
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "완전히 다른 내용");
-        sample.Editor.InsertScriptLine(sample.Script.Id);
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "완전히 다른 내용");
+        sample.Editor.InsertScriptLine(sample.Dialogue.Id);
 
         Assert.Equal("처음 내용", v1.Lines[0].Text);
         Assert.Single(v1.Lines);
@@ -54,7 +54,7 @@ public class PublishTests
         string line = sample.Line("처음");
         DialogueResult v1 = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, string.Empty, "고침");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, string.Empty, "고침");
         PublishOutcome<DialogueResult> outcome = sample.Editor.PublishDialogue(sample.Dialogue.Id);
 
         Assert.True(outcome.Created);
@@ -100,7 +100,7 @@ public class PublishTests
 
         // 값을 넣었다가 되돌려 원래 상태로 돌아온다.
         string line = sample.Script.ActiveLines.First().Id;
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "잠깐 다른 값");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "잠깐 다른 값");
         sample.Editor.Undo();
 
         PublishOutcome<DialogueResult> again = sample.Editor.PublishDialogue(sample.Dialogue.Id);
@@ -170,11 +170,12 @@ public class PublishTests
     {
         var sample = new Sample();
         string line = sample.Line("첫 내용");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "윌로", "고친 내용");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "윌로", "고친 내용");
 
         DialogueResult result = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
-        Assert.Equal(sample.Script.Id, result.SourceScriptId);
+        // 대본 Id는 더 싣지 않는다 — 카드가 제 대본을 든다(2026-10-29 · director `script-merge` S-D8).
+        Assert.Null(result.SourceScriptId);
         Assert.Equal(sample.Script.SourceRevision, result.SourceScriptRevision);
 
         // 줄을 만들고 두 번 고쳤으므로 개정 번호는 3이다.
@@ -188,7 +189,7 @@ public class PublishTests
         string line = sample.Line("처음");
         DialogueResult v1 = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, string.Empty, "고침");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, string.Empty, "고침");
         sample.Editor.PublishDialogue(sample.Dialogue.Id);
         Assert.Equal(2, sample.Project.Results.DialogueResults.Count);
 

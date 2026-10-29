@@ -69,7 +69,7 @@ public class NodeExportResolverTests
         static void sampleRepublish(SupplyWorld world)
         {
             string line = world.Sample.Script.ActiveLines.First().Id;
-            world.Sample.Editor.SetScriptLineText(world.Sample.Script.Id, line, "라루", "고친 줄");
+            world.Sample.Editor.SetScriptLineText(world.Sample.Dialogue.Id, line, "라루", "고친 줄");
             world.Sample.Editor.PublishDialogue(world.Sample.Dialogue.Id);
         }
     }

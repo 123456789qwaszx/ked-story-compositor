@@ -36,11 +36,11 @@ public sealed class ChapterEpisodeIsolationTests
         DialogueNode cardB = EpisodeNaming.CardFor(editor.Project, "ch01", "new01")!;
 
         Assert.NotEqual(cardA.Id, cardB.Id);
-        Assert.NotEqual(cardA.ScriptId, cardB.ScriptId);
+        Assert.NotSame(cardA.Script, cardB.Script);
 
         // 한쪽 원고를 고쳐도 다른 쪽은 그대로다 — 이것이 보고된 버그의 핵심이다.
-        ScriptLine line = editor.InsertScriptLine(cardA.ScriptId!);
-        editor.SetScriptLineText(cardA.ScriptId!, line.Id, "라루", "ch00의 대사");
+        ScriptLine line = editor.InsertScriptLine(cardA.Id);
+        editor.SetScriptLineText(cardA.Id, line.Id, "라루", "ch00의 대사");
 
         Assert.Contains("ch00의 대사", TextOf(editor.Project, cardA));
         Assert.DoesNotContain("ch00의 대사", TextOf(editor.Project, cardB));
@@ -49,7 +49,7 @@ public sealed class ChapterEpisodeIsolationTests
     /// <summary>그 카드가 들고 있는 글 전부 — 어느 원고가 들어갔는지의 근거.</summary>
     private static string TextOf(StoryProject project, DialogueNode node) => string.Join(
         " | ",
-        project.FindScript(node.ScriptId!)!.Locales
+        node.Script.Locales
             .SelectMany(locale => locale.Entries.Values)
             .Select(line => line.Text));
 }

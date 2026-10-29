@@ -23,7 +23,7 @@ public class OutputManifestTests
         {
             var sample = new Sample();
             string line = sample.Line("첫 줄");
-            sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+            sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
 
             WriteLive(sample, directory);
             Assert.Contains("테스트_파일_본문.yarn", Directory.GetFiles(directory).Select(Path.GetFileName));
@@ -60,7 +60,7 @@ public class OutputManifestTests
         {
             var sample = new Sample();
             string line = sample.Line("첫 줄");
-            sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+            sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
             WriteLive(sample, directory);
 
             sample.Editor.RemoveNode(sample.Dialogue.Id);
@@ -90,7 +90,7 @@ public class OutputManifestTests
         // 고아로 몰리지 않는다.
         var sample = new Sample();
         string line = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
 
         Assert.Contains(
             "테스트_파일_본문.yarn",
@@ -140,7 +140,7 @@ public class OutputManifestTests
         {
             var sample = new Sample();
             string line = sample.Line("첫 줄");
-            sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+            sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
             WriteLive(sample, directory);
 
             File.WriteAllText(Path.Combine(directory, "메모.txt"), "사용자 파일");

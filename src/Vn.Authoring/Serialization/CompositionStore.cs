@@ -15,7 +15,7 @@ namespace Vn.Authoring.Serialization;
 ///
 /// <code>
 /// 예제.vnproject.json        원고 — director가 쓴다
-/// script/ · story/            원고 — director가 쓴다
+/// story/                      원고 — director가 쓴다 (카드와 그 대본. 원고 형식 3이면 대본은 script/에 따로)
 /// 예제.vncompose.json        연출 층 — 이 툴이 쓴다
 /// results.vnresults.json      발행 결과 — 이 툴이 쓴다
 /// </code>
@@ -296,7 +296,7 @@ public sealed record CompositionLoadResult(
 
 /// <summary>
 /// 한 <see cref="StoryProject"/>에서 <b>연출 층</b>만 떼거나, 원고에 다시 얹는다.
-/// 원고 = 챕터 · 판 · 대사 · 설정 노드 · 대본 · 조건 공급 배선 · 작가 화자. 그 밖이 연출 층이다.
+/// 원고 = 챕터 · 판 · 대사 카드(와 그 대본) · 설정 노드 · 조건 공급 배선 · 작가 화자. 그 밖이 연출 층이다.
 /// </summary>
 public sealed class PresentationLayer
 {
@@ -397,7 +397,6 @@ public sealed class PresentationLayer
             QuickCommands = layer.QuickCommands?.Select(chip => chip.Copy()).ToList(),
             ExportFormats = layer.ExportFormats.Clone(),
             OutputPath = layer.OutputPath,
-            Scripts = manuscript.Scripts.Select(script => script.Clone()).ToList(),
             Files = manuscript.Files.Select(file =>
             {
                 StoryFile copy = file.Clone();

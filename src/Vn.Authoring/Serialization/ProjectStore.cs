@@ -7,16 +7,20 @@ using Vn.Authoring.Script;
 namespace Vn.Authoring.Serialization;
 
 /// <summary>
-/// manifest·대본·StoryFile·발행 결과를 물리 파일로 읽고 쓴다.
+/// manifest·StoryFile·발행 결과를 물리 파일로 읽고 쓴다.
 /// StoryProject 자체는 경로 해석이나 파일 IO를 모른다.
 ///
-/// 디스크 배치:
+/// 디스크 배치(원고 형식 4):
 /// <code>
 /// project.vnproject.json      목차와 파일을 넘나드는 관계
-/// script/&lt;scriptId&gt;.vnscript.json   대본 산출물 (줄 정체성 + locale별 본문)
-/// story/&lt;fileId&gt;.vnstory.json       노드
+/// story/&lt;fileId&gt;.vnstory.json       판 — 카드와 그 대본(줄 정체성 + locale별 본문)
 /// results.vnresults.json      발행된 불변 결과
 /// </code>
+///
+/// ⛔ 원고 형식 3까지는 대본이 <c>script/&lt;scriptId&gt;.vnscript.json</c>에 따로 있었다. 그런 원고도 읽는다 — 카드마다
+/// 가리키던 대본을 꽂는다(<see cref="ScriptTable"/>). 옮겨 쓰는 것은 원고의 주인인 director다.
+///
+/// ⚠ 원고를 쓰는 것은 director다. 여기 <see cref="Save"/>는 테스트가 원고를 꾸밀 때만 쓴다(형식 4로 쓴다).
 /// </summary>
 public static class ProjectStore
 {
@@ -37,7 +41,7 @@ public static class ProjectStore
         {
             throw new InvalidDataException(
                 "이 파일은 프로젝트가 소유하는 대본입니다. " +
-                $"개별 {ScriptDocumentJson.FileExtension} 대신 {ProjectManifestJson.FileExtension} manifest를 여세요.");
+                $"개별 {ScriptDocumentJson.LegacyFileExtension} 대신 {ProjectManifestJson.FileExtension} manifest를 여세요.");
         }
 
         StoryProject project = LoadManifest(openedPath, ProjectManifestJson.Read(json));
@@ -57,13 +61,6 @@ public static class ProjectStore
         // 직렬화와 경로 검증은 디스크를 건드리기 전에 모두 끝낸다.
         // 한 파일의 데이터가 잘못됐다는 이유로 앞 파일만 새 내용으로 바뀌는 일을 줄인다.
         var writes = new List<PendingWrite>();
-
-        foreach (ScriptDocument script in project.Scripts)
-        {
-            writes.Add(new PendingWrite(
-                Resolve(rootDirectory, DefaultScriptPath(script.Id), ScriptDocumentJson.FileExtension),
-                ScriptDocumentJson.Write(script)));
-        }
 
         foreach (StoryFile file in project.Files)
         {
@@ -95,12 +92,6 @@ public static class ProjectStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
         return $"story/{fileId}{StoryFileJson.FileExtension}";
-    }
-
-    public static string DefaultScriptPath(string scriptId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(scriptId);
-        return $"script/{scriptId}{ScriptDocumentJson.FileExtension}";
     }
 
     public static string NormalizeRelativeStoryPath(string relativePath) =>
@@ -159,9 +150,13 @@ public static class ProjectStore
             OutputPath = manifest.OutputPath
         };
 
-        foreach (ScriptFileReference reference in manifest.Scripts)
+        // 원고 형식 3 — 따로 선 대본 파일을 읽어 카드에 꽂는다(형식 4는 대본이 판 파일 안에 있어 목록이 비었다).
+        // 어느 카드도 안 가리키는 대본은 받아 가는 카드가 없으니 여기서 버려진다.
+        var table = new ScriptTable();
+
+        foreach (ScriptFileReference reference in manifest.LegacyScripts)
         {
-            string scriptPath = Resolve(rootDirectory, reference.RelativePath, ScriptDocumentJson.FileExtension);
+            string scriptPath = Resolve(rootDirectory, reference.RelativePath, ScriptDocumentJson.LegacyFileExtension);
 
             if (!File.Exists(scriptPath))
             {
@@ -170,16 +165,16 @@ public static class ProjectStore
                     scriptPath);
             }
 
-            ScriptDocument script = ScriptDocumentJson.Read(
+            (string id, ScriptDocument script) = ScriptDocumentJson.ReadLegacyFile(
                 File.ReadAllText(scriptPath, new UTF8Encoding(false)));
 
-            if (!string.Equals(script.Id, reference.Id, StringComparison.Ordinal))
+            if (!string.Equals(id, reference.Id, StringComparison.Ordinal))
             {
                 throw new InvalidDataException(
-                    $"manifest의 대본 Id '{reference.Id}'와 파일의 Id '{script.Id}'가 다릅니다.");
+                    $"manifest의 대본 Id '{reference.Id}'와 파일의 Id '{id}'가 다릅니다.");
             }
 
-            project.Scripts.Add(script);
+            table.Add(id, script);
         }
 
         foreach (ProjectStoryFileReference reference in manifest.Files)
@@ -193,7 +188,7 @@ public static class ProjectStore
                     storyPath);
             }
 
-            StoryFile file = StoryFileJson.Read(File.ReadAllText(storyPath, new UTF8Encoding(false)));
+            StoryFile file = StoryFileJson.Read(File.ReadAllText(storyPath, new UTF8Encoding(false)), table);
 
             if (!string.Equals(file.Id, reference.Id, StringComparison.Ordinal))
             {
@@ -251,15 +246,14 @@ public static class ProjectStore
 
     private static bool LooksLikeStandaloneStoryFile(JsonObject root)
     {
-        return (int?)root["formatVersion"] == StoryFileJson.CurrentFormatVersion &&
-            root["fileId"] is not null &&
+        // 버전은 보지 않는다 — 형식 3의 판 파일(1)도 4의 것(2)도 manifest가 아니다. manifest에는 fileId가 없다.
+        return root["fileId"] is not null &&
             root["nodes"] is JsonArray;
     }
 
     private static bool LooksLikeStandaloneScript(JsonObject root)
     {
-        return (int?)root["formatVersion"] == ScriptDocumentJson.CurrentFormatVersion &&
-            root["scriptId"] is not null &&
+        return root["scriptId"] is not null &&
             root["lines"] is JsonArray;
     }
 

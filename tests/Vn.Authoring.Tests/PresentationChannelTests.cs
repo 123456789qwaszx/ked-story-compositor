@@ -1,6 +1,7 @@
 using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
 using Vn.Authoring.Results;
+using Vn.Authoring.Script;
 
 namespace Vn.Authoring.Tests;
 
@@ -70,7 +71,7 @@ public class PresentationChannelTests
         sample.Editor.AddPresentationCommand(channel.Id, lineId, "camera.closeup");
 
         // 대사를 고친다 — LineId는 그대로다.
-        sample.Editor.SetScriptLineText(sample.Script.Id, lineId, "라루", "고친 첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, lineId, "라루", "고친 첫 줄");
 
         PresentationChannelOutcome outcome =
             sample.Editor.EnsurePresentationChannel(sample.Dialogue.Id);
@@ -88,9 +89,8 @@ public class PresentationChannelTests
     public void 대사를_고정할_수_없으면_이유를_돌려준다()
     {
         var sample = new Sample();
-        var empty = sample.Editor.AddScript("빈 대본");
-        DialogueNode node = sample.Editor.AddDialogueNode(
-            sample.File.Id, name: "빈 씬", scriptId: empty.Id);
+        DialogueNode node = sample.Editor.AddDialogueNode(sample.File.Id, name: "빈 씬");
+        node.Script = new ScriptDocument();   // 줄 하나 없는 빈 대본
 
         PresentationChannelOutcome outcome = sample.Editor.EnsurePresentationChannel(node.Id);
 

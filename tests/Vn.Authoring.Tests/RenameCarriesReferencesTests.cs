@@ -39,11 +39,9 @@ public sealed class RenameCarriesReferencesTests
 
         editor.AddCondition(setNode.Id, "열쇠 있음", ability ? "$열쇠 == true" : "$열쇠 >= 1");
 
-        ScriptDocument script = editor.AddScript("본문");
-        ScriptLine line = editor.InsertScriptLine(script.Id);
-        editor.SetScriptLineText(script.Id, line.Id, "라루", "문을 연다");
-
-        DialogueNode dialogue = editor.AddDialogueNode(file.Id, name: "본문", scriptId: script.Id);
+        DialogueNode dialogue = editor.AddDialogueNode(file.Id, name: "본문");
+        ScriptLine line = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
+        editor.SetScriptLineText(dialogue.Id, line.Id, "라루", "문을 연다");
 
         return new World(editor, file, setNode, dialogue, line.Id);
     }

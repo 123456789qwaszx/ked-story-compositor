@@ -552,8 +552,7 @@ internal sealed class AuthoringSession
         _savedSnapshot = ProjectSnapshotCodec.Encode(project);
         _tuningLibrary = null;
         StatusMessage =
-            $"{Path.GetFileName(ManuscriptPath)} · 대본 {project.Scripts.Count}개 · " +
-            $"노드 {project.EnumerateNodes().Count()}개 · " +
+            $"{Path.GetFileName(ManuscriptPath)} · 노드 {project.EnumerateNodes().Count()}개 · " +
             $"발행 결과 {project.Results.DialogueResults.Count + project.Results.PresentationResults.Count}개" +
             (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty) +
             SourceNote(loaded);

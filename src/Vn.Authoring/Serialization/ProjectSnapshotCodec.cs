@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using Vn.Authoring.Model;
 using Vn.Authoring.Results;
-using Vn.Authoring.Script;
 
 namespace Vn.Authoring.Serialization;
 
@@ -17,21 +16,13 @@ namespace Vn.Authoring.Serialization;
 /// </summary>
 public static class ProjectSnapshotCodec
 {
-    public const int CurrentSnapshotVersion = 2;
+    /// <summary>3 — 카드의 대본이 카드 안에 든다(2026-10-29 · 원고 형식 4). 스냅샷은 메모리에만 산다.</summary>
+    public const int CurrentSnapshotVersion = 3;
 
     public static string Encode(StoryProject project)
     {
         ArgumentNullException.ThrowIfNull(project);
         JsonSupport.ValidateProject(project);
-
-        var scripts = new JsonArray();
-
-        foreach (ScriptDocument script in project.Scripts)
-        {
-            JsonObject item = ScriptDocumentJson.WriteObject(script);
-            item.Remove("formatVersion");
-            scripts.Add(item);
-        }
 
         var files = new JsonArray();
 
@@ -98,7 +89,6 @@ public static class ProjectSnapshotCodec
             root["outputPath"] = outputPath;
         }
 
-        root["scripts"] = scripts;
         root["files"] = files;
 
         if (links.Count > 0)
@@ -165,18 +155,6 @@ public static class ProjectSnapshotCodec
             ExportFormats = ProjectManifestJson.ReadExportFormats(root["exportFormats"]),
             OutputPath = AssetRootSettings.NormalizePath((string?)root["outputPath"])
         };
-
-        foreach (JsonNode? item in root["scripts"]?.AsArray() ?? new JsonArray())
-        {
-            if (item is not JsonObject scriptObject)
-            {
-                throw new InvalidDataException("프로젝트 스냅샷의 scripts 항목이 객체가 아닙니다.");
-            }
-
-            JsonObject scriptRoot = scriptObject.DeepClone().AsObject();
-            scriptRoot["formatVersion"] = ScriptDocumentJson.CurrentFormatVersion;
-            project.Scripts.Add(ScriptDocumentJson.ReadObject(scriptRoot));
-        }
 
         foreach (JsonNode? item in files)
         {

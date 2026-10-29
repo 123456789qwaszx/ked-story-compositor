@@ -6,7 +6,13 @@ namespace Vn.Authoring.Serialization;
 /// <summary>StoryFile 하나와 그 파일이 소유하는 노드를 결정적으로 직렬화한다.</summary>
 public static class StoryFileJson
 {
-    public const int CurrentFormatVersion = 1;
+    /// <summary>
+    /// <b>2</b> — 카드의 대본이 카드 JSON 안에 든다(2026-10-29 · 원고 형식 4). 형식 <b>1</b>(대본을 Id로 가리킨다)은
+    /// 원고 형식 3과 함께 읽는다.
+    /// </summary>
+    public const int CurrentFormatVersion = 2;
+
+    private const int LegacyFormatVersion = 1;
     public const string FileExtension = ".vnstory.json";
 
     public static string Write(StoryFile file)
@@ -16,18 +22,21 @@ public static class StoryFileJson
         return JsonSupport.ToDeterministicText(WriteObject(file));
     }
 
-    public static StoryFile Read(string json)
+    public static StoryFile Read(string json) => Read(json, scripts: null);
+
+    /// <param name="scripts">형식 1 판의 카드가 가리키는 대본들(<see cref="ScriptTable"/>) — 원고 형식 3을 읽을 때만.</param>
+    internal static StoryFile Read(string json, ScriptTable? scripts)
     {
         JsonObject root = JsonSupport.ParseObject(json, "StoryFile");
         int version = (int?)root["formatVersion"] ?? 0;
 
-        if (version != CurrentFormatVersion)
+        if (version != CurrentFormatVersion && version != LegacyFormatVersion)
         {
             throw new InvalidDataException(
                 $"StoryFile 형식 버전 {version}은 지원하지 않습니다. 현재 버전은 {CurrentFormatVersion}입니다.");
         }
 
-        return ReadObject(root);
+        return ReadObject(root, scripts);
     }
 
     internal static JsonObject WriteObject(StoryFile file)
@@ -47,7 +56,7 @@ public static class StoryFileJson
         };
     }
 
-    internal static StoryFile ReadObject(JsonObject root)
+    internal static StoryFile ReadObject(JsonObject root, ScriptTable? scripts = null)
     {
         if (root["nodes"] is not JsonArray nodes)
         {
@@ -67,7 +76,7 @@ public static class StoryFileJson
                 continue;
             }
 
-            StoryNode node = StoryNodeJson.Read(nodeJson);
+            StoryNode node = StoryNodeJson.Read(nodeJson, scripts);
             if (!nodeIds.Add(node.Id))
             {
                 throw new InvalidDataException($"StoryFile '{id}' 안에서 노드 Id '{node.Id}'가 중복됩니다.");

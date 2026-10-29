@@ -8,8 +8,9 @@ namespace Vn.Authoring.Serialization;
 /// <summary>
 /// 프로젝트 메타데이터와 <b>부속 파일의 목차</b>를 담는 manifest 형식.
 ///
-/// 본문은 어디에도 없다. 대본은 <c>scripts</c>가, 노드는 <c>files</c>가, 발행 결과는
-/// <c>results</c>가 가리키는 파일에 있다. manifest가 커지지 않아야 파일을 나눈 이유가 남는다.
+/// 본문은 어디에도 없다. 카드와 그 대본은 <c>files</c>가, 발행 결과는 <c>results</c>가 가리키는 파일에 있다(원고
+/// 형식 4 — 형식 3까지는 대본이 따로 선 파일이었고 <c>scripts</c>가 가리켰다. 그 목록은 형식 3을 읽을 때만 읽는다).
+/// manifest가 커지지 않아야 파일을 나눈 이유가 남는다.
 /// 조건 공급 link와 RuntimeComposition은 파일을 넘나드는 관계라서 여기에 둔다.
 /// </summary>
 public static class ProjectManifestJson
@@ -22,17 +23,6 @@ public static class ProjectManifestJson
         ArgumentNullException.ThrowIfNull(project);
         JsonSupport.ValidateProject(project);
 
-        var scripts = new JsonArray();
-
-        foreach (ScriptFileReference reference in ScriptReferencesOf(project))
-        {
-            scripts.Add(new JsonObject
-            {
-                ["id"] = reference.Id,
-                ["name"] = reference.Name,
-                ["path"] = reference.RelativePath
-            });
-        }
 
         var files = new JsonArray();
 
@@ -99,7 +89,6 @@ public static class ProjectManifestJson
             root["outputPath"] = outputPath;
         }
 
-        root["scripts"] = scripts;
         root["files"] = files;
 
         if (links.Count > 0)
@@ -107,7 +96,7 @@ public static class ProjectManifestJson
             root["links"] = links;
         }
 
-        // 기획자의 챕터 — 에피소드 구조·간선·선택지·조건·스탯 (R-F). 대본(scripts)이 따로
+        // 기획자의 챕터 — 에피소드 구조·간선·선택지·조건·스탯 (R-F). 카드(와 그 대본)가 판
         // 파일로 나가는 것과 달리 여기 그대로 산다: 한 챕터가 수십 행이라 파일을 가를 만한
         // 부피가 아니고, 가르면 매니페스트만 보고는 판이 몇 개인지도 모른다.
         if (ChapterDocumentJson.Write(project.Chapters) is { } chapters)
@@ -164,7 +153,8 @@ public static class ProjectManifestJson
                 "새 프로젝트를 만들고 대본을 가져오세요.");
         }
 
-        if (version != CurrentFormatVersion || root["files"] is not JsonArray files)
+        if ((version != CurrentFormatVersion && version != StoryProject.LegacyScriptFilesFormatVersion) ||
+            root["files"] is not JsonArray files)
         {
             throw new InvalidDataException("VnTool 프로젝트 manifest가 아닙니다.");
         }
@@ -173,7 +163,12 @@ public static class ProjectManifestJson
         HashSet<string> scriptIds = new(StringComparer.Ordinal);
         HashSet<string> allPaths = new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (JsonNode? item in root["scripts"]?.AsArray() ?? new JsonArray())
+        // 따로 선 대본 목록은 원고 형식 3에서만 읽는다 — 형식 4의 대본은 카드 안에 있다.
+        JsonArray? legacyScripts = version == StoryProject.LegacyScriptFilesFormatVersion
+            ? root["scripts"]?.AsArray()
+            : null;
+
+        foreach (JsonNode? item in legacyScripts ?? new JsonArray())
         {
             if (item is not JsonObject script)
             {
@@ -185,7 +180,7 @@ public static class ProjectManifestJson
             string path = ProjectStore.NormalizeRelativePath(
                 (string?)script["path"]
                     ?? throw new InvalidDataException($"대본 '{id}'에 path가 없습니다."),
-                ScriptDocumentJson.FileExtension);
+                ScriptDocumentJson.LegacyFileExtension);
 
             if (!scriptIds.Add(id))
             {
@@ -388,16 +383,6 @@ public static class ProjectManifestJson
             BgmPath = AssetRootSettings.NormalizePath((string?)assetRoots["bgm"]),
             SfxPath = AssetRootSettings.NormalizePath((string?)assetRoots["sfx"])
         };
-    }
-
-    internal static IReadOnlyList<ScriptFileReference> ScriptReferencesOf(StoryProject project)
-    {
-        return project.Scripts
-            .Select(script => new ScriptFileReference(
-                script.Id,
-                script.Name,
-                ProjectStore.DefaultScriptPath(script.Id)))
-            .ToList();
     }
 
     /// <summary>
@@ -755,6 +740,7 @@ public static class ProjectManifestJson
     }
 }
 
+/// <param name="LegacyScripts">원고 형식 3 매니페스트가 가리키던 따로 선 대본 파일들. 형식 4는 비어 있다.</param>
 public sealed record ProjectManifest(
     string Title,
     string? StartNodeId,
@@ -763,7 +749,7 @@ public sealed record ProjectManifest(
     IReadOnlyList<StageQuickCommand>? QuickCommands,
     ExportFormatSelection ExportFormats,
     string? OutputPath,
-    IReadOnlyList<ScriptFileReference> Scripts,
+    IReadOnlyList<ScriptFileReference> LegacyScripts,
     IReadOnlyList<ProjectStoryFileReference> Files,
     IReadOnlyList<NodeLink> Links,
     IReadOnlyList<ChapterDocument> Chapters,
@@ -772,6 +758,7 @@ public sealed record ProjectManifest(
     IReadOnlyList<RuntimeComposition> Compositions,
     string? ResultsRelativePath);
 
+/// <summary>원고 형식 3의 따로 선 대본 파일 하나.</summary>
 public sealed record ScriptFileReference(
     string Id,
     string Name,

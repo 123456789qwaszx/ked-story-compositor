@@ -32,10 +32,9 @@ public sealed class StageTabEntryTests
         // 동기화가 손대지 않는 제 판 하나를 만들어 그 위에서 본다.
         StoryFile file = session.Editor.AddStoryFile("탭 진입 테스트 판");
 
-        ScriptDocument script = session.Editor.AddScript("본문 대본");
-        DialogueNode dialogue = session.Editor.AddDialogueNode(file.Id, name: "EP01", scriptId: script.Id);
-        ScriptLine line = session.Editor.InsertScriptLine(script.Id);
-        session.Editor.SetScriptLineText(script.Id, line.Id, string.Empty, "첫 줄");
+        DialogueNode dialogue = session.Editor.AddDialogueNode(file.Id, name: "EP01");
+        ScriptLine line = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
+        session.Editor.SetScriptLineText(dialogue.Id, line.Id, string.Empty, "첫 줄");
 
         // 대사 노드가 골라진다(프로젝트를 열면 시작 노드가 이렇게 골라진다).
         session.Select(dialogue.Id);

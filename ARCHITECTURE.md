@@ -57,7 +57,7 @@ ScriptDocument                  ← 화자·대사의 유일한 수정 가능한
         │  DialogueScriptResolver가 합친다 (저장하지 않는다)
         ▼
 DialogueNode                    ← 대사 논리만 소유한다
-   ├─ ScriptId                     어느 대본을 읽는가
+   ├─ Script                       제 대본 (2026-10-29 전에는 ScriptId로 따로 선 대본을 가리켰다)
    ├─ DialogueLineExtension[]      LineId별 조건 전환
    ├─ BranchExits                  조건 갈래 출구
    └─ DefaultExit
@@ -222,11 +222,11 @@ tests/Vn.Core.Tests             Yarn 분석과 골든 픽스처 (60)
 
 | 타입 | 역할 |
 |---|---|
-| `StoryProject` | 대본 · StoryFile · 발행 결과 · 결과 조합을 모은 aggregate root |
+| `StoryProject` | StoryFile(카드와 그 대본) · 발행 결과 · 결과 조합을 모은 aggregate root |
 | `StoryFile` | 노드를 **소유하는** 단위. Id는 이름·경로와 분리되어 있다 |
 | `StoryNode` (추상) | Id, 이름, 그래프 좌표, **기본 출구**. 종류를 가리지 않는 공통부 |
 | `SetNode` | 조건 정의와 변수 값. **조건이 태어나는 유일한 자리.** 실행 출구가 없다 — 공급자이지 실행 노드가 아니다(공급 노드들도 동일) |
-| `DialogueNode` | `ScriptId` + `DialogueLineExtension` 목록 + `BranchExits`. **본문은 없다** |
+| `DialogueNode` | 제 대본(`Script`) + `DialogueLineExtension` 목록 + `BranchExits`. 화자 · 대사는 대본에만 있다 |
 | `DialogueLineExtension` | LineId 하나에 얹는 대사 논리. 조건·선택 전환과 변수 변경(`SetOperation`). 옵션 라벨 전환은 안정 `OptionId`(`op_`)를 가진다 — 선택지 리플레이가 위치 기반이라(계약서 C3) 순서 변경을 이 Id로 감지해 경고한다 |
 | `PresentationNode` | `Source`(대사 결과 참조) + Setup 커맨드(노드 수준, Set_ 노드 본문이 된다) + `LineId`별 binding. binding은 인라인 동기화 마커(`[adv/]` 위치 + 커맨드 그룹 경계)도 가진다. **대사를 복사하지 않는다** |
 | `PresentationCommandInstance` | 명령 하나. 정의 Id, 인자, 사용 여부, 메모. 순서를 보존한다 |
@@ -375,7 +375,7 @@ Segment는 문자열만 들고 있지 않다. 어디서 나왔는지를 함께 �
 | 타입 | 역할 |
 |---|---|
 | `ProjectManifestJson` | `*.vnproject.json` — 목차, 조건 공급 link, 결과 조합 |
-| `ScriptDocumentJson` | `*.vnscript.json` — 대본 하나. 줄 정체성과 locale별 본문 |
+| `ScriptDocumentJson` | 카드의 대본 — 카드 JSON의 `script` 칸(원고 형식 4). 줄 정체성과 locale별 본문. 형식 3의 `*.vnscript.json`도 읽는다(`ScriptTable`이 카드에 꽂는다) |
 | `StoryFileJson` | `*.vnstory.json` — StoryFile 하나와 그것이 소유한 노드 |
 | `StoryNodeJson` | 노드 직렬화 규칙의 **단일 구현**. manifest도 스냅샷도 여기를 지난다 |
 | `ResultStoreJson` | `results.vnresults.json` — 발행 결과 전체. **본문 표현이 해시 입력이다** |
@@ -389,9 +389,14 @@ Segment는 문자열만 들고 있지 않다. 어디서 나왔는지를 함께 �
 
 ```
 project.vnproject.json      목차 · Settings link · RuntimeComposition
-script/<scriptId>.vnscript.json    줄 정체성 + locale별 화자·대사
-story/<fileId>.vnstory.json        노드 · LineId별 조건 · 출구
+story/<fileId>.vnstory.json        노드 · 카드의 대본(줄 정체성 + locale별 화자·대사) · LineId별 조건 · 출구
 results.vnresults.json      발행된 불변 결과
+```
+
+원고 형식 3까지는 대본이 `script/<scriptId>.vnscript.json`에 따로 섰고 카드는 그 Id를 가리켰다. 이 툴은 그것도 읽는다
+(`ManuscriptFormatTests`). 지금 원고의 디스크와 쓰는 쪽은 director의 것이고 이 툴의 파일은 `.vncompose.json`이다.
+
+```
 ```
 
 **결과를 파일 하나에 모은 이유:** 결과는 불변이고 추가만 되므로 한 파일을 원자적으로
@@ -865,11 +870,10 @@ Presentation.Source.ContentHash == Dialogue.Identity.ContentHash
 
 | 형식 | 상수 | 파일 |
 |---|---|---|
-| 프로젝트 | `StoryProject.CurrentFormatVersion` = 3 | `*.vnproject.json` |
-| 대본 | `ScriptDocumentJson.CurrentFormatVersion` = 1 | `*.vnscript.json` |
-| StoryFile | `StoryFileJson.CurrentFormatVersion` = 1 | `*.vnstory.json` |
+| 원고 | `StoryProject.CurrentFormatVersion` = 4 (3도 읽는다 — 대본이 `*.vnscript.json`에 따로 섰다) | `*.vnproject.json` |
+| StoryFile | `StoryFileJson.CurrentFormatVersion` = 2 (1도 읽는다) | `*.vnstory.json` |
 | 발행 결과 | `ResultStoreJson.CurrentFormatVersion` = 1 | `results.vnresults.json` |
-| 되돌리기 스냅샷 | `ProjectSnapshotCodec.CurrentSnapshotVersion` = 2 | (메모리) |
+| 되돌리기 스냅샷 | `ProjectSnapshotCodec.CurrentSnapshotVersion` = 3 | (메모리) |
 | 대사 결과 스키마 | `DialogueResult.CurrentSchemaVersion` = 3 | 결과 안의 `schemaVersion` |
 | 연출 결과 스키마 | `PresentationResult.CurrentSchemaVersion` = 3 | 결과 안의 `schemaVersion` |
 
@@ -877,7 +881,7 @@ Presentation.Source.ContentHash == Dialogue.Identity.ContentHash
 이미 발행된 결과를 지금 도구가 이해할 수 있는지를 말한다. 스키마 버전이 미래이면
 합성만 막고 파일은 정상적으로 읽는다. 결과는 불변이므로 읽지 못하는 것과 고치는 것은 다르다.
 
-## 8. 이전 프로젝트 정책 — 마이그레이션하지 않고 거부한다
+## 8. 이전 프로젝트 정책 — 1 · 2는 거부하고 3은 읽는다
 
 형식 버전 1과 2는 **읽지 않는다.** `ProjectManifestJson.Read`가 이유를 담아 거부한다.
 
@@ -896,6 +900,10 @@ Presentation.Source.ContentHash == Dialogue.Identity.ContentHash
 
 **거부는 파괴적이지 않다.** 열기에 실패해도 원본 파일은 그대로이고 세션도 원래 상태로
 남는다 (`AuthoringSessionTests.이전_형식을_열면_거부하고_세션은_그대로_남는다`).
+
+**형식 3은 읽는다**(2026-10-29). 대본이 `script/*.vnscript.json`에 따로 섰을 뿐 줄 신원 · 개정 번호는 그대로라 정할 것이
+없다 — 카드마다 가리키던 대본을 꽂는다(`ScriptTable` · 둘째로 같은 대본을 가리킨 카드는 사본을 받는다). 형식 4로 옮겨
+쓰는 것은 원고의 주인인 director다(director `docs/plans/script-merge.md`).
 
 ---
 
@@ -941,8 +949,9 @@ dotnet run --project .\src\Vn.App\Vn.App.csproj
 | `VerticalSliceTests` | **대본 → 출력 → 저장 → 다시 열기 → 같은 문자열** |
 | `SampleProjectTests` | 손으로 쓴 샘플이 도구의 계산과 같다 |
 
-손으로 쓴 예제는 `samples/Authoring/`이다. `raw/`의 원본 대본, `script/`의 LineId 산출물,
-`story/`의 노드가 각각 무엇을 담는지 눈으로 확인할 수 있다.
+손으로 쓴 예제는 `samples/Authoring/`이다 — 원고 형식 3(연출이 아직 원고 안에 있던 옛 VnTool 판)이다. `raw/`의 원본
+대본, `script/`의 LineId 산출물, `story/`의 노드가 각각 무엇을 담는지 눈으로 확인할 수 있다. 같은 원고를 director가
+형식 4로 옮겨 쓴 것이 `tests/fixtures/director-format4/`이고, 둘을 읽은 카드는 같다(`ManuscriptFormatTests`).
 저장 형식을 고치면 `SampleProjectTests`가 먼저 깨진다.
 
 **발행 결과는 샘플에 손으로 쓰지 않았다.** 내용 해시를 사람이 계산할 수 없기 때문이다.

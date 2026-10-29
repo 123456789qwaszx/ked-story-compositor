@@ -56,7 +56,7 @@ public class PresentationNodeTests
             published.Identity.Version);
 
         // 발행 뒤 원본 대본을 고쳐도 연출이 보는 것은 얼어붙은 결과 그대로다.
-        context.Editor.SetScriptLineText(context.ScriptA.Id, context.FirstLineId, "다른 화자", "다른 대사");
+        context.Editor.SetScriptLineText(context.DialogueA.Id, context.FirstLineId, "다른 화자", "다른 대사");
 
         PresentationWorkspace workspace = PresentationBindingResolver.Resolve(
             context.Project,
@@ -121,7 +121,7 @@ public class PresentationNodeTests
             "camera.closeup");
 
         // 대본을 고치고 다시 발행하면 v2가 생긴다.
-        context.Editor.SetScriptLineText(context.ScriptA.Id, context.FirstLineId, "윌로", "고친 첫 줄");
+        context.Editor.SetScriptLineText(context.DialogueA.Id, context.FirstLineId, "윌로", "고친 첫 줄");
         DialogueResult second = context.Editor.PublishDialogue(context.DialogueA.Id).Result;
         Assert.Equal(2, second.Identity.Version);
 
@@ -332,25 +332,22 @@ public class PresentationNodeTests
             now: () => new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             newLineId: () => $"ln_{++nextLine:D3}");
 
-        ScriptDocument scriptA = editor.AddScript("A 대본");
-        ScriptLine firstLine = editor.InsertScriptLine(scriptA.Id);
-        editor.SetScriptLineText(scriptA.Id, firstLine.Id, "라루", "첫 줄");
-        ScriptLine secondLine = editor.InsertScriptLine(scriptA.Id);
-        editor.SetScriptLineText(scriptA.Id, secondLine.Id, "윌로", "둘째 줄");
+        // 카드는 빈 첫 줄을 들고 선다 — 그 줄에 쓰고, 모자라면 줄을 더한다.
+        DialogueNode dialogueA = editor.AddDialogueNode(file.Id, name: "대사 A");
+        ScriptLine firstLine = dialogueA.Script.ActiveLines.Single();
+        editor.SetScriptLineText(dialogueA.Id, firstLine.Id, "라루", "첫 줄");
+        ScriptLine secondLine = editor.InsertScriptLine(dialogueA.Id);
+        editor.SetScriptLineText(dialogueA.Id, secondLine.Id, "윌로", "둘째 줄");
 
-        ScriptDocument scriptB = editor.AddScript("B 대본");
-        ScriptLine onlyLine = editor.InsertScriptLine(scriptB.Id);
-        editor.SetScriptLineText(scriptB.Id, onlyLine.Id, "라루", "B 줄");
-
-        DialogueNode dialogueA = editor.AddDialogueNode(file.Id, name: "대사 A", scriptId: scriptA.Id);
-        DialogueNode dialogueB = editor.AddDialogueNode(file.Id, name: "대사 B", scriptId: scriptB.Id);
+        DialogueNode dialogueB = editor.AddDialogueNode(file.Id, name: "대사 B");
+        ScriptLine onlyLine = dialogueB.Script.ActiveLines.Single();
+        editor.SetScriptLineText(dialogueB.Id, onlyLine.Id, "라루", "B 줄");
         PresentationNode presentationA = editor.AddPresentationNode(file.Id, name: "연출 A");
 
         return new PresentationContext(
             project,
             file,
             editor,
-            scriptA,
             firstLine.Id,
             dialogueA,
             dialogueB,
@@ -361,7 +358,6 @@ public class PresentationNodeTests
         StoryProject Project,
         StoryFile File,
         ProjectEditor Editor,
-        ScriptDocument ScriptA,
         string FirstLineId,
         DialogueNode DialogueA,
         DialogueNode DialogueB,

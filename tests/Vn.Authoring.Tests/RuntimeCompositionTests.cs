@@ -34,7 +34,7 @@ public class RuntimeCompositionTests
 
         // 대본을 고쳐 v2를 만든다. 연출은 여전히 v1 위에서 만들어진 것이다.
         fixture.Sample.Editor.SetScriptLineText(
-            fixture.Sample.Script.Id,
+            fixture.Sample.Dialogue.Id,
             fixture.LineId,
             "라루",
             "다른 대사");
@@ -67,7 +67,7 @@ public class RuntimeCompositionTests
     {
         var fixture = new SliceFixture();
         fixture.Sample.Editor.SetScriptLineText(
-            fixture.Sample.Script.Id,
+            fixture.Sample.Dialogue.Id,
             fixture.LineId,
             "라루",
             "다른 대사");

@@ -78,23 +78,12 @@ internal static class JsonSupport
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        HashSet<string> scriptIds = new(StringComparer.Ordinal);
         HashSet<string> fileIds = new(StringComparer.Ordinal);
         HashSet<string> nodeIds = new(StringComparer.Ordinal);
         HashSet<string> paths = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> linkIds = new(StringComparer.Ordinal);
         HashSet<(NodeLinkKind Kind, string Source, string Target)> linkPairs = new();
         HashSet<string> presentationCommandIds = new(StringComparer.Ordinal);
-
-        foreach (ScriptDocument script in project.Scripts)
-        {
-            if (!scriptIds.Add(script.Id))
-            {
-                throw new InvalidDataException($"대본 Id '{script.Id}'가 중복됩니다.");
-            }
-
-            ValidateScript(script);
-        }
 
         foreach (StoryFile file in project.Files)
         {
@@ -120,7 +109,7 @@ internal static class JsonSupport
                 switch (node)
                 {
                     case DialogueNode dialogue:
-                        ValidateDialogueNode(project, dialogue, scriptIds);
+                        ValidateDialogueNode(project, dialogue);
                         break;
                     case PresentationNode presentation:
                         ValidatePresentationNode(presentation, presentationCommandIds);
@@ -192,20 +181,21 @@ internal static class JsonSupport
         }
     }
 
-    private static void ValidateScript(ScriptDocument script)
+    private static void ValidateScript(DialogueNode node)
     {
+        ScriptDocument script = node.Script;
         HashSet<string> lineIds = new(StringComparer.Ordinal);
 
         foreach (ScriptLine line in script.Lines)
         {
             if (string.IsNullOrWhiteSpace(line.Id))
             {
-                throw new InvalidDataException($"대본 '{script.Id}'에 빈 LineId가 있습니다.");
+                throw new InvalidDataException($"'{node.Id}'의 대본에 빈 LineId가 있습니다.");
             }
 
             if (!lineIds.Add(line.Id))
             {
-                throw new InvalidDataException($"대본 '{script.Id}'에서 LineId '{line.Id}'가 중복됩니다.");
+                throw new InvalidDataException($"'{node.Id}'의 대본에서 LineId '{line.Id}'가 중복됩니다.");
             }
         }
 
@@ -216,7 +206,7 @@ internal static class JsonSupport
             if (!locales.Add(locale.Locale))
             {
                 throw new InvalidDataException(
-                    $"대본 '{script.Id}'에서 locale '{locale.Locale}'이 중복됩니다.");
+                    $"'{node.Id}'의 대본에서 locale '{locale.Locale}'이 중복됩니다.");
             }
 
             foreach (string lineId in locale.Entries.Keys)
@@ -224,26 +214,21 @@ internal static class JsonSupport
                 if (!lineIds.Contains(lineId))
                 {
                     throw new InvalidDataException(
-                        $"대본 '{script.Id}'의 locale '{locale.Locale}'이 없는 LineId '{lineId}'를 가리킵니다.");
+                        $"'{node.Id}'의 대본의 locale '{locale.Locale}'이 없는 LineId '{lineId}'를 가리킵니다.");
                 }
             }
         }
     }
 
     /// <summary>
-    /// 대사 노드는 대본을 가리키기만 하고 본문을 소유하지 않는다. 여기서 확인하는 것은
-    /// 가리키는 대상이 실제로 있는지와 같은 LineId에 확장이 두 벌 붙지 않았는지다.
+    /// 카드의 대본이 성립하는지, 같은 LineId에 확장이 두 벌 붙지 않았는지 본다. (카드는 제 대본을 든다 — 가리키는 대본이
+    /// 있는지 보던 검사는 걷혔다. 원고 형식 3을 읽을 때 없는 대본을 가리키면 <see cref="ScriptTable"/>이 거절한다.)
     /// </summary>
     private static void ValidateDialogueNode(
         StoryProject project,
-        DialogueNode node,
-        HashSet<string> scriptIds)
+        DialogueNode node)
     {
-        if (node.ScriptId is { } scriptId && !scriptIds.Contains(scriptId))
-        {
-            throw new InvalidDataException(
-                $"DialogueNode '{node.Id}'가 없는 대본 '{scriptId}'를 가리킵니다.");
-        }
+        ValidateScript(node);
 
         HashSet<string> lineIds = new(StringComparer.Ordinal);
 

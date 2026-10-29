@@ -250,9 +250,9 @@ public class YarnBundleEmitterTests
         sample.Editor.UpdateCondition(sample.ConditionA.Id, "호감 높음", "stat(\"favor\") >= 5");
 
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
         string open = sample.Line("갈래 안", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        sample.Editor.SetScriptLineText(sample.Script.Id, open, "윌로", "갈래 안");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, open, "윌로", "갈래 안");
         string close = sample.Line("갈래 뒤", LineConditionTransition.EndIf());
         sample.Editor.SetExitTarget(sample.Dialogue.Id, Vn.Authoring.Flow.ExitPortKind.Branch, open, sample.TargetA.Id);
         sample.Editor.SetExitTarget(sample.Dialogue.Id, Vn.Authoring.Flow.ExitPortKind.Default, null, sample.TargetDefault.Id);

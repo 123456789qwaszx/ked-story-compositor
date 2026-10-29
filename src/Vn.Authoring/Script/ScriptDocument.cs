@@ -71,7 +71,7 @@ public sealed class ScriptLocale
 }
 
 /// <summary>
-/// 작가의 평평한 대본 하나에서 나온 저작 산출물.
+/// 대사 카드 하나의 대본 — 카드가 든다(<see cref="Model.DialogueNode.Script"/>).
 ///
 /// 두 가지를 함께 소유한다.
 ///   <b>줄 정체성과 순서</b> — <see cref="Lines"/>
@@ -82,28 +82,19 @@ public sealed class ScriptLocale
 /// 아무도 답할 수 없게 된다.
 ///
 /// 대본을 쓰고 고치는 것은 ked-story-director다 — 이 툴은 원고를 읽기만 한다(2026-10-29).
+///
+/// ⛔ 2026-10-29까지는 카드와 따로 선 문서였다 — 제 Id · 이름을 들고 <c>script/*.vnscript.json</c>에 따로 저장됐고 카드는
+/// Id로 가리켰다. director에서 카드와 늘 1:1이 된 뒤로 카드가 직접 들고, 원고 형식 4부터는 판 파일 안에 카드와 함께
+/// 든다(director <c>docs/plans/script-merge.md</c>). 이 툴은 형식 3 · 4를 다 읽는다.
 /// </summary>
 public sealed class ScriptDocument
 {
     public const string DefaultLocale = "ko-KR";
 
-    public ScriptDocument(string? id = null, string name = "새 대본")
-    {
-        Id = id ?? Identifier.Script();
-        Name = name;
-    }
-
-    public string Id { get; }
-
-    public string Name { get; set; }
-
-    /// <summary>마지막으로 가져온 작가 파일의 경로. 기록용이며 저장 위치를 결정하지 않는다.</summary>
-    public string? SourcePath { get; set; }
-
-    /// <summary>동기화를 적용할 때마다 1씩 오른다. 아직 한 번도 읽지 않았으면 0이다.</summary>
+    /// <summary>director에서 카드 글을 반영할 때마다 1씩 오른다. 아직 한 번도 반영하지 않았으면 0이다.</summary>
     public int SourceRevision { get; set; }
 
-    /// <summary>마지막으로 반영한 원본 텍스트의 해시. 같은 파일을 다시 읽었는지 알 수 있다.</summary>
+    /// <summary>마지막으로 반영한 원본 텍스트의 해시. 같은 글을 다시 넣었는지 알 수 있다.</summary>
     public string? SourceContentHash { get; set; }
 
     public string PrimaryLocale { get; set; } = DefaultLocale;
@@ -150,9 +141,8 @@ public sealed class ScriptDocument
 
     public ScriptDocument Clone()
     {
-        return new ScriptDocument(Id, Name)
+        return new ScriptDocument
         {
-            SourcePath = SourcePath,
             SourceRevision = SourceRevision,
             SourceContentHash = SourceContentHash,
             PrimaryLocale = PrimaryLocale,

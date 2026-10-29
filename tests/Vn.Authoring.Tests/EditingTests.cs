@@ -44,7 +44,7 @@ public class EditingTests
         var sample = new Sample();
         string line = sample.Line("처음");
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "윌로", "고친 뒤");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "윌로", "고친 뒤");
         Assert.Equal("고친 뒤", TextOf(sample, line));
 
         sample.Editor.Undo();
@@ -61,8 +61,8 @@ public class EditingTests
         int notifications = 0;
         sample.Editor.Changed += (_, _) => notifications++;
 
-        ScriptLine line = sample.Editor.InsertScriptLine(sample.Script.Id);
-        sample.Editor.SetScriptLineText(sample.Script.Id, line.Id, "윌로", "안녕");
+        ScriptLine line = sample.Editor.InsertScriptLine(sample.Dialogue.Id);
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line.Id, "윌로", "안녕");
         sample.Editor.SetLineTransition(
             sample.Dialogue.Id,
             line.Id,
@@ -79,7 +79,7 @@ public class EditingTests
         int notifications = 0;
         sample.Editor.Changed += (_, _) => notifications++;
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, string.Empty, "처음");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, string.Empty, "처음");
 
         Assert.Equal(0, notifications);
     }
@@ -93,7 +93,7 @@ public class EditingTests
         var sample = new Sample();
         string line = sample.Line("처음");
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "윌로", "고친 뒤");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "윌로", "고친 뒤");
 
         Assert.Equal(new LocalizedLine("윌로", "고친 뒤"), sample.Script.Text(line));
 
@@ -101,33 +101,11 @@ public class EditingTests
         Assert.Empty(sample.Dialogue.LineExtensions);
     }
 
-    /// <summary>같은 대본을 두 노드가 읽어도 본문은 한 벌이다.</summary>
-    [Fact]
-    public void 같은_대본을_읽는_두_노드는_같은_본문을_본다()
-    {
-        var sample = new Sample();
-        sample.Line("공유");
-        DialogueNode other = sample.Editor.AddDialogueNode(
-            sample.File.Id,
-            name: "다른 장면",
-            scriptId: sample.Script.Id);
-
-        sample.Editor.SetScriptLineText(
-            sample.Script.Id,
-            sample.Script.Lines[0].Id,
-            "라루",
-            "한 곳만 바뀐다");
-
-        Assert.Equal(
-            "한 곳만 바뀐다",
-            DialogueScriptResolver.Resolve(sample.Project, sample.Dialogue).Lines[0].Text);
-        Assert.Equal(
-            "한 곳만 바뀐다",
-            DialogueScriptResolver.Resolve(sample.Project, other).Lines[0].Text);
-    }
+    // ⛔ `같은_대본을_읽는_두_노드는_같은_본문을_본다`는 대본이 카드 안으로 들어오며(2026-10-29) 걷혔다 — 대본을 나눠
+    //    쓰는 길이 없다. 카드마다 제 대본이다.
 
     private static string TextOf(Sample sample, string lineId) =>
-        sample.Project.FindScript(sample.Script.Id)!.Text(lineId).Text;
+        sample.Script.Text(lineId).Text;
     [Fact]
     public void 조건_이름과_식_수정은_구조_변경이_아니다()
     {
@@ -176,7 +154,7 @@ public class EditingTests
         ProjectChangedEventArgs? change = null;
         sample.Editor.Changed += (_, args) => change = args;
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "수정");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "수정");
 
         Assert.Equal(ProjectChangeKind.DialogueContent, change!.Kind);
         Assert.False(change.NeedsInspectorRebuild);

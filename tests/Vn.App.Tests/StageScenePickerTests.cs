@@ -72,8 +72,8 @@ public sealed class StageScenePickerTests
         session.SelectFile(fileId);   // 목록은 활성 판의 것만 담는다 (2026-08-26)
 
         DialogueNode scene = session.Editor.AddDialogueNode(fileId, name: "커스텀A");
-        ScriptLine line = session.Editor.InsertScriptLine(scene.ScriptId!);
-        session.Editor.SetScriptLineText(scene.ScriptId!, line.Id, "라루", "한 줄");
+        ScriptLine line = session.Editor.InsertScriptLine(scene.Id);
+        session.Editor.SetScriptLineText(scene.Id, line.Id, "라루", "한 줄");
 
         string? chosen = null;
         preview.SceneChosen += id => chosen = id;

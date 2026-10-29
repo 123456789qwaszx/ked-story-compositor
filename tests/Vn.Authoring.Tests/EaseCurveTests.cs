@@ -103,7 +103,7 @@ public class EaseCurveTests
         }
 
         string line = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
         PresentationNode node = sample.Editor.AddPresentationNode(sample.File.Id, name: "연출");
@@ -192,7 +192,7 @@ public class EaseCurveTests
     {
         var sample = new Sample();
         string line = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
         PresentationNode node = sample.Editor.AddPresentationNode(sample.File.Id, name: "연출");
@@ -358,7 +358,7 @@ public class EaseCurveTests
         sample.Editor.SetEaseCurve("bump", BumpKeys()); // 진동 곡선인데…
 
         string line = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
         PresentationNode node = sample.Editor.AddPresentationNode(sample.File.Id, name: "연출");
@@ -389,7 +389,7 @@ public class EaseCurveTests
         sample.Editor.SetEaseCurve("hop_snappy", SampleKeys()); // 이동 곡선
 
         string line = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "첫 줄");
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
         YarnBundle Emit(string curveToken)

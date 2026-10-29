@@ -1,7 +1,4 @@
-using Vn.Authoring.Definition;
-using Vn.Authoring.Flow;
 using Vn.Authoring.Model;
-using Vn.Authoring.Results;
 using Vn.Authoring.Script;
 
 namespace Vn.Authoring.Editing;
@@ -15,44 +12,13 @@ namespace Vn.Authoring.Editing;
 /// </summary>
 public sealed partial class ProjectEditor
 {
-    public ScriptDocument AddScript(string? name = null)
+    // ⛔ `AddScript` · `EnsureDialogueScript` · `SetDialogueScript`는 2026-10-29에 걷혔다 — 카드가 제 대본을 든다
+    //    (director `docs/plans/script-merge.md`). 대본을 고르거나 잇는 길이 없다. 줄 명령은 카드 Id로 부른다.
+
+    /// <summary>카드의 대본에 빈 줄 하나를 끼워 넣는다. 새 LineId를 발급한다.</summary>
+    public ScriptLine InsertScriptLine(string dialogueNodeId, int? index = null, string? locale = null)
     {
-        var script = new ScriptDocument(name: name ?? NextScriptName());
-        script.RequireLocale(script.PrimaryLocale);
-
-        Mutate(() => Project.Scripts.Add(script));
-        return script;
-    }
-
-    /// <summary>
-    /// 대본 없는 대사 노드(가져오기 시절의 옛 프로젝트)에 전용 대본을 만들어 잇는다 (X4).
-    /// 이미 대본이 있으면 그대로 돌려준다.
-    /// </summary>
-    public ScriptDocument EnsureDialogueScript(string dialogueNodeId)
-    {
-        DialogueNode node = RequireDialogue(dialogueNodeId);
-
-        if (Project.FindScript(node.ScriptId) is { } existing)
-        {
-            return existing;
-        }
-
-        var script = new ScriptDocument(name: $"{node.Name} 대본");
-        script.RequireLocale(script.PrimaryLocale);
-
-        Mutate(() =>
-        {
-            Project.Scripts.Add(script);
-            node.ScriptId = script.Id;
-        });
-
-        return script;
-    }
-
-    /// <summary>대본에 빈 줄 하나를 끼워 넣는다. 새 LineId를 발급한다.</summary>
-    public ScriptLine InsertScriptLine(string scriptId, int? index = null, string? locale = null)
-    {
-        ScriptDocument script = RequireScript(scriptId);
+        ScriptDocument script = RequireDialogue(dialogueNodeId).Script;
         var line = new ScriptLine(_newLineId());
         string targetLocale = locale ?? script.PrimaryLocale;
 
@@ -71,13 +37,13 @@ public sealed partial class ProjectEditor
     /// 내용만 바뀌므로 편집 컨트롤을 다시 만들지 않는다.
     /// </summary>
     public void SetScriptLineText(
-        string scriptId,
+        string dialogueNodeId,
         string lineId,
         string speaker,
         string text,
         string? locale = null)
     {
-        ScriptDocument script = RequireScript(scriptId);
+        ScriptDocument script = RequireDialogue(dialogueNodeId).Script;
 
         if (script.FindLine(lineId) is not { } line)
         {
@@ -104,30 +70,4 @@ public sealed partial class ProjectEditor
             }
         });
     }
-
-    /// <summary>이 대사 노드가 읽을 대본을 정한다. 조건 구조는 LineId 기준으로 그대로 남는다.</summary>
-    public void SetDialogueScript(string dialogueNodeId, string? scriptId)
-    {
-        DialogueNode node = RequireDialogue(dialogueNodeId);
-
-        if (scriptId is not null && Project.FindScript(scriptId) is null)
-        {
-            throw new InvalidOperationException($"대본 '{scriptId}'를 찾을 수 없습니다.");
-        }
-
-        if (string.Equals(node.ScriptId, scriptId, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        Mutate(() => node.ScriptId = scriptId);
-    }
-
-    private ScriptDocument RequireScript(string scriptId)
-    {
-        return Project.FindScript(scriptId)
-            ?? throw new InvalidOperationException($"대본 '{scriptId}'를 찾을 수 없습니다.");
-    }
-
-    private string NextScriptName() => $"대본 {Project.Scripts.Count + 1}";
 }

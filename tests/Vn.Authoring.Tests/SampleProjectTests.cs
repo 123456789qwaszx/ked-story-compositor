@@ -44,8 +44,8 @@ public class SampleProjectTests
     public void 대본이_화자와_대사를_소유하고_노드는_LineId만_가리킨다()
     {
         StoryProject project = Load();
-        ScriptDocument script = project.FindScript("sc_chapter01")!;
         DialogueNode scene = project.FindDialogue("nd_scene")!;
+        ScriptDocument script = scene.Script;   // 형식 3 견본 — 카드가 가리키던 sc_chapter01이 꽂혔다
 
         Assert.Equal(8, script.ActiveLines.Count());
         Assert.Equal(new LocalizedLine("라루", "3분의 1이요?"), script.Text("ln_a2"));

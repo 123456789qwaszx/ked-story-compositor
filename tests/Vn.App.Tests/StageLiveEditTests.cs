@@ -31,10 +31,9 @@ public sealed class StageLiveEditTests
 
         AuthoringSession session = window.SessionProbe;
 
-        DialogueNode dialogue = session.Editor.AddDialogueNode(
-            session.ActiveFile!.Id, name: "본문", scriptId: session.Editor.AddScript("본문 대본").Id);
-        ScriptLine line = session.Editor.InsertScriptLine(dialogue.ScriptId!);
-        session.Editor.SetScriptLineText(dialogue.ScriptId!, line.Id, "라루", "첫 줄");
+        DialogueNode dialogue = session.Editor.AddDialogueNode(session.ActiveFile!.Id, name: "본문");
+        ScriptLine line = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
+        session.Editor.SetScriptLineText(dialogue.Id, line.Id, "라루", "첫 줄");
 
         // 대사 노드를 고르는 것 = 씬 선택 — 고른 대사의 연출 채널이 선다.
         session.Select(dialogue.Id);

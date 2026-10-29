@@ -27,13 +27,13 @@
 
 ## 원고는 읽기만, 연출은 원고 옆 파일에
 
-director의 프로젝트(`.vnproject.json`과 그 `script/` · `story/`)는 **원고**다 — 이 툴은 그 파일을 한 바이트도 쓰지
+director의 프로젝트(`.vnproject.json`과 그 `story/`)는 **원고**다 — 이 툴은 그 파일을 한 바이트도 쓰지
 않는다. 연출은 원고 옆 **`<이름>.vncompose.json`**에 산다. 열면 둘을 합쳐 한 프로젝트로 보고, 저장은 연출 쪽만 쓴다.
 
 ```text
 MyStory/
 ├─ 예제.vnproject.json         원고 (director) — 이 툴은 읽기만 한다
-├─ script/  story/             원고의 대본 · 판 (director)
+├─ story/                      원고의 판 — 카드와 그 대본 (director)
 ├─ game.definition.json        초상화 매핑 · 연출 커맨드 어휘 · 스탯 · 화자
 ├─ 예제.vncompose.json         연출 — 연출 노드 · 배선 · 합성 · 곡선 · 빠른 명령 · 에셋 뿌리 · 내보내기 설정
 ├─ results.vnresults.json      발행본(대사 · 연출 고정본)
@@ -41,6 +41,8 @@ MyStory/
 ```
 
 - **열기**는 원고(`.vnproject.json`)로도, 이 툴의 파일(`.vncompose.json`)로도 된다.
+- 원고 형식은 **4**(대본이 판 파일 안 카드에 든다)와 **3**(대본이 `script/*.vnscript.json`에 따로 선다)을 다 읽는다.
+  형식 3을 4로 옮겨 쓰는 것은 director다(2026-10-29).
 - 연출이 아직 원고 안에 있던 **옛 프로젝트**(VnTool · director의 연출 제거 전)는 그 연출을 가져온다. director가 옛
   프로젝트를 열며 남긴 `presentation-original/`에서도 가져온다. 처음 저장하면 원고 옆에 `.vncompose.json`이 생긴다.
 - director가 판을 옮기거나 노드를 지웠으면, 연출 노드는 대사 노드의 판에 다시 서고 사라진 노드를 가리키던 배선은

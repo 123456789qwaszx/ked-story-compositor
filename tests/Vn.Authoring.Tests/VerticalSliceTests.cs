@@ -71,13 +71,21 @@ public class VerticalSliceTests
                 project,
                 now: () => new DateTimeOffset(2026, 2, 1, 9, 0, 0, TimeSpan.Zero));
 
-            ScriptDocument script = editor.AddScript("1장 대본");
+            SetNode settings = editor.AddSetNode(file.Id, name: "1장 설정");
+            ConditionDefinition favor = editor.AddCondition(settings.Id, "호감 높음", "favor >= 5");
+
+            // 카드는 제 대본을 들고, 빈 첫 줄을 들고 선다 — 그 줄부터 채우고 모자라면 줄을 더한다.
+            DialogueNode scene = editor.AddDialogueNode(file.Id, name: "의뢰 장면");
+            ScriptDocument script = scene.Script;
+            int written = 0;
 
             foreach (string raw in RawScript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
                 int colon = raw.IndexOf(':');
-                ScriptLine line = editor.InsertScriptLine(script.Id);
-                editor.SetScriptLineText(script.Id, line.Id, raw[..colon], raw[(colon + 1)..].Trim());
+                string lineId = written++ == 0
+                    ? script.ActiveLines.Single().Id
+                    : editor.InsertScriptLine(scene.Id).Id;
+                editor.SetScriptLineText(scene.Id, lineId, raw[..colon], raw[(colon + 1)..].Trim());
             }
 
             Assert.Equal(5, script.ActiveLines.Count());
@@ -86,9 +94,6 @@ public class VerticalSliceTests
                 script.Text(script.Lines[0].Id));
 
             // ── 2. DialogueNode에서 조건을 세운다 ─────────────────────────────
-            SetNode settings = editor.AddSetNode(file.Id, name: "1장 설정");
-            ConditionDefinition favor = editor.AddCondition(settings.Id, "호감 높음", "favor >= 5");
-            DialogueNode scene = editor.AddDialogueNode(file.Id, name: "의뢰 장면", scriptId: script.Id);
             DialogueNode ending = AddEndNode(editor, file, "호감 결말");
             editor.AddSettingsLink(settings.Id, scene.Id);
 
@@ -221,7 +226,7 @@ public class VerticalSliceTests
     }
 
     [Fact]
-    public void 대본과_노드와_결과가_서로_다른_파일에_저장된다()
+    public void 카드와_결과가_서로_다른_파일에_저장된다()
     {
         string directory = TempDirectory();
         string manifestPath = Path.Combine(directory, "project" + ProjectManifestJson.FileExtension);
@@ -232,16 +237,12 @@ public class VerticalSliceTests
             ProjectStore.Save(manifestPath, fixture.Project);
 
             string manifest = File.ReadAllText(manifestPath);
-            string scriptPath = Path.Combine(
-                directory,
-                "script",
-                fixture.Sample.Script.Id + ScriptDocumentJson.FileExtension);
             string storyPath = Path.Combine(
                 directory,
                 fixture.Sample.File.RelativePath.Replace('/', Path.DirectorySeparatorChar));
             string resultsPath = Path.Combine(directory, ResultStoreJson.DefaultFileName);
 
-            Assert.True(File.Exists(scriptPath));
+            Assert.False(Directory.Exists(Path.Combine(directory, "script")));   // 원고 형식 4 — 대본은 카드 안에 든다
             Assert.True(File.Exists(storyPath));
             Assert.True(File.Exists(resultsPath));
 
@@ -249,9 +250,8 @@ public class VerticalSliceTests
             Assert.DoesNotContain("\"nodes\"", manifest, StringComparison.Ordinal);
             Assert.DoesNotContain("첫 대사", manifest, StringComparison.Ordinal);
 
-            // 화자와 대사는 대본 파일에만 있다. 노드 파일에는 LineId만 있다.
-            Assert.Contains("첫 대사", File.ReadAllText(scriptPath), StringComparison.Ordinal);
-            Assert.DoesNotContain("첫 대사", File.ReadAllText(storyPath), StringComparison.Ordinal);
+            // 화자와 대사는 카드의 대본(판 파일 안 카드의 `script` 칸)에 있다.
+            Assert.Contains("첫 대사", File.ReadAllText(storyPath), StringComparison.Ordinal);
 
             // 발행 결과는 그 시점의 본문을 얼려서 함께 들고 있다.
             Assert.Contains("첫 대사", File.ReadAllText(resultsPath), StringComparison.Ordinal);
@@ -290,10 +290,9 @@ public class VerticalSliceTests
 
     private static DialogueNode AddEndNode(ProjectEditor editor, StoryFile file, string name)
     {
-        ScriptDocument script = editor.AddScript(name + " 대본");
-        ScriptLine line = editor.InsertScriptLine(script.Id);
-        editor.SetScriptLineText(script.Id, line.Id, "라루", name);
-        return editor.AddDialogueNode(file.Id, name: name, scriptId: script.Id);
+        DialogueNode node = editor.AddDialogueNode(file.Id, name: name);   // 빈 첫 줄을 들고 선다
+        editor.SetScriptLineText(node.Id, node.Script.ActiveLines.Single().Id, "라루", name);
+        return node;
     }
 
     private static string TempDirectory()

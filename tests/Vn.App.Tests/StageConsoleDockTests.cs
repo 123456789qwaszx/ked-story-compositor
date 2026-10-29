@@ -26,10 +26,9 @@ public sealed class StageConsoleDockTests
         var session = new AuthoringSession();
         StoryFile file = session.ActiveFile!;
 
-        ScriptDocument script = session.Editor.AddScript("본문 대본");
-        DialogueNode dialogue = session.Editor.AddDialogueNode(file.Id, name: "본문", scriptId: script.Id);
-        ScriptLine line = session.Editor.InsertScriptLine(script.Id);
-        session.Editor.SetScriptLineText(script.Id, line.Id, string.Empty, "첫 줄");
+        DialogueNode dialogue = session.Editor.AddDialogueNode(file.Id, name: "본문");
+        ScriptLine line = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
+        session.Editor.SetScriptLineText(dialogue.Id, line.Id, string.Empty, "첫 줄");
 
         DialogueResult published = session.Editor.PublishDialogue(dialogue.Id).Result;
         PresentationNode presentation = session.Editor.AddPresentationNode(file.Id, name: "연출");

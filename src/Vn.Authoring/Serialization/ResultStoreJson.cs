@@ -18,7 +18,7 @@ internal static class DialogueResultJson
         return WriteBody(
             draft.SourceNodeId,
             draft.SourceNodeName,
-            draft.SourceScriptId,
+            sourceScriptId: null,   // 초안에는 대본 Id가 없다(S-D8) — 옛 결과만 든다
             draft.SourceScriptRevision,
             draft.Locale,
             draft.Lines,

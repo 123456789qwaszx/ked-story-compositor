@@ -56,7 +56,7 @@ public class YarnBundleVerificationTests
 
         // 대사 문구를 고친다 — LineId는 그대로다 (Revision만 오른다).
         world.Sample.Editor.SetScriptLineText(
-            world.Sample.Script.Id,
+            world.Sample.Dialogue.Id,
             world.FirstLineId,
             "라루",
             "완전히 고친 첫 줄");
@@ -290,7 +290,7 @@ public class YarnBundleVerificationTests
         YarnBundle before = EmitChoicesBundle(world);
 
         world.Sample.Editor.SetScriptLineText(
-            world.Sample.Script.Id,
+            world.Sample.Dialogue.Id,
             world.Label1,
             string.Empty,
             "완전히 고친 라벨");
@@ -433,11 +433,11 @@ public class YarnBundleVerificationTests
         sample.Editor.UpdateCondition(sample.ConditionA.Id, "호감 높음", "stat(\"favor\") >= 5");
 
         string first = sample.Line("첫 줄 그대로");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄 그대로");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄 그대로");
         string open = sample.Line("갈래 안 대사", LineConditionTransition.BeginIf(sample.ConditionA.Id));
-        sample.Editor.SetScriptLineText(sample.Script.Id, open, "윌로", "갈래 안 대사");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, open, "윌로", "갈래 안 대사");
         string close = sample.Line("갈래 뒤 대사", LineConditionTransition.EndIf());
-        sample.Editor.SetScriptLineText(sample.Script.Id, close, string.Empty, "갈래 뒤 대사");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, close, string.Empty, "갈래 뒤 대사");
 
         sample.Editor.SetExitTarget(
             sample.Dialogue.Id, Vn.Authoring.Flow.ExitPortKind.Branch, open, sample.TargetA.Id);

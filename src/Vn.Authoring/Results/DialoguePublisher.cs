@@ -9,7 +9,7 @@ namespace Vn.Authoring.Results;
 
 public enum PublishProblemKind
 {
-    /// <summary>읽을 대본이 없다.</summary>
+    /// <summary>카드의 대본에 살아 있는 줄이 없다.</summary>
     MissingScript,
 
     /// <summary>같은 LineId가 결과 안에서 두 번 나온다.</summary>
@@ -72,7 +72,6 @@ public sealed class DialogueDraft
     public DialogueDraft(
         string sourceNodeId,
         string sourceNodeName,
-        string? sourceScriptId,
         int sourceScriptRevision,
         string locale,
         IReadOnlyList<DialogueResultLine> lines,
@@ -84,7 +83,6 @@ public sealed class DialogueDraft
         TrailingTransitions = trailingTransitions ?? Array.Empty<DialogueResultTransition>();
         SourceNodeId = sourceNodeId;
         SourceNodeName = sourceNodeName;
-        SourceScriptId = sourceScriptId;
         SourceScriptRevision = sourceScriptRevision;
         Locale = locale;
         Lines = lines;
@@ -97,7 +95,8 @@ public sealed class DialogueDraft
 
     public string SourceNodeName { get; }
 
-    public string? SourceScriptId { get; }
+    // ⛔ 대본 Id(`SourceScriptId`)는 2026-10-29에 걷혔다 — 카드가 제 대본을 든다(director `script-merge` S-D8).
+    //    초안의 본문에서 `sourceScript`가 빠지므로 내용이 같아도 다음 발행 때 새 버전이 한 번 생긴다.
 
     public int SourceScriptRevision { get; }
 
@@ -205,7 +204,7 @@ public static class DialoguePublisher
         }
 
         AddFlowProblems(flow, problems);
-        AddScriptProblems(project, node, problems);
+        AddScriptProblems(node, problems);
         AddChoiceOrderProblems(project, node, lines, problems);
 
         // 선택지로 끝나는 노드는 정상이다 (2단계 포트 규칙, 2026-08-14 소유자 승인) —
@@ -242,8 +241,7 @@ public static class DialoguePublisher
         return new DialogueDraft(
             node.Id,
             node.Name,
-            script.ScriptId,
-            project.FindScript(script.ScriptId)?.SourceRevision ?? 0,
+            node.Script.SourceRevision,
             script.Locale,
             lines,
             assignments,
@@ -297,7 +295,7 @@ public static class DialoguePublisher
             identity,
             draft.SourceNodeId,
             draft.SourceNodeName,
-            draft.SourceScriptId,
+            sourceScriptId: null,
             draft.SourceScriptRevision,
             draft.Locale,
             draft.Lines,
@@ -325,7 +323,7 @@ public static class DialoguePublisher
                 ResultHash.Compute(DialogueResultJson.WriteBody(draft))),
             draft.SourceNodeId,
             draft.SourceNodeName,
-            draft.SourceScriptId,
+            sourceScriptId: null,
             draft.SourceScriptRevision,
             draft.Locale,
             draft.Lines,
@@ -494,7 +492,6 @@ public static class DialoguePublisher
                 //    행위라 빈 것을 굳힐 이유가 없다. 반면 <b>내보내기</b>는 지금 상태를
                 //    그대로 게임에 보내는 것이라 빈 씬도 나가야 한다 — 그 완화는
                 //    <see cref="LiveNodeComposer"/> 한 곳에서만 한다(2026-08-25).
-                FlowProblemKind.MissingScript => (PublishProblemKind.MissingScript, true),
                 FlowProblemKind.UnknownCondition => (PublishProblemKind.UnknownCondition, true),
                 FlowProblemKind.UnavailableCondition => (PublishProblemKind.UnknownCondition, true),
                 FlowProblemKind.ElseIfWithoutIf => (PublishProblemKind.InvalidConditionStructure, true),
@@ -513,14 +510,10 @@ public static class DialoguePublisher
     }
 
     private static void AddScriptProblems(
-        StoryProject project,
         DialogueNode node,
         List<PublishProblem> problems)
     {
-        if (project.FindScript(node.ScriptId) is not { } document)
-        {
-            return;
-        }
+        ScriptDocument document = node.Script;
 
         if (document.Lines.Count > 0 && document.ActiveLines.Any())
         {
@@ -531,7 +524,7 @@ public static class DialoguePublisher
         problems.Add(new PublishProblem(
             PublishProblemKind.MissingScript,
             null,
-            $"대본 '{document.Name}'에 살아 있는 줄이 없습니다. " +
+            "이 카드에 살아 있는 줄이 없습니다. " +
             "연출만 매다는 씬이면 정상이고, 아니라면 대사를 적어 주세요.",
             IsBlocking: true));
     }

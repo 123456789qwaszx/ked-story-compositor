@@ -19,7 +19,7 @@ public class LiveComposerTests
     {
         var sample = new Sample();
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
 
         // 발행하지 않았다 — D-2: 발행은 출력 게이트가 아니다.
         LiveComposition composition = LiveNodeComposer.Compose(
@@ -36,7 +36,7 @@ public class LiveComposerTests
         // 수용 기준 3 — 같은 합성기 하나(LiveNodeComposer)를 지나므로 성립한다.
         var sample = new Sample();
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
 
         string liveDirectory = TempDirectory();
         string manualDirectory = TempDirectory();
@@ -64,7 +64,7 @@ public class LiveComposerTests
             }
 
             // 편집하면 재합성 결과가 달라진다 — 자동 갱신의 재료.
-            sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "고친 줄");
+            sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "고친 줄");
             LiveComposition updated = LiveNodeComposer.Compose(
                 sample.Project, sample.Dialogue.Id, GameDefinition.Empty, Now);
             Assert.NotEqual(live.Bundle!.StoryText, updated.Bundle!.StoryText);
@@ -83,7 +83,7 @@ public class LiveComposerTests
         // 수용 기준 4 — 버전 짝 추적은 라이브 모델에서도 유지된다(조용한 드리프트 금지).
         var sample = new Sample();
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
 
         DialogueResult published = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
         PresentationNode presentation = sample.Editor.AddPresentationNode(sample.File.Id, name: "연출");
@@ -99,7 +99,7 @@ public class LiveComposerTests
         Assert.DoesNotContain(inSync.Warnings, warning => warning.Contains("다릅니다", StringComparison.Ordinal));
 
         // 대사를 고치면 — 연출이 읽은 발행본과 어긋난다.
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "고친 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "고친 줄");
 
         LiveComposition drifted = LiveNodeComposer.Compose(
             sample.Project, sample.Dialogue.Id, GameDefinition.Empty, Now);
@@ -118,7 +118,7 @@ public class LiveComposerTests
         // 그런데 팝업은 모달이라 화면 시험이 닿지 않으므로, 그 밑의 값을 여기서 붙든다.
         var sample = new Sample();
         string first = sample.Line("첫 줄");
-        sample.Editor.SetScriptLineText(sample.Script.Id, first, "라루", "첫 줄");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, first, "라루", "첫 줄");
 
         LiveComposition composition = LiveNodeComposer.Compose(
             sample.Project, sample.Dialogue.Id, GameDefinition.Empty, Now);

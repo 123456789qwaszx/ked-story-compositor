@@ -128,6 +128,10 @@ public sealed class DialogueResult
 
     public string SourceNodeName { get; }
 
+    /// <summary>
+    /// 옛 결과가 가리키던 대본 Id — 2026-10-29 전에 발행된 결과에만 있다(결과는 불변이라 그대로 둔다). 그 뒤로는 카드가
+    /// 제 대본을 들어 실을 Id가 없다 — 새 발행은 null이다(director <c>script-merge</c> S-D8).
+    /// </summary>
     public string? SourceScriptId { get; }
 
     public int SourceScriptRevision { get; }

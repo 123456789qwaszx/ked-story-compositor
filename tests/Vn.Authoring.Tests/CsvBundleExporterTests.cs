@@ -93,7 +93,7 @@ public class CsvBundleExporterTests
     {
         var sample = new Sample();
         string line = sample.Line("쉼표, 그리고 \"따옴표\"");
-        sample.Editor.SetScriptLineText(sample.Script.Id, line, "라루", "쉼표, 그리고 \"따옴표\"");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, line, "라루", "쉼표, 그리고 \"따옴표\"");
         DialogueResult dialogue = sample.Editor.PublishDialogue(sample.Dialogue.Id).Result;
 
         CsvBundle bundle = CsvBundleExporter.Export(dialogue, bundleName: "escape_ep");

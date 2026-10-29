@@ -114,7 +114,7 @@ public sealed class BranchMarkerTests
 
         editor.AddDialogueNode(fileId, 400, 0, "곁가지");
 
-        string lineId = project.FindScript(node.ScriptId)!.ActiveLines.First().Id;
+        string lineId = node.Script.ActiveLines.First().Id;
 
         return (editor, node, lineId);
     }

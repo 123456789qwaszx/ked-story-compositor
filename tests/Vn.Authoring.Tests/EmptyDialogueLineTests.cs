@@ -1,6 +1,7 @@
 using Vn.Authoring.Model;
 using Vn.Authoring.Rendering;
 using Vn.Authoring.Results;
+using Vn.Authoring.Script;
 
 namespace Vn.Authoring.Tests;
 
@@ -54,7 +55,7 @@ public sealed class EmptyDialogueLineTests
     }
 
     [Fact]
-    public void 대본이_아예_없는_노드도_내보내진다()
+    public void 대본이_빈_노드도_내보내진다()
     {
         // ⛔ 이것이 고친 두 번째 버그다. 대본이 없으면 발행이 <b>막혀</b> 그 노드의 .yarn이
         //    아예 안 나갔는데, 진행 JSON은 `ViaNodeId`로 그 이름을 그대로 들고 나갔다 —
@@ -62,8 +63,9 @@ public sealed class EmptyDialogueLineTests
         var sample = new Sample();
         DialogueNode scene = sample.Editor.AddDialogueNode(sample.File.Id, name: "빈 연출");
 
-        // 대본을 통째로 떼어 낸다 — 판에서 씬만 세우고 아직 아무것도 안 쓴 상태다.
-        scene.ScriptId = null;
+        // 대본을 통째로 비운다 — 판에서 씬만 세우고 아직 아무것도 안 쓴 상태다. (⛔ 2026-10-29 전에는 대본을 아예 떼어
+        // 냈다 — 카드가 대본을 Id로 가리켰다. 이제 카드는 언제나 제 대본을 든다.)
+        scene.Script = new ScriptDocument();
 
         LiveComposition composition = LiveNodeComposer.Compose(
             sample.Project, scene.Id, Sample.Definition, DateTimeOffset.UnixEpoch);
@@ -72,7 +74,7 @@ public sealed class EmptyDialogueLineTests
         Assert.Contains($"title: {composition.Bundle!.BundleName}", composition.Bundle.StoryText);
 
         // 막지 않을 뿐, 조용하지도 않다.
-        Assert.Contains(composition.Warnings, message => message.Contains("대본"));
+        Assert.Contains(composition.Warnings, message => message.Contains("살아 있는 줄"));
     }
 
     [Fact]
@@ -82,7 +84,7 @@ public sealed class EmptyDialogueLineTests
         var sample = new Sample();
         DialogueNode scene = sample.Editor.AddDialogueNode(sample.File.Id, name: "빈 연출2");
 
-        sample.Project.Scripts.Single(script => script.Id == scene.ScriptId).Lines.Clear();
+        scene.Script.Lines.Clear();
 
         LiveComposition composition = LiveNodeComposer.Compose(
             sample.Project, scene.Id, Sample.Definition, DateTimeOffset.UnixEpoch);
@@ -101,7 +103,7 @@ public sealed class EmptyDialogueLineTests
         sample.Line("말이 있다");
 
         DialogueNode twin = sample.Editor.AddDialogueNode(sample.File.Id, name: sample.Dialogue.Name);
-        twin.ScriptId = null;
+        twin.Script = new ScriptDocument();
 
         YarnBundle[] bundles =
         [

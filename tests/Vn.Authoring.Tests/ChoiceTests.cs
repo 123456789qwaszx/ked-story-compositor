@@ -232,7 +232,7 @@ public class ChoiceTests
         sample.Line("끝", LineConditionTransition.EndChoice());
         sample.Editor.PublishDialogue(sample.Dialogue.Id);
 
-        sample.Editor.SetScriptLineText(sample.Script.Id, label, string.Empty, "고친 라벨");
+        sample.Editor.SetScriptLineText(sample.Dialogue.Id, label, string.Empty, "고친 라벨");
 
         DialogueDraft draft = DialoguePublisher.Draft(sample.Project, sample.Dialogue.Id);
         Assert.DoesNotContain(

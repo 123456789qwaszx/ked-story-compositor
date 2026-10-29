@@ -1,0 +1,21 @@
+{
+  "formatVersion": 4,
+  "title": "게리에 1장",
+  "startNode": "nd_setup",
+  "files": [
+    {
+      "id": "sf_chapter01",
+      "name": "1장",
+      "path": "story/chapter01.vnstory.json"
+    }
+  ],
+  "links": [
+    {
+      "id": "lk_setup_scene",
+      "kind": "settings",
+      "source": "nd_setup",
+      "target": "nd_scene",
+      "order": 0
+    }
+  ]
+}

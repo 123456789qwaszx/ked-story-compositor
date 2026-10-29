@@ -82,9 +82,7 @@ public class SettingsLinkTests
             catalog.Conditions,
             condition => condition.Id == foreignCondition.Id);
 
-        ScriptDocument script = editor.AddScript("전역 조건 대본");
-        editor.SetDialogueScript(dialogue.Id, script.Id);
-        ScriptLine globalLine = editor.InsertScriptLine(script.Id);
+        ScriptLine globalLine = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
         editor.SetLineTransition(
             dialogue.Id,
             globalLine.Id,
@@ -158,9 +156,7 @@ public class SettingsLinkTests
         ConditionDefinition foreignCondition = editor.AddCondition(foreign.Id, "저쪽 조건", "far == true");
 
         DialogueNode dialogue = editor.AddDialogueNode(here.Id, name: "장면");
-        ScriptDocument script = editor.AddScript("대본");
-        editor.SetDialogueScript(dialogue.Id, script.Id);
-        ScriptLine scriptLine = editor.InsertScriptLine(script.Id);
+        ScriptLine scriptLine = dialogue.Script.ActiveLines.Single();   // 카드는 빈 첫 줄을 들고 선다
         editor.SetLineTransition(
             dialogue.Id, scriptLine.Id, LineConditionTransition.BeginIf(foreignCondition.Id));
 
