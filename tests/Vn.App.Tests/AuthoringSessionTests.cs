@@ -9,14 +9,15 @@ namespace Vn.App.Tests;
 public class AuthoringSessionTests
 {
     [Fact]
-    public void 새_프로젝트는_기본_StoryFile을_현재_파일로_가진다()
+    public void 원고를_열기_전에는_쓸_자리가_없고_원고를_열라고_말한다()
     {
+        // 이 툴은 원고를 만들지 않는다(director의 일) — 연출 층 파일은 원고 옆에 산다.
         var session = new AuthoringSession();
 
-        StoryFile file = Assert.Single(session.Project.Files);
-        Assert.Equal(file.Id, session.ActiveFileId);
-        Assert.Same(file, session.ActiveFile);
-        Assert.EndsWith(StoryFileJson.FileExtension, file.RelativePath);
+        Assert.Null(session.ManuscriptPath);
+        Assert.Null(session.ProjectPath);
+        Assert.Equal(AuthoringSession.NoManuscriptMessage, session.StatusMessage);
+        Assert.Throws<InvalidOperationException>(() => session.Save());
     }
 
     [Fact]
@@ -43,7 +44,8 @@ public class AuthoringSessionTests
 
             Assert.Equal(second.Id, session.ActiveFileId);
             Assert.Equal("nd_b", session.SelectedNodeId);
-            Assert.Equal(Path.GetFullPath(path), session.ProjectPath);
+            Assert.Equal(Path.GetFullPath(path), session.ManuscriptPath);
+            Assert.Equal(CompositionStore.PathFor(path), session.ProjectPath);   // 이 툴의 파일은 원고 옆에
             Assert.False(session.IsDirty);
         }
         finally
@@ -162,8 +164,7 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             session.CreateDefaultTuning();
 
@@ -203,8 +204,7 @@ public class AuthoringSessionTests
             Directory.CreateDirectory(tuningRoot);
             File.WriteAllText(Path.Combine(tuningRoot, "custom.json"), "{}");
 
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             Assert.False(File.Exists(Path.Combine(tuningRoot, "base-resolution.json")));
 
@@ -228,8 +228,7 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             session.ConnectTuningFolder(source); // 튜닝 파일이 없는 폴더
             Assert.Contains("찾지 못했습니다", session.StatusMessage);
@@ -254,41 +253,6 @@ public class AuthoringSessionTests
         }
     }
 
-    /// <summary>
-    /// "작가가 더한 화자"는 2026-08-23에 폐지됐다 (소유자: 캐릭터는 컨셉·배경이 꼼꼼히
-    /// 정해져야 하는 것이라 작가가 임의로 더할 자리가 아니다). 더하는 화면도 고르는
-    /// 목록도 사라졌지만, <b>구판 프로젝트의 값은 조용히 날리지 않는다</b> — 이 저장소의
-    /// "구판 데이터는 지우지 않고 무시한다" 규칙이다.
-    /// </summary>
-    [Fact]
-    public void 폐지된_작가_화자_데이터는_열고_저장해도_살아남는다()
-    {
-        string directory = TempDirectory();
-
-        try
-        {
-            string path = Path.Combine(directory, "project.vnproject.json");
-            var session = new AuthoringSession();
-            session.Save(path);
-
-            // 구판 프로젝트가 들고 있던 값 — 이제 아무 화면도 이걸 읽지 않는다.
-            session.Project.WriterSpeakers.Add(new WriterSpeaker { Name = "구판화자" });
-            session.Save(path);
-
-            var reopened = new AuthoringSession();
-            reopened.Open(path);
-            Assert.Equal("구판화자", Assert.Single(reopened.Project.WriterSpeakers).Name);
-
-            // 정의 파일은 예나 지금이나 손대지 않는다 (2026-08-17 — 기획자 전용).
-            Assert.DoesNotContain(reopened.Definition.Speakers, speaker =>
-                string.Equals(speaker.Name, "구판화자", StringComparison.Ordinal));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
     // ── 새 프로젝트 자동 준비 + PNG 가져오기 (W48) ────────────────────────
 
     [Fact]
@@ -298,8 +262,7 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             Assert.Equal("assets/backgrounds", session.Project.AssetRoots.BackgroundsPath);
             Assert.Equal("assets/portraits", session.Project.AssetRoots.PortraitsPath);
@@ -330,8 +293,7 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             string png = Path.Combine(source, "room_day.png");
             File.WriteAllBytes(png, [1, 2, 3]);
@@ -349,90 +311,23 @@ public class AuthoringSessionTests
     }
 
     [Fact]
-    public void 저장은_없는_폴더를_복구하고_다른_이름_저장은_새_자리에_살림을_차린다()
+    public void 저장은_없는_폴더를_복구한다()
     {
-        // W60: 실수로 지운 폴더는 다음 저장이 되살리고, 다른 이름으로 저장한 새 위치에도
-        // 에셋 폴더·기본 튜닝이 준비된다. 내용이 있는 폴더는 불가침이다.
+        // W60: 실수로 지운 폴더는 다음 저장이 되살린다. 내용이 있는 폴더는 불가침이다.
+        // (⛔ [다른 이름으로…]의 새 자리 살림은 2026-10-29에 그 단추와 함께 걷혔다 — 이 툴의 파일은 원고 옆 한 자리다.)
         string first = TempDirectory();
-        string second = TempDirectory();
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(first, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(first);
 
             Directory.Delete(Path.Combine(first, "assets", "bgm"), recursive: true);
             session.Save(); // 같은 자리 재저장 — 지워진 폴더가 되살아난다
             Assert.True(Directory.Exists(Path.Combine(first, "assets", "bgm")));
-
-            session.Save(Path.Combine(second, "다른이름.vnproject.json")); // 다른 이름으로 저장
-            Assert.True(Directory.Exists(Path.Combine(second, "assets", "backgrounds")));
-            Assert.True(Directory.Exists(Path.Combine(second, "assets", "portraits")));
-            Assert.True(Directory.Exists(Path.Combine(second, "assets", "bgm")));
-            Assert.True(Directory.Exists(Path.Combine(second, "assets", "sfx")));
-            Assert.True(File.Exists(Path.Combine(second, "ExportedTuning", "base-resolution.json")));
         }
         finally
         {
             Directory.Delete(first, recursive: true);
-            Directory.Delete(second, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void 다른_폴더로_저장하면_정의_에셋이_함께_이사하고_챕터는_매니페스트에_실려_간다()
-    {
-        // 2026-08-21 소유자 보고: [다른 이름으로…]로 새 폴더에 저장해 "새 프로젝트"를
-        // 만들면, 판·작가 화자는 매니페스트에 실려 따라오는데 정의·에셋은 옛 폴더에 남아
-        // 프로젝트가 찢어졌다. 이제 폴더 규약 데이터(정의·에셋)가 함께 복사된다.
-        // (2026-10-29 · D2: 챕터 워크북·대본 폴더를 함께 옮기던 몫은 엑셀 연동과 함께 걷혔다 —
-        // 챕터와 대사는 매니페스트에 산다.)
-        string first = TempDirectory();
-        string second = TempDirectory();
-
-        try
-        {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(first, "project.vnproject.json"));
-            session.Editor.EnsureChapter("ch01");
-
-            File.WriteAllText(Path.Combine(first, "game.definition.json"),
-                """{"variables":[{"name":"trust","type":"number"}],"speakers":[]}""");
-            File.WriteAllBytes(Path.Combine(first, "assets", "backgrounds", "room.png"), [1]);
-            File.WriteAllBytes(Path.Combine(first, "assets", "backgrounds", "hall.png"), [1]);
-
-            // 새 자리에 이미 있는 파일은 불가침이다.
-            Directory.CreateDirectory(Path.Combine(second, "assets", "backgrounds"));
-            File.WriteAllBytes(Path.Combine(second, "assets", "backgrounds", "hall.png"), [2]);
-
-            string moved = Path.Combine(second, "moved.vnproject.json");
-            session.Save(moved);
-
-            Assert.True(File.Exists(Path.Combine(second, "assets", "backgrounds", "room.png")));
-            Assert.Equal(new byte[] { 2 }, File.ReadAllBytes(Path.Combine(second, "assets", "backgrounds", "hall.png")));
-
-            // 이사해 온 정의를 곧바로 읽는다 — 빈 뼈대가 먼저 깔려 진짜 정의를 막으면 안 된다.
-            Assert.Contains(session.Definition.Variables, variable =>
-                string.Equals(variable.Name, "trust", StringComparison.Ordinal));
-            Assert.Contains("함께 복사했습니다", session.StatusMessage);
-
-            // 챕터는 폴더가 아니라 매니페스트에 실려 따라온다.
-            var reopened = new AuthoringSession();
-            reopened.Open(moved);
-            Assert.NotNull(reopened.Editor.FindChapter("ch01"));
-
-            // 복사이지 이동이 아니다 — 옛 매니페스트는 계속 그 폴더에서 산다.
-            Assert.True(File.Exists(Path.Combine(first, "assets", "backgrounds", "room.png")));
-            Assert.True(File.Exists(Path.Combine(first, "game.definition.json")));
-
-            // 같은 폴더 재저장은 이사가 아니다.
-            session.Save();
-            Assert.DoesNotContain("함께 복사했습니다", session.StatusMessage);
-        }
-        finally
-        {
-            Directory.Delete(first, recursive: true);
-            Directory.Delete(second, recursive: true);
         }
     }
 
@@ -444,9 +339,8 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            string projectPath = Path.Combine(directory, "project.vnproject.json");
-            session.Save(projectPath);
+            AuthoringSession session = OpenFresh(directory);
+            string projectPath = session.ManuscriptPath!;
 
             string clip = Path.Combine(source, "main_theme.mp3");
             File.WriteAllBytes(clip, [1, 2]);
@@ -479,8 +373,7 @@ public class AuthoringSessionTests
 
         try
         {
-            var session = new AuthoringSession();
-            session.Save(Path.Combine(directory, "project.vnproject.json"));
+            AuthoringSession session = OpenFresh(directory);
 
             string first = Path.Combine(source, "웃음.png");
             string second = Path.Combine(source, "화남.png");
@@ -501,6 +394,23 @@ public class AuthoringSessionTests
             Directory.Delete(directory, recursive: true);
             Directory.Delete(source, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// director가 쓴 것 같은 빈 원고 하나를 깔고 연 뒤 한 번 저장한다(연출 층 파일 · 에셋 · 튜닝이 준비된다).
+    /// 이 툴은 원고를 만들지 않으므로 원고는 <see cref="ProjectStore"/>로 직접 쓴다.
+    /// </summary>
+    private static AuthoringSession OpenFresh(string directory)
+    {
+        string manuscript = Path.Combine(directory, "project" + ProjectManifestJson.FileExtension);
+        var project = new StoryProject { Title = "원고" };
+        project.Files.Add(new StoryFile(name: "기본 파일"));
+        ProjectStore.Save(manuscript, project);
+
+        var session = new AuthoringSession();
+        session.Open(manuscript);
+        session.Save();
+        return session;
     }
 
     private static string TempDirectory()

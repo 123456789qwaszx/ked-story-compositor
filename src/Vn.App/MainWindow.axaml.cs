@@ -154,10 +154,8 @@ public partial class MainWindow : Window
         _session.SelectionChanged += OnSelectionChanged;
         _session.FileGraphStateChanged += OnFileGraphStateChanged;
 
-        NewButton.Click += OnNewClick;
         OpenButton.Click += OnOpenClick;
         SaveButton.Click += OnSaveClick;
-        SaveAsButton.Click += OnSaveAsClick;
         UndoButton.Click += (_, _) => _session.Editor.Undo();
         RedoButton.Click += (_, _) => _session.Editor.Redo();
         ExportButton.Click += OnExportClick;
@@ -392,27 +390,6 @@ public partial class MainWindow : Window
 
     // ── 파일 ────────────────────────────────────────────────────────────────
 
-    private async void OnNewClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            _session.NewProject();
-
-            // 새 프로젝트는 곧장 한 번 저장한다 (W49) — 저장돼야 프로젝트 폴더가 확정되고
-            // 에셋 폴더·기본 튜닝 살림(W48)이 준비된다.
-            await SaveAsAsync();
-
-            if (_session.ProjectPath is null)
-            {
-                _session.SetStatus("저장을 건너뛰었습니다 — 저장하면 에셋 폴더와 기본 튜닝이 준비됩니다.");
-            }
-        }
-        catch (Exception exception)
-        {
-            Report("새 프로젝트", exception);
-        }
-    }
-
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -428,7 +405,7 @@ public partial class MainWindow : Window
             IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(
                 new FilePickerOpenOptions
                 {
-                    Title = "VnTool 프로젝트 열기",
+                    Title = "연출할 프로젝트 열기 — ked-story-director의 .vnproject.json (또는 이 툴의 .vncompose.json)",
                     AllowMultiple = false,
                     FileTypeFilter = new[] { ProjectFileType() }
                 });
@@ -444,13 +421,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnSaveClick(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// 연출 층을 이 툴의 파일에 쓴다. ⛔ [새 프로젝트] · [다른 이름으로…]는 2026-10-29에 걷혔다 — 이 툴은 원고를
+    /// 만들지 않고, 이 툴의 파일은 원고 옆 한 자리에 산다(<c>docs/plans/compositor-split.md</c> C2).
+    /// </summary>
+    private void OnSaveClick(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (_session.ProjectPath is null)
+            if (_session.ManuscriptPath is null)
             {
-                await SaveAsAsync();
+                _session.SetStatus(AuthoringSession.NoManuscriptMessage);
                 return;
             }
 
@@ -460,43 +441,6 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             Report("저장", exception);
-        }
-    }
-
-    private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await SaveAsAsync();
-        }
-        catch (Exception exception)
-        {
-            Report("저장", exception);
-        }
-    }
-
-    private async Task SaveAsAsync()
-    {
-        IStorageProvider? storage = GetTopLevel(this)?.StorageProvider;
-
-        if (storage is null || !storage.CanSave)
-        {
-            _session.SetStatus("이 환경에서는 저장 창을 열 수 없습니다.");
-            return;
-        }
-
-        IStorageFile? file = await storage.SaveFilePickerAsync(
-            new FilePickerSaveOptions
-            {
-                Title = "VnTool 프로젝트 저장",
-                SuggestedFileName = "project" + ProjectManifestJson.FileExtension,
-                FileTypeChoices = new[] { ProjectFileType() }
-            });
-
-        if (file is not null)
-        {
-            _session.Save(file.Path.LocalPath);
-            RefreshShell();
         }
     }
 
@@ -938,9 +882,9 @@ public partial class MainWindow : Window
 
     private static FilePickerFileType ProjectFileType()
     {
-        return new FilePickerFileType("VnTool 프로젝트")
+        return new FilePickerFileType("연출할 프로젝트")
         {
-            Patterns = new[] { "*.vnproject.json", "*.vnstory.json", "*.json" }
+            Patterns = new[] { "*" + ProjectManifestJson.FileExtension, "*" + CompositionStore.FileExtension }
         };
     }
 
@@ -1007,12 +951,15 @@ public partial class MainWindow : Window
 
     private void RefreshShell()
     {
-        string name = _session.ProjectPath is null
-            ? _session.Project.Title
-            : ProjectDisplayName(_session.ProjectPath);
+        // 이름은 원고의 것이다 — 이 툴의 파일은 원고 옆 그림자라 따로 이름이 없다.
+        string name = _session.ManuscriptPath is null
+            ? "원고를 열지 않음"
+            : ProjectDisplayName(_session.ManuscriptPath);
 
         ProjectNameText.Text = name;
-        ProjectPathText.Text = _session.ProjectPath ?? "저장되지 않음";
+        ProjectPathText.Text = _session.ProjectPath is { } compose
+            ? File.Exists(compose) ? compose : $"{compose} (아직 저장하지 않음)"
+            : "ked-story-director의 프로젝트를 여세요";
         StatusText.Text = _session.StatusMessage;
 
         bool dirty = _session.IsDirty;

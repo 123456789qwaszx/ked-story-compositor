@@ -34,12 +34,21 @@ internal sealed class AuthoringSession
 
     public StoryProject Project => Editor.Project;
 
-    /// <summary>현재 프로젝트 manifest 경로. 아직 저장하지 않았으면 null이다.</summary>
+    /// <summary>
+    /// <b>이 툴의 파일</b>(연출 층, 원고 옆 <c>.vncompose.json</c>) 경로. 원고를 아직 열지 않았으면 null이다.
+    /// 아직 없는 파일일 수 있다 — 첫 저장이 만든다. 에셋 · 튜닝 · 출력 폴더의 상대 경로는 이 자리(= 원고 폴더)가 기준이다.
+    /// </summary>
     public string? ProjectPath { get; private set; }
 
     /// <summary>
+    /// 원고 manifest(<c>.vnproject.json</c>) — ked-story-director의 파일이라 <b>읽기만</b> 한다
+    /// (<c>docs/plans/compositor-split.md</c> K3). 아직 열지 않았으면 null이다.
+    /// </summary>
+    public string? ManuscriptPath { get; private set; }
+
+    /// <summary>
     /// `game.definition.json`의 내용 — 기획자가 소유하는 어휘(스탯 · 조건 · 화자 · 연출 카탈로그).
-    /// 열기 · 저장 · 새 프로젝트가 다시 읽는다.
+    /// 열기 · 저장이 다시 읽는다.
     /// </summary>
     public GameDefinition Definition { get; private set; } = GameDefinition.Empty;
 
@@ -66,7 +75,11 @@ internal sealed class AuthoringSession
 
     public StoryNode? SelectedNode => Project.FindNode(SelectedNodeId);
 
-    public string StatusMessage { get; private set; } = "새 프로젝트입니다. 노드를 추가해 시작하세요.";
+    public string StatusMessage { get; private set; } = NoManuscriptMessage;
+
+    /// <summary>원고를 열기 전의 안내 — 이 툴은 원고를 만들지 않는다.</summary>
+    internal const string NoManuscriptMessage =
+        "ked-story-director의 프로젝트(.vnproject.json)를 여세요 — 연출은 그 옆에 따로 저장됩니다.";
 
     // ── 프리뷰 에셋 ────────────────────────────────────────────────────────
 
@@ -521,44 +534,31 @@ internal sealed class AuthoringSession
 
     // 상태를 모두 맞춘 뒤에 알린다. 알린 다음에 상태를 바꾸면
     // 화면은 방금 지나간 값을 그린 채로 남는다.
-    public void NewProject()
-    {
-        StoryProject project = NewProjectInstance();
 
-        ProjectPath = null;
-        Definition = GameDefinition.Empty;
-        BranchSelection.Clear();
-        SimulationValues.Clear();
-        _savedSnapshot = ProjectSnapshotCodec.Encode(project);
-        StatusMessage = "새 프로젝트입니다. 노드를 추가해 시작하세요.";
-
-        ResetFileGraphState(project);
-        Editor.Replace(project);
-        Select(project.EnumerateNodes().FirstOrDefault()?.Id);
-        RaiseFileGraphStateChanged(
-            activeFileChanged: true,
-            fileListChanged: true);
-    }
-
+    /// <summary>
+    /// 원고 manifest나 이 툴의 파일을 연다 — 둘을 합쳐 한 프로젝트로(<see cref="CompositionStore.Load"/>).
+    /// ⚠ 원고는 <b>맞추지 않는다</b> — 카드 없는 에피소드에 카드를 세우는 일 같은 원고 쓰기는 director의 몫이다.
+    /// </summary>
     public void Open(string path)
     {
-        ProjectLoadResult loaded = ProjectStore.Load(path);
-        (StoryProject project, string alignment) = AlignBoards(loaded.Project);
+        CompositionLoadResult loaded = CompositionStore.Load(path);
+        StoryProject project = loaded.Project;
 
-        ProjectPath = loaded.ManifestPath;
-        Definition = GameDefinition.LoadBeside(loaded.ManifestPath);
+        ManuscriptPath = loaded.ManuscriptPath;
+        ProjectPath = loaded.ComposePath;
+        Definition = GameDefinition.LoadBeside(loaded.ManuscriptPath);
         BranchSelection.Clear();
         SimulationValues.Clear();
         _savedSnapshot = ProjectSnapshotCodec.Encode(project);
         _tuningLibrary = null;
         StatusMessage =
-            $"{Path.GetFileName(ProjectPath)} · 대본 {project.Scripts.Count}개 · " +
+            $"{Path.GetFileName(ManuscriptPath)} · 대본 {project.Scripts.Count}개 · " +
             $"노드 {project.EnumerateNodes().Count()}개 · " +
             $"발행 결과 {project.Results.DialogueResults.Count + project.Results.PresentationResults.Count}개" +
             (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty) +
-            alignment;
+            SourceNote(loaded);
 
-        AppSettingsService.SaveRecentProject(loaded.ManifestPath);
+        AppSettingsService.SaveRecentProject(loaded.ManuscriptPath);
 
         string? activeFileId = project.FindFileContainingNode(project.StartNodeId)?.Id
             ?? project.Files.FirstOrDefault()?.Id;
@@ -571,171 +571,55 @@ internal sealed class AuthoringSession
             fileListChanged: true);
     }
 
-    /// <summary>
-    /// 열 때 판을 챕터에 맞춘다 — <b>저장본 스냅샷을 뜨기 전에</b> (2026-10-29 · D2).
-    ///
-    /// 엑셀 [대본 가져오기]가 걷히며 그 안의 엑셀 아닌 몫(카드 없는 에피소드에 빈 카드,
-    /// 조건 공급)이 여기로 왔다. 규칙은 <see cref="ProjectEditor.AlignBoardsWithChapters"/>에 있다.
-    ///
-    /// ⚠ 스냅샷 전이라 <b>맞춘 것만으로는 저장할 것이 생기지 않는다</b> — 열자마자 "고쳤다"는 표시가
-    /// 뜨면 사람은 자기가 무엇을 건드렸는지 찾는다. 맞춘 결과는 다음 저장에 함께 실리고, 저장 전에
-    /// 닫으면 다음에 열 때 다시 맞춘다(멱등이다).
-    ///
-    /// ⚠ 맞추다 실패해도 <b>여는 일은 막지 않는다</b> — 맞추기는 묶음이라 실패하면 연 그대로 돌아온다.
-    /// </summary>
-    /// <returns>맞춘 프로젝트와, 상태줄에 덧붙일 한 마디(맞춘 것이 없으면 빈 글).</returns>
-    private static (StoryProject Project, string Note) AlignBoards(StoryProject loaded)
+    /// <summary>열었을 때 연출이 어디서 왔는지 한 마디 — 옛 프로젝트에서 가져왔으면 저장이 옮긴다는 것까지.</summary>
+    private static string SourceNote(CompositionLoadResult loaded)
     {
-        var aligner = new ProjectEditor(loaded);
-
-        try
+        string compose = Path.GetFileName(loaded.ComposePath);
+        string note = loaded.Source switch
         {
-            BoardAlignment aligned = aligner.AlignBoardsWithChapters();
+            CompositionSource.EmbeddedInManuscript =>
+                $" · 프로젝트 파일 안의 연출을 가져왔습니다 — 저장하면 {compose}에 따로 남고, 프로젝트 파일은 건드리지 않습니다",
+            CompositionSource.PresentationOriginal =>
+                $" · 옛 원본({CompositionStore.PresentationBackupFolder})에서 연출을 가져왔습니다 — 저장하면 {compose}에 남습니다",
+            _ => string.Empty
+        };
 
-            if (!aligned.Changed)
-            {
-                return (aligner.Project, string.Empty);
-            }
-
-            var parts = new List<string>();
-
-            if (aligned.CardsStood.Count > 0)
-            {
-                parts.Add($"카드가 없던 에피소드 {aligned.CardsStood.Count}개에 빈 카드를 세웠습니다");
-            }
-
-            if (aligned.ScenesLifted.Count > 0)
-            {
-                parts.Add($"자유 씬 {aligned.ScenesLifted.Count}개를 에피소드로 올렸습니다");
-            }
-
-            return (aligner.Project, $" · {string.Join(" · ", parts)} — 저장하면 남습니다.");
-        }
-        catch (Exception exception)
-        {
-            return (aligner.Project, $" · 판을 챕터에 맞추지 못했습니다: {exception.Message}");
-        }
+        return loaded.DroppedLinks > 0
+            ? note + $" · 원고에서 사라진 노드를 가리키던 연출 배선 {loaded.DroppedLinks}개를 버렸습니다"
+            : note;
     }
 
-    public void Save(string? path = null)
+    /// <summary>
+    /// 연출 층을 이 툴의 파일에 쓴다(<see cref="CompositionStore.Save"/>) — <b>원고 파일은 쓰지 않는다</b>.
+    /// 원고를 아직 안 열었으면 쓸 자리가 없다: 이 툴의 파일은 원고 옆에 산다.
+    /// </summary>
+    public void Save()
     {
-        string target = path ?? ProjectPath
-            ?? throw new InvalidOperationException("저장할 경로가 없습니다.");
-        bool firstSave = ProjectPath is null;
-        string? previousManifestPath = ProjectPath;
+        if (ManuscriptPath is null || ProjectPath is null)
+        {
+            throw new InvalidOperationException(NoManuscriptMessage);
+        }
 
-        // 새 프로젝트의 첫 저장 (W48): 에셋 폴더 규약을 프로젝트에 미리 심는다 —
-        // 루트가 저장본에 들어가야 하므로 디스크에 쓰기 전에 지정한다. 오디오도 같은 구조 (W59).
+        bool firstSave = !File.Exists(ProjectPath);
+
+        // 첫 저장 (W48): 에셋 폴더 규약을 미리 심는다 — 루트가 저장본에 들어가야 하므로 디스크에 쓰기 전에
+        // 지정한다. 오디오도 같은 구조 (W59).
         if (firstSave && Project.AssetRoots.IsEmpty)
         {
             Editor.SetAssetRoots("assets/backgrounds", "assets/portraits", "assets/bgm", "assets/sfx");
         }
 
-        ProjectStore.Save(target, Project);
+        CompositionStore.Save(ProjectPath, ManuscriptPath, Project);
 
-        ProjectPath = Path.GetFullPath(target);
-        // 규약 데이터 이사는 정의 읽기보다 먼저다 — 이사해 온 game.definition.json을
-        // 바로 아래 LoadBeside가 읽어야 하고, EnsureProjectFolders가 빈 뼈대를 먼저
-        // 깔면 "있는 파일은 불가침"에 걸려 진짜 정의가 영영 못 들어온다.
-        int carried = CarryProjectData(previousManifestPath, ProjectPath);
         _savedSnapshot = ProjectSnapshotCodec.Encode(Project);
-        Definition = GameDefinition.LoadBeside(ProjectPath);
-        AppSettingsService.SaveRecentProject(ProjectPath);
+        Definition = GameDefinition.LoadBeside(ManuscriptPath);
+        AppSettingsService.SaveRecentProject(ManuscriptPath);
 
         bool provisioned = EnsureProjectFolders();
 
-        // ⛔ 2026-10-29(D2)까지는 저장이 챕터·대본 워크북까지 다시 냈다. 엑셀 연동이 걷혀 저장은
-        //    프로젝트에 쓰는 일 하나다.
         StatusMessage = $"{Path.GetFileName(ProjectPath)}에 저장했습니다." +
-            (carried > 0 ? $" 이전 폴더의 정의·에셋 {carried}개 파일을 함께 복사했습니다." : string.Empty) +
             (provisioned ? " 없던 에셋 폴더·기본 튜닝을 준비했습니다." : string.Empty);
         Changed?.Invoke(this, new ProjectChangedEventArgs(ProjectChangeKind.Content));
-    }
-
-    /// <summary>
-    /// 다른 폴더로 저장 = 프로젝트 이사 (2026-08-21 소유자 보고). 매니페스트만 옮기면
-    /// 프로젝트가 찢어진다: 챕터·판(StoryFile)·대본·작가 화자는 매니페스트에 실려 따라오는데,
-    /// 정의 파일·에셋은 <b>폴더 규약</b>이라 옛 집에 남는다.
-    ///
-    /// 복사이지 이동이 아니다(옛 매니페스트는 계속 그 폴더에서 산다). 새 자리에 이미 있는
-    /// 파일은 불가침이다. `exported/`는 산출물이라 안 옮긴다 — 다음 재읽기의 자동 내보내기가
-    /// 새로 만든다. (2026-10-29 · D2: 챕터 워크북·대본 폴더를 함께 옮기던 몫은 엑셀 연동과 함께 걷혔다.)
-    /// </summary>
-    /// <returns>실제로 복사한 파일 수. 같은 폴더 재저장·첫 저장은 0이다.</returns>
-    private int CarryProjectData(string? previousManifestPath, string targetManifestPath)
-    {
-        if (previousManifestPath is null)
-        {
-            return 0;
-        }
-
-        string? fromRoot = Path.GetDirectoryName(Path.GetFullPath(previousManifestPath));
-        string? toRoot = Path.GetDirectoryName(targetManifestPath);
-
-        if (fromRoot is null || toRoot is null ||
-            string.Equals(fromRoot, toRoot, StringComparison.OrdinalIgnoreCase))
-        {
-            return 0;
-        }
-
-        int copied = 0;
-
-        copied += CopyMissingFile(
-            GameDefinition.PathFor(previousManifestPath), GameDefinition.PathFor(targetManifestPath));
-
-        foreach (string? root in new[]
-        {
-            Project.AssetRoots.BackgroundsPath,
-            Project.AssetRoots.PortraitsPath,
-            Project.AssetRoots.BgmPath,
-            Project.AssetRoots.SfxPath,
-            string.IsNullOrWhiteSpace(Definition.RuntimeTuningPath)
-                ? RuntimeTuningLibrary.DefaultFolderName
-                : Definition.RuntimeTuningPath
-        })
-        {
-            // 절대 경로 루트는 이사와 무관하게 그대로 유효하다 — 옮길 것이 없다.
-            if (string.IsNullOrWhiteSpace(root) || Path.IsPathRooted(root))
-            {
-                continue;
-            }
-
-            copied += CopyMissing(
-                AssetRootSettings.ResolveFrom(previousManifestPath, root),
-                AssetRootSettings.ResolveFrom(targetManifestPath, root));
-        }
-
-        return copied;
-    }
-
-    private static int CopyMissing(string? sourceFolder, string? destinationFolder)
-    {
-        if (sourceFolder is null || destinationFolder is null || !Directory.Exists(sourceFolder))
-        {
-            return 0;
-        }
-
-        int copied = 0;
-
-        foreach (string file in Directory.EnumerateFiles(sourceFolder, "*", SearchOption.AllDirectories))
-        {
-            copied += CopyMissingFile(
-                file, Path.Combine(destinationFolder, Path.GetRelativePath(sourceFolder, file)));
-        }
-
-        return copied;
-    }
-
-    private static int CopyMissingFile(string source, string destination)
-    {
-        if (!File.Exists(source) || File.Exists(destination))
-        {
-            return 0;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        File.Copy(source, destination);
-        return 1;
     }
 
     /// <summary>
