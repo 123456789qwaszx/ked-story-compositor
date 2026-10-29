@@ -79,27 +79,50 @@ public sealed class ChapterDeterministicExportTests : IDisposable
         }
     }
 
+    // ⛔ 2026-10-29(D2)까지 내보내기는 가져온 엑셀 행 번호(`SourceRow`)로 정렬했다. 툴에서 만든 것은
+    //    행이 0이라, 가져온 간선과 툴에서 이은 간선이 섞인 에피소드에서 <b>툴 간선이 맨 앞</b>으로 갔고
+    //    (화면 순서와 게임 선택지 순서가 갈렸다), 툴 간선끼리는 도착 Id 순이었다. 이제 순서는 챕터에
+    //    적힌 목록 그대로다 — 저장하고 다시 열어도 같은 순서이므로 결정성은 그대로다.
+
     [Fact]
-    public void Nodes와_Stats는_SourceRow_순서로_고정된다()
+    public void Nodes와_Stats는_챕터에_적힌_순서_그대로다()
     {
         using JsonDocument json = JsonDocument.Parse(
             ChapterProgressionExporter.Export(Chapter(true), null).Json!);
 
-        Assert.Equal(["trust", "flag"], json.RootElement.GetProperty("Stats")
+        Assert.Equal(["flag", "trust"], json.RootElement.GetProperty("Stats")
             .EnumerateArray().Select(x => x.GetProperty("Key").GetString()!).ToArray());
-        Assert.Equal(["ep1", "ep2", "ep3"], json.RootElement.GetProperty("Nodes")
+        Assert.Equal(["ep1", "ep3", "ep2"], json.RootElement.GetProperty("Nodes")
             .EnumerateArray().Select(x => x.GetProperty("EpisodeId").GetString()!).ToArray());
     }
 
     [Fact]
-    public void NextOptions는_간선_SourceRow_순서를_보존한다()
+    public void NextOptions는_챕터의_간선_순서를_보존한다()
     {
         using JsonDocument json = JsonDocument.Parse(
             ChapterProgressionExporter.Export(Chapter(true), null).Json!);
         JsonElement options = json.RootElement.GetProperty("Nodes")[0].GetProperty("NextOptions");
 
-        Assert.Equal("ep2", options[0].GetProperty("TargetEpisodeId").GetString());
-        Assert.Equal("ep3", options[1].GetProperty("TargetEpisodeId").GetString());
+        Assert.Equal("ep3", options[0].GetProperty("TargetEpisodeId").GetString());
+        Assert.Equal("ep2", options[1].GetProperty("TargetEpisodeId").GetString());
+    }
+
+    [Fact]
+    public void 가져온_간선_뒤에_툴에서_이은_간선은_뒤에_선다()
+    {
+        // 회귀: 행 번호로 정렬하던 시절에는 툴 간선(행 0)이 가져온 간선(행 8)보다 앞에 섰다.
+        ChapterGraphModel chapter = Chapter(false);
+        ChapterGraphModel mixed = new(
+            chapter.ChapterId, chapter.SourcePath, chapter.Episodes,
+            [new ChapterEdge("ep1", "ep2", "가져온 길", null, null, 8),
+             new ChapterEdge("ep1", "ep3", "툴에서 이은 길", null, null, 0)],
+            chapter.Conditions, chapter.Stats, chapter.Fixtures, chapter.Diagnostics);
+
+        using JsonDocument json = JsonDocument.Parse(ChapterProgressionExporter.Export(mixed, null).Json!);
+        JsonElement options = json.RootElement.GetProperty("Nodes")[0].GetProperty("NextOptions");
+
+        Assert.Equal(["가져온 길", "툴에서 이은 길"],
+            options.EnumerateArray().Select(option => option.GetProperty("ChoiceLabel").GetString()!).ToArray());
     }
 
     [Fact]
@@ -157,7 +180,7 @@ public sealed class ChapterDeterministicExportTests : IDisposable
 
         ChapterGraphModel swapped = new(
             original.ChapterId, original.SourcePath, original.Episodes,
-            original.Edges.Select(edge => edge with { SourceRow = 20 - edge.SourceRow }).ToArray(),
+            original.Edges.Reverse().ToArray(),
             original.Conditions, original.Stats, original.Fixtures, original.Diagnostics);
         ChapterExportRun run = service.ExportAll(
             [new ChapterEntry("ch", swapped)], ProjectPath);
@@ -179,7 +202,7 @@ public sealed class ChapterDeterministicExportTests : IDisposable
     private static ChapterGraphModel Chapter(bool orderReversedInMemory) => new(
         "ch", "",
         orderReversedInMemory
-            // 첫 원소는 StartEpisode라는 모델 계약을 지키고, 나머지만 메모리 순서를 섞는다.
+            // 첫 원소는 StartEpisode라는 모델 계약을 지키고, 나머지만 순서를 섞는다.
             ? [Episode("ep1", 2), Episode("ep3", 4), Episode("ep2", 3)]
             : [Episode("ep1", 2), Episode("ep2", 3), Episode("ep3", 4)],
         [

@@ -67,11 +67,12 @@ public sealed class BoolStatSetTests
     // 코어의 §G4 — 이 막는다. 그래서 여기서는 관문이 막는지를 잰다.
 
     [Fact]
-    public void bool에_증감을_쓰면_내보내기가_거부한다()
+    public void bool에_증감을_쓰면_대신_쓸_말을_알려_준다()
     {
-        Assert.Contains(Refusals(Read("met +1")), message =>
-            message.Contains("bool 스탯", StringComparison.Ordinal) &&
-            message.Contains("증감", StringComparison.Ordinal));
+        ChapterGraphModel model = Read("met +1");
+
+        ChapterDiagnostic error = Assert.Single(Errors(model));
+        Assert.Contains("met true", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,17 +80,19 @@ public sealed class BoolStatSetTests
     {
         // 소유자 결정 (2026-08-19) — 지정은 bool에만 연다. 정수까지 열면 줄마다 "더할
         // 것인가 정할 것인가"를 고르게 되고, 스탯이 쌓이는 값이라는 성질이 흐려진다.
-        Assert.Contains(Refusals(Read("trust true")), message =>
-            message.Contains("숫자 스탯", StringComparison.Ordinal) &&
-            message.Contains("지정", StringComparison.Ordinal));
+        ChapterGraphModel model = Read("trust true");
+
+        ChapterDiagnostic error = Assert.Single(Errors(model));
+        Assert.Contains("trust +1", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void 한_간선이_같은_깃발을_두_번_정하면_오류다()
     {
         // 증감은 여러 번이 곧 합계라 뜻이 있지만, 지정은 어느 쪽이 이기는지 아무도 모른다.
-        Assert.Contains(Refusals(Read("met true; met false")), message =>
-            message.Contains("두 번 정한다", StringComparison.Ordinal));
+        ChapterGraphModel model = Read("met true; met false");
+
+        Assert.Contains(Errors(model), item => item.Message.Contains("두 번 정합니다", StringComparison.Ordinal));
     }
 
     [Fact]

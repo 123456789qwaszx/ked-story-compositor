@@ -1289,14 +1289,14 @@ public sealed partial class ProjectEditor
 
         RequireStatKeyFree(chapter, target, replacing: null);
 
-        var stat = new ChapterStat(
+        var stat = BoolBounded(new ChapterStat(
             target,
             string.IsNullOrWhiteSpace(displayName) ? target : displayName.Trim(),
             initial,
             minimum,
             maximum,
             SourceRow: 0,
-            type);
+            type));
 
         Mutate(() => chapter.Stats.Add(stat));
 
@@ -1331,15 +1331,26 @@ public sealed partial class ProjectEditor
             throw new InvalidOperationException($"스탯 '{target}'이 이 챕터에 없습니다.");
         }
 
-        Mutate(() => chapter.Stats[index] = chapter.Stats[index] with
+        Mutate(() => chapter.Stats[index] = BoolBounded(chapter.Stats[index] with
         {
             DisplayName = displayName ?? chapter.Stats[index].DisplayName,
             Initial = initial ?? chapter.Stats[index].Initial,
             Minimum = minimum ?? chapter.Stats[index].Minimum,
             Maximum = maximum ?? chapter.Stats[index].Maximum,
             Type = type ?? chapter.Stats[index].Type
-        });
+        }));
     }
+
+    /// <summary>
+    /// bool 스탯은 값 공간이 0/1 하나다 — 범위를 0~1로 고정하고 처음값은 0이 아니면 1이다.
+    ///
+    /// ⚠ 옛 워크북 리더가 하던 일이다(최소·최대 칸을 읽지 않고 고정했다). 리더가 걷힌 뒤 편집기가
+    /// 경계를 받는 그대로 두면 깃발에 0~100 같은 범위가 붙고, 도달성 증명이 없는 값까지 훑는다.
+    /// </summary>
+    private static ChapterStat BoolBounded(ChapterStat stat) =>
+        stat.Type == ChapterStatType.Bool
+            ? stat with { Minimum = 0, Maximum = 1, Initial = stat.Initial == 0 ? 0 : 1 }
+            : stat;
 
     /// <summary>
     /// 이 키를 써도 되는가 — 겹치면 던진다.

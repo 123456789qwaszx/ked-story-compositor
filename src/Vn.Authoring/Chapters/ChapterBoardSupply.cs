@@ -204,7 +204,7 @@ public static class ChapterBoardSupply
                     warnings.Add(new ChapterDiagnostic(
                         ChapterDiagnosticSeverity.Warning,
                         ChapterDiagnosticCode.ExitIntoLandingCard,
-                        chapter.SourcePath, null, null, null,
+                        chapter.SourcePath, null, null,
                         $"노드 '{dialogue.Name}'의 {exitKind}가 진행이 착지하는 에피소드 " +
                         $"'{target.Name}'을 가리킵니다 — 에피소드 사이의 흐름은 챕터 간선(기획자)이 " +
                         "정합니다. 이 점프는 표시/해금·cleared 기록을 지나치고, 도착 노드를 처음부터 " +

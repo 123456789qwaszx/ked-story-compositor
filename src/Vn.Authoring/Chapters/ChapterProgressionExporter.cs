@@ -93,21 +93,17 @@ public static class ChapterProgressionExporter
             ChapterId = chapter.ChapterId,
             DisplayName = chapter.ChapterId,
             StartEpisodeId = chapter.StartEpisode?.EpisodeId ?? string.Empty,
-            Stats = chapter.Stats
-                .OrderBy(stat => stat.SourceRow)
-                .ThenBy(stat => stat.Key, StringComparer.Ordinal)
-                .Select(Stat).ToList(),
-            Nodes = chapter.Episodes
-                .OrderBy(episode => episode.SourceRow)
-                .ThenBy(episode => episode.EpisodeId, StringComparer.Ordinal)
-                .Select(episode => Node(chapter, episode, via)).ToList()
+            // 순서는 챕터에 적힌 순서 그대로다 (2026-10-29 · D2). 예전에는 가져온 엑셀 행 번호
+            // (`SourceRow`)로 정렬했는데, 툴에서 만든 것은 행이 0이라 가져온 것과 섞이면 순서가 뒤집혔다.
+            Stats = chapter.Stats.Select(Stat).ToList(),
+            Nodes = chapter.Episodes.Select(episode => Node(chapter, episode, via)).ToList()
         };
 
         return ChapterExportBytes.Normalize(JsonSerializer.Serialize(payload, Options));
     }
 
     /// <summary>
-    /// 낸 JSON을 코어 로더에 실어 보고, 거부 사유를 <b>엑셀 자리로 옮겨</b> 돌려준다.
+    /// 낸 JSON을 코어 로더에 실어 보고, 거부 사유를 <b>챕터의 자리(에피소드·간선)로 옮겨</b> 돌려준다.
     /// 실을 수 있으면 빈 목록이다.
     ///
     /// 코어 진단은 <c>Nodes[ep_03].NextOptions[1]</c> 같은 경로를 들고 있다(그 타입의
@@ -147,7 +143,7 @@ public static class ChapterProgressionExporter
     /// <summary>코어 경로(<c>Nodes[ep].NextOptions[i]</c>)를 시트·행으로 옮긴다.</summary>
     private static ChapterDiagnostic Refusal(ChapterGraphModel chapter, string? path, string message)
     {
-        (string? sheet, int? row) = LocateInWorkbook(chapter, path);
+        (string? sheet, int? row) = Locate(chapter, path);
 
         return new ChapterDiagnostic(
             ChapterDiagnosticSeverity.Error,
@@ -155,35 +151,36 @@ public static class ChapterProgressionExporter
             chapter.SourcePath,
             sheet,
             row,
-            null,
             $"진행 코어가 이 챕터를 싣지 못합니다 — {message}" +
             (path is { Length: > 0 } ? $" (코어 경로: {path})" : string.Empty));
     }
 
-    private static (string? Sheet, int? Row) LocateInWorkbook(ChapterGraphModel chapter, string? path)
+    private static (string? Sheet, int? Row) Locate(ChapterGraphModel chapter, string? path)
     {
         if (path is null || Episode(path) is not { } episodeId)
         {
             return (null, null);
         }
 
-        // `Nodes[X].NextOptions[i]` — i는 **그 에피소드에서 나가는 간선의 행 순서**다.
-        // 내보내기가 그 순서로 싣는다(`Node`의 OrderBy SourceRow)므로 여기서도 같게 센다.
+        // `Nodes[X].NextOptions[i]` — i는 **그 에피소드에서 나가는 간선의 순서**다.
+        // 내보내기가 그 순서(챕터에 적힌 순서)로 싣으므로 여기서도 같게 센다.
         if (OptionIndex(path) is { } index)
         {
             List<ChapterEdge> outgoing = chapter.Edges
                 .Where(edge => string.Equals(edge.FromEpisodeId, episodeId, StringComparison.Ordinal))
-                .OrderBy(edge => edge.SourceRow)
                 .ToList();
 
             if (index >= 0 && index < outgoing.Count)
             {
-                return (ChapterSheetNames.Edges, outgoing[index].SourceRow);
+                return (ChapterSheetNames.Edges, RowOf(outgoing[index].SourceRow));
             }
         }
 
-        return (ChapterSheetNames.Episodes, chapter.FindEpisode(episodeId)?.SourceRow);
+        return (ChapterSheetNames.Episodes, RowOf(chapter.FindEpisode(episodeId)?.SourceRow ?? 0));
     }
+
+    /// <summary>가져온 옛 행 번호만 자리로 친다 — 툴에서 만든 것은 0이다.</summary>
+    private static int? RowOf(int sourceRow) => sourceRow > 0 ? sourceRow : null;
 
     private static string? Episode(string path) => Between(path, "Nodes[", "]");
 
@@ -256,11 +253,10 @@ public static class ChapterProgressionExporter
         UnlockConditions = [],
         // v9 — 간선 하나 = NextOption 하나. 문구는 간선의 `선택지` 열 값 그대로이고, 비면
         // 빈 문자열 = 보이지 않는 기본(자동 진행). 조건·잠금·스탯변화·도착도 전부 간선 것이다.
-        // 순서는 `간선` 시트의 행 순서 — 적은 순서가 곧 화면에 뜨는 순서다.
+        // 순서는 챕터에 적힌 간선 순서 — 적은 순서가 곧 화면에 뜨는 순서다. (2026-10-29 · D2: 예전에는
+        // 가져온 엑셀 행 번호로 정렬해, 툴에서 이은 길[행 0]이 가져온 길보다 앞에 섰다.)
         NextOptions = chapter.Edges
             .Where(edge => string.Equals(edge.FromEpisodeId, episode.EpisodeId, StringComparison.Ordinal))
-            .OrderBy(edge => edge.SourceRow)
-            .ThenBy(edge => edge.ToEpisodeId, StringComparer.Ordinal)
             .Select(edge => new NextOptionJson
             {
                 TargetEpisodeId = edge.ToEpisodeId,

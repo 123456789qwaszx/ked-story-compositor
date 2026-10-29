@@ -11,11 +11,11 @@ namespace Vn.Authoring.Tests.Chapters;
 /// ⛔ <b>여기가 뒤집기의 나머지 절반이 서는 자리다.</b> R-E까지는 대사 본문의 주인이 옮겨
 /// 왔고, 에피소드 구조·간선·선택지·조건·스탯은 아직 <c>chapters/{Id}.xlsx</c>가 쥐고 있었다.
 ///
-/// 이 묶음이 지키는 것 넷:
+/// 이 묶음이 지키는 것 둘:
 /// ① 저장하고 다시 열어도 값이 하나도 안 상한다 — <b>주인이 되려면 먼저 잃지 않아야 한다</b>
 /// ② 파생값(조건 해석)은 <b>담지 않고 다시 푼다</b> — 담아 두면 식과 갈린다
-/// ③ 그래프 모델의 부산물(진단·경로·화자 시트)은 저작 값에 안 붙는다
-/// ④ 그래프 모델로 폈다가 다시 받아도(<see cref="ChapterDocument.From"/>) 값이 그대로다
+///
+/// (2026-10-29 · D2: 엑셀에서 들여온 모델을 받던 <c>ChapterDocument.From</c>이 걷혀 그 왕복 검사도 함께 갔다.)
 /// </summary>
 public sealed class ChapterDocumentTests : IDisposable
 {
@@ -110,63 +110,6 @@ public sealed class ChapterDocumentTests : IDisposable
 
         Assert.True(parsed.IsValid);
         Assert.Equal(["trust"], parsed.Parsed.Select(term => term.Key));
-    }
-
-    [Fact]
-    public void 그래프_모델의_부산물은_저작_값에_안_붙는다()
-    {
-        // 모델에 붙은 진단은 <b>그 모델을 만든 쪽의 불평</b>이다. 저작 값으로 받으면서 함께
-        // 들고 오면 프로젝트가 남의 흠을 영원히 진다 — 값의 흠은 펼 때마다 다시 본다.
-        var model = new ChapterGraphModel(
-            "ch01",
-            sourcePath: "옛자리/ch01",
-            episodes: [],
-            edges: [],
-            conditions: [],
-            stats: [],
-            fixtures: [],
-            diagnostics: [new ChapterDiagnostic(
-                ChapterDiagnosticSeverity.Warning,
-                ChapterDiagnosticCode.ColumnHeaderUnexpected,
-                "옛자리/ch01",
-                Sheet: null, Row: null, Column: null,
-                "옛 모델의 흠")],
-            speakers: [new ChapterSpeaker("윌로", "willo", null, 2)],
-            hasSpeakerSheet: true);
-
-        ChapterDocument document = ChapterDocument.From(model);
-        ChapterGraphModel projected = document.ToGraphModel("ch01");
-
-        Assert.Empty(projected.Diagnostics);
-        Assert.Empty(projected.Speakers);
-        Assert.False(projected.HasSpeakerSheet);
-
-        // 그리고 경로는 옛 모델의 것이 아니라 <b>지금 펴면서 준 것</b>이다.
-        Assert.Equal("ch01", projected.SourcePath);
-    }
-
-    [Theory]
-    [InlineData(SampleChapters.Corridor)]
-    [InlineData(SampleChapters.Contract)]
-    public void 그래프_모델로_폈다가_다시_받아도_견본이_그대로다(string sample)
-    {
-        // 읽는 쪽(검증·증명·내보내기·화면)은 전부 그래프 모델을 받는다. 폈다가 다시 받는 사이에
-        // 칸 하나라도 새면, 모델을 거쳐 간 값이 <b>조용히</b> 그 칸을 잃는다.
-        ChapterDocument original = SampleChapters.Load(sample);
-        ChapterDocument roundTripped = ChapterDocument.From(SampleChapters.Model(sample));
-
-        Assert.Equal(Stored(original), Stored(roundTripped));
-
-        // 다시 펴도 같은 모델이다 — 조건 해석까지(②: 담지 않았으니 같은 식에서 같게 풀린다).
-        ChapterGraphModel expected = SampleChapters.Model(sample);
-        ChapterGraphModel again = roundTripped.ToGraphModel(sample);
-
-        Assert.Equal(
-            expected.Conditions.Select(item => (item.Label, item.IsValid)),
-            again.Conditions.Select(item => (item.Label, item.IsValid)));
-        Assert.Equal(
-            expected.Conditions.SelectMany(item => item.Parsed),
-            again.Conditions.SelectMany(item => item.Parsed));
     }
 
     [Fact]

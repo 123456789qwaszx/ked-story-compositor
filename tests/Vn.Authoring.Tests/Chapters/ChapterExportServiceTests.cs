@@ -228,13 +228,13 @@ public sealed class ChapterExportServiceTests : IDisposable
 
         Assert.Equal(ChapterDiagnosticSeverity.Error, problem.Severity);
         Assert.Contains("하나도 없습니다", problem.Message);
-        Assert.Contains("한 번 열어", problem.Message);   // 고치는 법까지 말한다
+        Assert.Contains("다시 열면", problem.Message);   // 고치는 법까지 말한다
     }
 
     [Fact]
-    public void 판은_섰지만_아직_동기화_전이어도_거부한다()
+    public void 판은_섰지만_카드가_아직_없어도_거부한다()
     {
-        // 챕터 목록을 클릭하면 판이 먼저 서고 노드는 동기화가 만든다. 그 사이에 내보내면
+        // 판만 서고 카드가 없는 상태(옛 프로젝트를 맞추기 전)에 내보내면
         // 결과는 판이 아예 없을 때와 같다 — 부를 노드가 하나도 없다.
         var editor = new ProjectEditor(new StoryProject());
         editor.EnsureChapterBoard("ch01");
@@ -266,7 +266,7 @@ public sealed class ChapterExportServiceTests : IDisposable
 
         Assert.Equal(ChapterDiagnosticSeverity.Error, problem.Severity);
         Assert.Contains("ep2", problem.Message);
-        Assert.Contains("이 챕터를 한 번 고르면", problem.Message);   // 고치는 법까지 말한다
+        Assert.Contains("다시 열면", problem.Message);   // 고치는 법까지 말한다
     }
 
     [Fact]

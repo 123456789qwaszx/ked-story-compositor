@@ -104,32 +104,20 @@ public sealed class ChapterSchemaV5Tests
     }
 
     [Fact]
-    public void bool_스탯에_크기_비교나_증감을_쓰면_내보내기가_거부한다()
+    public void bool_스탯에_크기_비교나_증감을_쓰면_오류다()
     {
-        // 2026-10-29 · D2 — 이 검사는 리더(`VerifyBoolStatUsage`)에만 있어 엑셀 연동과 함께
-        // 저작 중 진단에서 빠졌다. 관문(코어의 §G4)은 그대로 막으므로 여기서는 그것을 잰다.
-        //
-        // ⚠ 초기값을 참으로 둔다 — 거짓이면 `seen >= 1`이 처음부터 닫혀 도달성 증명이 먼저
-        //    거부하고, 코어까지 가지 않는다.
-        _editor.AddChapterStat(
-            "ch01", "seen", "프롤로그", initial: 1, minimum: 0, maximum: 1, type: ChapterStatType.Bool);
+        // 2026-10-29 · D2 — 이 검사는 옛 리더(`VerifyBoolStatUsage`)에만 있다가 모델 검사
+        // (`ChapterStructureCheck`)로 옮겨 왔다. 내보내기 관문(코어 §G4)보다 먼저, 고치는 중에 짚는다.
+        _editor.AddChapterStat("ch01", "seen", "프롤로그", type: ChapterStatType.Bool);
         _editor.AddChapterCondition("ch01", "이상한조건", "seen >= 1");
-        _editor.UpdateEdge("ch01", "ep1", "ep2",
-            conditionLabel: "이상한조건", statChanges: "seen +1", matchOptionLabel: "계속");
+        _editor.UpdateEdge("ch01", "ep1", "ep2", statChanges: "seen +1", matchOptionLabel: "계속");
 
-        ChapterExportResult result = ChapterProgressionExporter.Export(Model());
+        ChapterGraphModel model = Model();
 
-        Assert.True(result.Refused);
-        Assert.Contains(result.Validation.All, item =>
-            item.Code == ChapterDiagnosticCode.CoreRefusedChapter &&
-            item.Sheet == ChapterSheetNames.Edges &&
-            item.Message.Contains("bool 스탯", StringComparison.Ordinal) &&
-            item.Message.Contains("Equal", StringComparison.Ordinal));
-        Assert.Contains(result.Validation.All, item =>
-            item.Code == ChapterDiagnosticCode.CoreRefusedChapter &&
-            item.Sheet == ChapterSheetNames.Edges &&
-            item.Message.Contains("bool 스탯", StringComparison.Ordinal) &&
-            item.Message.Contains("증감", StringComparison.Ordinal));
+        Assert.Contains(model.Errors, item =>
+            item.Sheet == ChapterSheetNames.Conditions && item.Message.Contains("bool 스탯"));
+        Assert.Contains(model.Errors, item =>
+            item.Sheet == ChapterSheetNames.Edges && item.Message.Contains("증감"));
     }
 
     // ── v9: 선택지는 전역 문구 사전, 간선이 문구를 직접 적는다 ─────────────────

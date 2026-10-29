@@ -23,7 +23,7 @@ public sealed record ChapterValidationResult(
 /// <c>episodes/{챕터}/*.xlsx</c>를 다시 읽어 리더·평평화의 진단을 합쳤다. 스탯 증감은 이미 챕터
 /// 모델(간선)에서 읽고 "줄이 없는 노드"는 이미 프로젝트(<see cref="VerifyScenesFilled"/>)로 보므로,
 /// 엑셀에서 얻던 것은 <b>산출물에 대한 리더의 불평</b>뿐이었다 — 원본이 같은데 산출물의 상태(없음·
-/// 손상·잠김)로 판정이 달라지는 자리. 엑셀을 읽는 검증은 가져오기(<c>Chapters/Import</c>)에만 있다.
+/// 손상·잠김)로 판정이 달라지는 자리였다. (엑셀 연동 자체는 2026-10-29 · D2에 걷혔다.)
 /// </summary>
 public static class ChapterValidator
 {
@@ -85,12 +85,11 @@ public static class ChapterValidator
                     ChapterDiagnosticCode.EpisodeSceneEmpty,
                     chapter.SourcePath,
                     ChapterSheetNames.Episodes,
-                    episode.SourceRow,
-                    "C",
+                    episode.SourceRow > 0 ? episode.SourceRow : null,
                     // Yarn이 줄 없는 노드를 안 싣는다는 사정은 위 주석의 것이다 (2026-08-26
                     // 소유자: "굳이 말할 필요 없어") — 기획자에게는 고치는 법 한 문장이면 된다.
                     $"'{episode.EpisodeId}'의 대사 노드 '{own.Name}'에 재생할 줄이 하나도 " +
-                    "없습니다. 카드를 더블클릭해 대본을 한 줄이라도 적어 주세요."));
+                    "없습니다. 연출 그래프의 그 카드에 대사를 한 줄이라도 적어 주세요."));
             }
 
         }
@@ -144,10 +143,9 @@ public static class ChapterValidator
                 chapter.SourcePath,
                 ChapterSheetNames.Episodes,
                 null,
-                null,
                 $"'{chapter.ChapterId}' 판에 대사 노드가 하나도 없습니다 — 이대로 내보내면 " +
                 "진행 JSON이 부르는 노드가 전부 없어 게임이 재생을 시작하지 못합니다. " +
-                "챕터를 한 번 열어 대본을 동기화해 주세요."));
+                "프로젝트를 저장하고 다시 열면 에피소드마다 빈 카드가 섭니다."));
 
             return;   // 에피소드마다 같은 말을 반복하지 않는다.
         }
@@ -159,12 +157,11 @@ public static class ChapterValidator
                 ChapterDiagnosticCode.DialogueEntryNodeMissing,
                 chapter.SourcePath,
                 ChapterSheetNames.Episodes,
-                episode.SourceRow,
-                "C",   // v13 (2026-08-25) — `종류`가 걷히며 대사엔트리가 D → C로 당겨졌다.
+                episode.SourceRow > 0 ? episode.SourceRow : null,
                 $"'{episode.EpisodeId}'의 대사엔트리 '{episode.DialogueEntry}'에 해당하는 " +
                 $"대사노드가 '{chapter.ChapterId}' 판에 없습니다. 이대로 내보내면 진행 JSON이 " +
                 "존재하지 않는 대사 노드를 부르고, 로드는 통과하는데 재생만 안 됩니다. " +
-                "챕터 그래프에서 이 챕터를 한 번 고르면 동기화가 노드를 만듭니다."));
+                "프로젝트를 저장하고 다시 열면 에피소드마다 빈 카드가 섭니다."));
         }
     }
 

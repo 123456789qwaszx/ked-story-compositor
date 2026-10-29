@@ -147,7 +147,7 @@ public enum ChapterStatType
 
 /// <summary>
 /// `스탯` 시트 한 행 = Tier 2 키 하나. <see cref="Minimum"/>·<see cref="Maximum"/>는 장식이 아니라
-/// G7 도달성 증명의 <b>탐색 경계</b>다 (§7-5). bool 스탯은 리더가 경계를 0·1로 고정한다 —
+/// G7 도달성 증명의 <b>탐색 경계</b>다 (§7-5). bool 스탯은 편집기가 경계를 0·1로 고정하고 모델 검사가 어긋남을 짚는다(ChapterStructureCheck) —
 /// 프루버·픽스처 워커는 타입을 몰라도 그대로 옳게 돈다.
 /// </summary>
 public sealed record ChapterStat(
@@ -175,21 +175,6 @@ public sealed record ChapterChoiceOption(
     string? Memo,
     int SourceRow);
 
-/// <summary>
-/// `화자` 시트 한 행 (2026-08-16 소유자 지시). 기획자가 챕터에서 화자를 등록하면
-/// 에피소드 워크북의 화자 열(H)이 이 목록의 드롭다운을 받는다.
-///
-/// <b>초상화 매핑의 정본은 여전히 <c>game.definition.json</c>의 speakers다</b> — 이 시트는
-/// 저작 시점의 이름 목록(드롭다운 재료·동기화 경고의 등록 근거)만 소유한다. 캐릭터키는
-/// 참고용으로 함께 적을 수 있으나 툴이 정의 파일에 자동으로 쓰지는 않는다
-/// (시트를 자동으로 믿고 쓰면 오타까지 게임 어휘가 된다 — 변수 [등록]과 같은 원칙).
-/// </summary>
-public sealed record ChapterSpeaker(
-    string Name,
-    string? CharacterId,
-    string? Memo,
-    int SourceRow);
-
 /// <param name="From">고정 선택의 출발 에피소드.</param>
 /// <param name="To">그 선택이 향하는 도착 에피소드.</param>
 public sealed record ChapterFixtureChoice(string From, string To);
@@ -206,7 +191,8 @@ public sealed record ChapterFixture(
     int SourceRow);
 
 /// <summary>
-/// 챕터 워크북 하나를 읽은 결과. <b>오류가 있어도 모델은 만들어진다</b> — 읽힌 데까지 그려 놓고
+/// 챕터 하나를 편 모양 — 검증·증명·내보내기·화면이 읽는다(<see cref="ChapterDocument.ToGraphModel"/>).
+/// <b>오류가 있어도 모델은 만들어진다</b> — 그릴 수 있는 데까지 그려 놓고
 /// 무엇이 잘못됐는지 옆에 세워야 기획자가 고칠 자리를 찾는다. 조용히 빈 화면을 주지 않는다(규칙 14).
 /// 내보내기(G8)는 <see cref="HasErrors"/>를 보고 거부한다.
 /// </summary>
@@ -221,8 +207,6 @@ public sealed class ChapterGraphModel
         IReadOnlyList<ChapterStat> stats,
         IReadOnlyList<ChapterFixture> fixtures,
         IReadOnlyList<ChapterDiagnostic> diagnostics,
-        IReadOnlyList<ChapterSpeaker>? speakers = null,
-        bool hasSpeakerSheet = false,
         IReadOnlyList<ChapterChoiceOption>? choiceOptions = null)
     {
         ChapterId = chapterId;
@@ -233,8 +217,6 @@ public sealed class ChapterGraphModel
         Stats = stats;
         Fixtures = fixtures;
         Diagnostics = diagnostics;
-        Speakers = speakers ?? [];
-        HasSpeakerSheet = hasSpeakerSheet;
         ChoiceOptions = choiceOptions ?? [];
     }
 
@@ -262,15 +244,6 @@ public sealed class ChapterGraphModel
     public IReadOnlyList<ChapterStat> Stats { get; }
 
     public IReadOnlyList<ChapterFixture> Fixtures { get; }
-
-    /// <summary>`화자` 시트의 등록 화자들. 시트가 없으면(구판 워크북) 빈 목록이다.</summary>
-    public IReadOnlyList<ChapterSpeaker> Speakers { get; }
-
-    /// <summary>
-    /// `화자` 시트의 존재 여부. 이 기능(2026-08-16) 전에 만든 워크북에는 시트가 없다 —
-    /// 앱이 챕터를 선택할 때 이 값을 보고 한 번 만들어 준다(마이그레이션).
-    /// </summary>
-    public bool HasSpeakerSheet { get; }
 
     /// <summary>`선택지` 시트 — 챕터가 함께 쓰는 문구 사전 (v9). 인덱스 순으로 선다.</summary>
     public IReadOnlyList<ChapterChoiceOption> ChoiceOptions { get; }

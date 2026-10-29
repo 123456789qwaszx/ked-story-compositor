@@ -360,7 +360,6 @@ public partial class MiniStagePreview : UserControl
             StageChoiceOption[] broken = chapter.Edges
                 .Where(edge => string.Equals(edge.FromEpisodeId, episodeId, StringComparison.Ordinal))
                 .Where(edge => !string.IsNullOrWhiteSpace(edge.OptionLabel))
-                .OrderBy(edge => edge.SourceRow)
                 .Select(edge => BuildAuthoringFallbackOption(run, chapter, file!, source, edge))
                 .ToArray();
 

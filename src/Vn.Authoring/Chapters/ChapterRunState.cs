@@ -151,7 +151,7 @@ public sealed class ChapterRunState
 
     /// <summary>
     /// 현재 에피소드의 표시·잠금·종료·Auto 판정을 런타임 코어에 직접 묻는다.
-    /// SourceIndex를 간선 SourceRow 순서로 되돌려 UI가 같은 선택지를 가리키게 한다.
+    /// SourceIndex를 챕터의 간선 순서로 되돌려 UI가 같은 선택지를 가리키게 한다.
     /// </summary>
     public ChapterRunAdvance? Resolve(string episodeId)
     {
@@ -232,8 +232,6 @@ public sealed class ChapterRunState
 
     private List<ChapterEdge> Outgoing(string episodeId) => _chapter.Edges
         .Where(edge => string.Equals(edge.FromEpisodeId, episodeId, StringComparison.Ordinal))
-        .OrderBy(edge => edge.SourceRow)
-        .ThenBy(edge => edge.ToEpisodeId, StringComparer.Ordinal)
         .ToList();
 
     private void SyncStatsFromRuntime()
