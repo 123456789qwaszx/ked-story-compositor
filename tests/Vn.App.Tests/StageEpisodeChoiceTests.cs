@@ -234,7 +234,7 @@ public sealed class StageEpisodeChoiceTests
         window.Show();
         preview.Attach(session);
 
-        string fileId = session.EnsureChapterBoard("ch05");
+        string fileId = session.Editor.EnsureChapterBoard("ch05");
         session.SelectFile(fileId);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 

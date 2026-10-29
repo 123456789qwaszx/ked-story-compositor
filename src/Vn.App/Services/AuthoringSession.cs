@@ -680,13 +680,6 @@ internal sealed class AuthoringSession
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// 그 챕터의 판을 보장한다. <b>규칙은 <see cref="ProjectEditor.EnsureChapterBoard"/>가
-    /// 갖는다</b> (2026-08-23에 내려갔다 — 세션 상태를 하나도 안 보는 순수 편집 작업이었다).
-    /// 여기 남은 것은 부르는 자리 스물여덟을 안 건드리기 위한 이름 하나뿐이다.
-    /// </summary>
-    internal string EnsureChapterBoard(string chapterId) => Editor.EnsureChapterBoard(chapterId);
-
     internal void SelectFile(string? fileId)
     {
         if (fileId is not null && Project.FindFile(fileId) is null)

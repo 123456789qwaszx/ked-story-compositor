@@ -603,7 +603,13 @@ public partial class MiniStagePreview : UserControl
 
         try
         {
-            string[] ids = _chapters.Select(entry => entry.ChapterId).ToArray();
+            // 씬은 판에 산다 — 판이 없는 챕터에는 무대에 올릴 것이 없다.
+            string[] ids = _session is null
+                ? []
+                : _chapters
+                    .Where(entry => EpisodeNaming.BoardOf(_session.Project, entry.ChapterId) is not null)
+                    .Select(entry => entry.ChapterId)
+                    .ToArray();
 
             if (!ids.SequenceEqual(
                     (ChapterCombo.ItemsSource as IEnumerable<string>) ?? [], StringComparer.Ordinal))
@@ -655,6 +661,8 @@ public partial class MiniStagePreview : UserControl
         // 고른 챕터의 판을 활성으로 — 씬 선택기가 그 판의 씬만 담는다.
         // ⚠ 콤보를 비추는 중에는 안 돈다(_syncingChapter) — 비추는 일이 바꾸는 일이 되면
         //    서로를 부른다.
+        // ⛔ 판을 <b>찾기만</b> 한다(2026-10-29 · C2b). 원고는 ked-story-director의 것이라 여기서 판을
+        //    세우면 저장되지 않는 판이 화면에만 선다 — 판이 없는 챕터는 목록에 오르지 않는다.
         ChapterCombo.SelectionChanged += (_, _) =>
         {
             if (_syncingChapter || _session is null ||
@@ -663,8 +671,7 @@ public partial class MiniStagePreview : UserControl
                 return;
             }
 
-            UiGuard.Run(_session, "챕터 고르기", () =>
-                _session.SelectFile(_session.EnsureChapterBoard(chapterId)));
+            _session.SelectFile(EpisodeNaming.BoardOf(_session.Project, chapterId)?.Id);
         };
 
         // 목록은 열 때마다 다시 짓는다 — 노드 생성·개명·동기화를 따로 구독하지 않아도
