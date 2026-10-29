@@ -44,9 +44,6 @@ public partial class ChapterGraphView : UserControl
     /// <summary>들여오기를 거부당한 챕터 — 전부 아니면 전무라 챕터 단위다 (§5.2).</summary>
     private readonly List<string> _importRefusals = new();
 
-    /// <summary>판 수준 경고 (2단계 가드레일) — 진행이 착지하는 카드로 향하는 출구 등.</summary>
-    private readonly List<ChapterDiagnostic> _boardWarnings = new();
-
     /// <summary>선택된 챕터의 구조 검증 + 도달성 증명 결과 (G7). 워크북을 읽을 때 갱신된다.</summary>
     private ChapterValidationResult? _validation;
 
@@ -539,7 +536,6 @@ public partial class ChapterGraphView : UserControl
     {
         _importDiagnostics.Clear();
         _importRefusals.Clear();
-        _boardWarnings.Clear();
 
         if (_session is null)
         {
@@ -645,12 +641,6 @@ public partial class ChapterGraphView : UserControl
             _session.SetStatus(
                 $"자유 씬 {raised.Count}개를 에피소드로 올렸습니다 — {string.Join(", ", raised)}.");
         }
-
-        // 가드레일 — 진행이 착지하는 카드로 향하는 출구. 막지 않고 크게 말한다.
-        // ⛔ 「자유 노드의 스탯 set」 경고는 2026-09-17에 걷혔다 — 작가 변수가 없어져
-        //    대사에서 스탯에 `<<set>>`을 걸 길 자체가 사라졌다.
-        _boardWarnings.AddRange(
-            ChapterBoardSupply.WarnExitsIntoExcelNodes(_session.Editor, fileId, model));
 
         // 무언가 <b>실제로 바뀌었으면</b> 열려 있는 편집 화면(줄 목록·그래프)을 다시
         // 만들게 알린다 — 대사 수정은 "타이핑 보호" 경로로 전달되어 화면이 옛 줄을 그대로
@@ -4037,13 +4027,25 @@ public partial class ChapterGraphView : UserControl
     /// "숫자는 2개라는데 볼 방법이 없어"). 각 줄이 파일·시트·행·열을 그대로 말하고,
     /// 머리글의 표식이 오류·경고를 든다.
     /// </summary>
+    /// <summary>
+    /// 판 수준 경고 (2단계 가드레일) — 진행이 착지하는 카드로 향하는 출구. 막지 않고 크게 말한다.
+    ///
+    /// ⚠ 예전에는 엑셀 [대본 가져오기]를 누를 때만 셌다(2026-10-29 · D2에서 옮겼다). 그래서 연출
+    /// 그래프에서 출구를 고쳐도 가져오기를 다시 누를 때까지 경고가 남거나 안 떴다. 이제 그릴 때마다
+    /// 판에서 센다 — 판의 노드를 한 번 훑을 뿐이라 가볍다.
+    /// </summary>
+    private IReadOnlyList<ChapterDiagnostic> BoardWarnings(ChapterGraphModel model) =>
+        _session is not null && EpisodeNaming.BoardOf(_session.Project, model.ChapterId) is { } board
+            ? ChapterBoardSupply.WarnExitsIntoLandingCards(_session.Editor, board.Id, model)
+            : Array.Empty<ChapterDiagnostic>();
+
     private void DrawDiagnostics(ChapterGraphModel model)
     {
         // 워크북 읽기 진단 + 검증기(구조·교차·도달성) 진단을 한 목록으로 본다.
         // 같은 진단이 두 곳에서 나올 수 있으므로(리더가 낸 것을 검증기가 다시 담는다) 겹은 지운다.
         List<ChapterDiagnostic> all = model.Diagnostics
             .Concat(_validation?.All ?? Enumerable.Empty<ChapterDiagnostic>())
-            .Concat(_boardWarnings)
+            .Concat(BoardWarnings(model))
             .Distinct()
             .ToList();
 

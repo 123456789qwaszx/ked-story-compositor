@@ -1,4 +1,3 @@
-using ClosedXML.Excel;
 using Vn.Authoring.Definition;
 using Vn.Authoring.Editing;
 using Vn.Authoring.Model;
@@ -152,13 +151,14 @@ public static class ChapterBoardSupply
     }
 
     /// <summary>
-    /// 가드레일 — 판 위 노드의 출구(기본·갈래)가 엑셀노드를 가리키면 경고 (소유자 결정
-    /// 2026-08-14). 에피소드 사이의 흐름은 챕터 간선이 소유하므로, 이 점프는 챕터 장부
+    /// 가드레일 — 판 위 노드의 출구(기본·갈래)가 <b>진행이 착지하는 카드</b>를 가리키면 경고
+    /// (소유자 결정 2026-08-14 · 이름은 2026-10-29에 `WarnExitsIntoExcelNodes`에서 바꿨다 —
+    /// 엑셀이 걷힌 뒤로 "엑셀노드"라는 말이 가리키는 것이 없다). 에피소드 사이의 흐름은 챕터 간선이 소유하므로, 이 점프는 챕터 장부
     /// (표시/해금 검사·에피소드 끝 스탯 환산·cleared 기록)를 전부 지나친다. 게다가 Yarn
     /// 점프는 노드 처음부터 다시 재생하므로 같은 에피소드로의 "복귀"도 함정이다.
     /// 편집기는 후보에서 빼지만, 이미 있는 연결(옛 프로젝트)은 막지 않고 크게 말한다.
     /// </summary>
-    public static IReadOnlyList<ChapterDiagnostic> WarnExitsIntoExcelNodes(
+    public static IReadOnlyList<ChapterDiagnostic> WarnExitsIntoLandingCards(
         ProjectEditor editor,
         string fileId,
         ChapterGraphModel chapter)
@@ -203,7 +203,7 @@ public static class ChapterBoardSupply
                 {
                     warnings.Add(new ChapterDiagnostic(
                         ChapterDiagnosticSeverity.Warning,
-                        ChapterDiagnosticCode.ExitIntoExcelNode,
+                        ChapterDiagnosticCode.ExitIntoLandingCard,
                         chapter.SourcePath, null, null, null,
                         $"노드 '{dialogue.Name}'의 {exitKind}가 진행이 착지하는 에피소드 " +
                         $"'{target.Name}'을 가리킵니다 — 에피소드 사이의 흐름은 챕터 간선(기획자)이 " +

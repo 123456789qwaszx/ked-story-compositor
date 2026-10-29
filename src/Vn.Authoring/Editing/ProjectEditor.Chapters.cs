@@ -1,5 +1,6 @@
 using Vn.Authoring.Model;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Definition;
 
 namespace Vn.Authoring.Editing;
 
@@ -707,8 +708,14 @@ public sealed partial class ProjectEditor
             throw new InvalidOperationException($"조건 라벨 '{label}'이 이미 있습니다.");
         }
 
-        Mutate(() => chapter.Conditions.Add(
-            new ChapterCondition(label, expression, description, Parsed: [], IsValid: false, SourceRow: 0)));
+        // 조건과 그 조건의 공급이 <b>한 변경</b>이다 (2026-10-29 · D2) — 되돌리기 한 번에 함께 간다.
+        Batch(() =>
+        {
+            Mutate(() => chapter.Conditions.Add(
+                new ChapterCondition(label, expression, description, Parsed: [], IsValid: false, SourceRow: 0)));
+
+            SupplyChapterConditions(chapterId);
+        });
     }
 
     /// <summary>챕터 조건의 식·설명을 고친다 — 설정노드의 <c>UpdateCondition</c>과 다른 것이다.</summary>
@@ -720,17 +727,143 @@ public sealed partial class ProjectEditor
             ?? throw new InvalidOperationException($"조건 라벨 '{label}'이 없습니다.");
 
         int index = chapter.Conditions.IndexOf(condition);
+        string? suppliedBefore = SuppliedYarnOf(chapterId, label);
 
-        Mutate(() => chapter.Conditions[index] = condition with
+        Batch(() =>
         {
-            Expression = expression,
-            Description = description ?? condition.Description,
+            Mutate(() => chapter.Conditions[index] = condition with
+            {
+                Expression = expression,
+                Description = description ?? condition.Description,
 
-            // ⚠ 해석은 담지 않는다 — ToGraphModel이 식에서 다시 푼다. 여기서 옛 해석을
-            //    들고 있으면 검증이 고치기 전 값으로 참을 말한다.
-            Parsed = [],
-            IsValid = false
+                // ⚠ 해석은 담지 않는다 — ToGraphModel이 식에서 다시 푼다. 여기서 옛 해석을
+                //    들고 있으면 검증이 고치기 전 값으로 참을 말한다.
+                Parsed = [],
+                IsValid = false
+            });
+
+            RetargetSuppliedCondition(chapterId, label, suppliedBefore);
+            SupplyChapterConditions(chapterId);
         });
+    }
+
+    // ── 판에 공급하는 챕터 조건 (2026-10-29 · D2) ───────────────────────────
+    //
+    // ⛔ 예전에는 이 공급이 <b>엑셀 [대본 가져오기]</b> 안에 숨어 있었다. 그 단추를 누를 때마다
+    //    챕터 조건이 판의 공급 노드(`챕터 {Id} 조건`)로 건너갔고, 그래서 툴에서 조건을 고친 뒤
+    //    가져오기를 안 누르면 대사 노드의 조건 목록이 옛것이었다. 엑셀 연동이 걷힌 지금은
+    //    <b>조건이 바뀌는 그 명령</b>(<see cref="AddChapterCondition"/>·<see cref="UpdateChapterCondition"/>)과
+    //    <b>판이 서는 순간</b>(<see cref="EnsureChapterBoard"/>)이 공급을 부른다.
+
+    /// <summary>판이 있으면 챕터 조건을 그 판의 공급 노드로 보낸다. 멱등이다 — 바뀔 것이 없으면 안 건드린다.</summary>
+    private void SupplyChapterConditions(string chapterId)
+    {
+        if (FindChapter(chapterId) is { } chapter &&
+            EpisodeNaming.BoardOf(Project, chapterId) is { } board)
+        {
+            ChapterBoardSupply.SupplyChapterConditionsToBoard(
+                this, GameDefinition.Empty, board.Id, chapter.ToGraphModel(string.Empty));
+        }
+    }
+
+    /// <summary>이 조건이 지금 판에 공급될 때의 Yarn 식. 식이 비었거나 번역이 안 되면 null이다.</summary>
+    private string? SuppliedYarnOf(string chapterId, string label)
+    {
+        ChapterCondition? parsed = FindChapter(chapterId)?.ToGraphModel(string.Empty).Conditions
+            .FirstOrDefault(item => string.Equals(item.Label, label, StringComparison.Ordinal));
+
+        return parsed is null ? null : ConditionYarnTranslator.Translate(parsed).Yarn;
+    }
+
+    /// <summary>
+    /// 식이 바뀐 조건은 공급 노드에서 <b>Id를 지킨 채</b> 식만 간다.
+    ///
+    /// ⚠ 공급은 식으로 짝을 찾는다(<c>ChapterBoardSupply.RenameSuppliedCondition</c>). 그대로 두면
+    /// 식을 고칠 때마다 <b>새 Id로 하나 더</b> 생기고, 줄에 매달린 전환은 옛 Id를 붙든 채
+    /// 옛 식으로 남는다. 가져오기 단추 시절에는 마지막 모양만 건너가서 덜 보였지만, 이제는
+    /// 고칠 때마다 공급되므로 여기서 막아야 한다.
+    /// </summary>
+    private void RetargetSuppliedCondition(string chapterId, string label, string? before)
+    {
+        string? after = SuppliedYarnOf(chapterId, label);
+
+        if (before is null || after is null || string.Equals(before, after, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        string supplyName = ChapterBoardSupply.ConditionSupplyNodeName(chapterId);
+
+        if (Project.EnumerateNodes().OfType<SetNode>().FirstOrDefault(node =>
+                string.Equals(node.Name, supplyName, StringComparison.Ordinal)) is not { } supply ||
+            supply.Conditions.Any(item =>
+                string.Equals(item.Expression.Trim(), after, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        if (supply.Conditions.FirstOrDefault(item =>
+                string.Equals(item.Expression.Trim(), before, StringComparison.Ordinal)) is { } held)
+        {
+            UpdateCondition(held.Id, label, after);
+        }
+    }
+
+    /// <summary>
+    /// <b>판을 챕터에 맞춘다</b> — 프로젝트를 열 때 한 번 (2026-10-29 · D2).
+    ///
+    /// 엑셀 [대본 가져오기]가 하던 일 중 <b>엑셀이 아니던 몫</b>이 여기 남았다:
+    ///
+    /// <list type="number">
+    /// <item><b>에피소드마다 카드가 선다.</b> 대본이 아직 없는 에피소드에도 빈 카드가 섰다
+    ///   (2026-08-17 소유자: "빈 노드라도 서 있으면 여기에 쓰면 된다가 보인다"). 이제 대사는 카드
+    ///   안에 직접 쓰므로(D4), 카드가 없는 에피소드는 <b>글을 쓸 자리가 없는</b> 에피소드다.</item>
+    /// <item><b>판의 대사 노드는 전부 에피소드다</b> — 어긋난 옛 자유 씬을 올린다(<see cref="LiftFreeScenes"/>).</item>
+    /// <item><b>판이 있는 챕터는 조건을 공급받는다</b>(<see cref="SupplyChapterConditions"/>).</item>
+    /// </list>
+    ///
+    /// 툴 안에서 만든 에피소드는 늘 카드와 함께 서므로(<see cref="AddEpisode"/>) 정상적인 프로젝트에서는
+    /// 할 일이 없다. 어긋남은 엑셀에서 들여온 옛 프로젝트에서 온다.
+    ///
+    /// ⚠ 한 번의 변경이다 — 세션이 아닌 곳에서 불러도 되돌리기 한 번에 돌아간다.
+    /// </summary>
+    public BoardAlignment AlignBoardsWithChapters()
+    {
+        var cards = new List<string>();
+        var lifted = new List<string>();
+
+        Batch(() =>
+        {
+            foreach (ChapterDocument chapter in Project.Chapters.ToList())
+            {
+                string chapterId = chapter.ChapterId;
+
+                List<ChapterEpisode> missing = chapter.Episodes
+                    .Where(episode => EpisodeNaming.CardFor(Project, chapterId, episode.EpisodeId) is null)
+                    .ToList();
+
+                if (missing.Count > 0)
+                {
+                    string fileId = EnsureChapterBoard(chapterId);
+
+                    foreach (ChapterEpisode episode in missing)
+                    {
+                        // 새 카드는 제 장면의 줄에 선다 — 원점에 쌓이면 판을 열었을 때 카드가 한 곳에 겹친다.
+                        (double x, double y) = Graph.NodePlacement.For(Project, chapterId, episode.EpisodeId);
+                        AddDialogueNode(fileId, x, y, EpisodeNaming.NodeNameOf(episode));
+                        cards.Add($"{chapterId}/{episode.EpisodeId}");
+                    }
+                }
+
+                if (EpisodeNaming.BoardOf(Project, chapterId) is not null)
+                {
+                    lifted.AddRange(LiftFreeScenes(chapterId).Select(id => $"{chapterId}/{id}"));
+                    SupplyChapterConditions(chapterId);
+                }
+            }
+        });
+
+        return new BoardAlignment(cards, lifted);
     }
 
 
@@ -1696,3 +1829,17 @@ public sealed record ChapterConditionRemoveOutcome(
 /// <param name="BoardRenamed">판 이름이 따라갔는가(판이 아직 없었으면 거짓).</param>
 /// <param name="SupplyRenamed">조건 공급 노드의 이름이 따라갔는가.</param>
 public sealed record ChapterRenameEffect(bool BoardRenamed, bool SupplyRenamed);
+
+
+/// <summary>
+/// 판 맞추기 한 판의 결과 (2026-10-29 · D2). 둘 다 <c>챕터/에피소드</c> 꼴이다.
+/// </summary>
+/// <param name="CardsStood">카드가 없어서 빈 카드를 세운 에피소드.</param>
+/// <param name="ScenesLifted">에피소드가 없어서 에피소드로 올린 옛 자유 씬.</param>
+public sealed record BoardAlignment(
+    IReadOnlyList<string> CardsStood,
+    IReadOnlyList<string> ScenesLifted)
+{
+    /// <summary>무언가 맞췄는가.</summary>
+    public bool Changed => CardsStood.Count > 0 || ScenesLifted.Count > 0;
+}

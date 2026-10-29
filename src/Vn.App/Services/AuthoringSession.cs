@@ -602,7 +602,7 @@ internal sealed class AuthoringSession
     public void Open(string path)
     {
         ProjectLoadResult loaded = ProjectStore.Load(path);
-        StoryProject project = loaded.Project;
+        (StoryProject project, string alignment) = AlignBoards(loaded.Project);
 
         ProjectPath = loaded.ManifestPath;
         Definition = GameDefinition.LoadBeside(loaded.ManifestPath);
@@ -614,7 +614,8 @@ internal sealed class AuthoringSession
             $"{Path.GetFileName(ProjectPath)} · 대본 {project.Scripts.Count}개 · " +
             $"노드 {project.EnumerateNodes().Count()}개 · " +
             $"발행 결과 {project.Results.DialogueResults.Count + project.Results.PresentationResults.Count}개" +
-            (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty);
+            (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty) +
+            alignment;
 
         AppSettingsService.SaveRecentProject(loaded.ManifestPath);
 
@@ -628,6 +629,52 @@ internal sealed class AuthoringSession
             activeFileChanged: true,
             expandedFilesChanged: true,
             fileListChanged: true);
+    }
+
+    /// <summary>
+    /// 열 때 판을 챕터에 맞춘다 — <b>저장본 스냅샷을 뜨기 전에</b> (2026-10-29 · D2).
+    ///
+    /// 엑셀 [대본 가져오기]가 걷히며 그 안의 엑셀 아닌 몫(카드 없는 에피소드에 빈 카드,
+    /// 조건 공급)이 여기로 왔다. 규칙은 <see cref="ProjectEditor.AlignBoardsWithChapters"/>에 있다.
+    ///
+    /// ⚠ 스냅샷 전이라 <b>맞춘 것만으로는 저장할 것이 생기지 않는다</b> — 열자마자 "고쳤다"는 표시가
+    /// 뜨면 사람은 자기가 무엇을 건드렸는지 찾는다. 맞춘 결과는 다음 저장에 함께 실리고, 저장 전에
+    /// 닫으면 다음에 열 때 다시 맞춘다(멱등이다).
+    ///
+    /// ⚠ 맞추다 실패해도 <b>여는 일은 막지 않는다</b> — 맞추기는 묶음이라 실패하면 연 그대로 돌아온다.
+    /// </summary>
+    /// <returns>맞춘 프로젝트와, 상태줄에 덧붙일 한 마디(맞춘 것이 없으면 빈 글).</returns>
+    private static (StoryProject Project, string Note) AlignBoards(StoryProject loaded)
+    {
+        var aligner = new ProjectEditor(loaded);
+
+        try
+        {
+            BoardAlignment aligned = aligner.AlignBoardsWithChapters();
+
+            if (!aligned.Changed)
+            {
+                return (aligner.Project, string.Empty);
+            }
+
+            var parts = new List<string>();
+
+            if (aligned.CardsStood.Count > 0)
+            {
+                parts.Add($"카드가 없던 에피소드 {aligned.CardsStood.Count}개에 빈 카드를 세웠습니다");
+            }
+
+            if (aligned.ScenesLifted.Count > 0)
+            {
+                parts.Add($"자유 씬 {aligned.ScenesLifted.Count}개를 에피소드로 올렸습니다");
+            }
+
+            return (aligner.Project, $" · {string.Join(" · ", parts)} — 저장하면 남습니다.");
+        }
+        catch (Exception exception)
+        {
+            return (aligner.Project, $" · 판을 챕터에 맞추지 못했습니다: {exception.Message}");
+        }
     }
 
     public void Save(string? path = null)

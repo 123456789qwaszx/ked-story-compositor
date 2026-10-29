@@ -228,7 +228,7 @@ public sealed class ChapterEpisodeNodeTests
         ChapterGraphModel chapter = ChapterWorkbookReader.Read(
             Path.Combine(EpisodesRoot(session), "..", "chapters", "ch05.xlsx"));
 
-        var warnings = ChapterBoardSupply.WarnExitsIntoExcelNodes(session.Editor, fileId, chapter);
+        var warnings = ChapterBoardSupply.WarnExitsIntoLandingCards(session.Editor, fileId, chapter);
 
         Assert.Equal(2, warnings.Count);
         Assert.All(warnings, item =>

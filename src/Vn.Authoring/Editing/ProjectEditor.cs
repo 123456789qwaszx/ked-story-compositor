@@ -2093,12 +2093,20 @@ public sealed partial class ProjectEditor
     /// <returns>그 챕터 판의 파일 Id. 이미 있으면 그대로다.</returns>
     public string EnsureChapterBoard(string chapterId)
     {
-        StoryFile board =
-            Chapters.EpisodeNaming.BoardOf(Project, chapterId) ?? AddStoryFile(chapterId);
+        StoryFile? standing = Chapters.EpisodeNaming.BoardOf(Project, chapterId);
+        StoryFile board = standing ?? AddStoryFile(chapterId);
 
         // 챕터마다 설정 노드 하나가 상시로 선다 (2026-08-17 소유자) — 작가가 만들고 지우는
         // 것이 아니라 챕터에 딸린 자리다.
         EnsureChapterSettingsNode(board.Id);
+
+        // 판이 <b>막 섰으면</b> 챕터 조건이 함께 공급된다 (2026-10-29 · D2). 예전에는 이 일을
+        // 엑셀 [대본 가져오기]가 했다 — 그 단추가 사라진 지금, 조건을 먼저 적고 에피소드를
+        // 나중에 만든 챕터는 여기서 받지 않으면 대사 노드의 조건 목록이 비어 있게 된다.
+        if (standing is null)
+        {
+            SupplyChapterConditions(chapterId);
+        }
 
         return board.Id;
     }
@@ -2314,7 +2322,20 @@ public sealed partial class ProjectEditor
 
     private void Mutate(ProjectChangeKind kind, Action change)
     {
-        _undo.Add(ProjectSnapshotCodec.Encode(Project));
+        // 묶음 안이면 스냅샷은 묶음이 처음에 한 번 떠 두었다 — 여기서 또 뜨면 되돌리기가
+        // 명령 수만큼 쪼개진다.
+        if (_batchDepth == 0)
+        {
+            PushUndo(ProjectSnapshotCodec.Encode(Project));
+        }
+
+        change();
+        Raise(kind);
+    }
+
+    private void PushUndo(string snapshot)
+    {
+        _undo.Add(snapshot);
 
         if (_undo.Count > MaxHistory)
         {
@@ -2322,8 +2343,67 @@ public sealed partial class ProjectEditor
         }
 
         _redo.Clear();
-        change();
-        Raise(kind);
+    }
+
+    /// <summary>지금 열려 있는 묶음의 깊이. 0이면 묶음 밖이다.</summary>
+    private int _batchDepth;
+
+    /// <summary>묶음 안에서 일어난 변경의 종류. 아무것도 안 바뀌었으면 null이다.</summary>
+    private ProjectChangeKind? _batchKind;
+
+    /// <summary>
+    /// 여러 명령을 <b>되돌리기 한 칸 · 알림 한 번</b>으로 묶는다 (2026-10-29 · D2).
+    ///
+    /// <b>왜 필요해졌나</b> — 엑셀 [대본 가져오기]가 걷히며 그 안에 숨어 있던 일(챕터 조건을 판에
+    /// 공급하는 일)이 <b>조건을 고치는 그 명령</b>으로 옮겨 왔다. 조건 하나를 고쳤는데 되돌리기가
+    /// 두 번이어야 하면 사람은 첫 번째에서 "안 돌아갔다"고 본다. 공급은 남의 명령
+    /// (<see cref="AddSetNode"/>·<see cref="AddCondition"/>)을 부르므로, 짓기와 붙이기를 가르는
+    /// 예전 방식(<c>NewDialogueNodeCore</c>)으로는 감당이 안 된다.
+    ///
+    /// ⚠ 안에서 예외가 나면 <b>묶음 전 상태로 되돌리고</b> 다시 던진다 — 반쯤 된 묶음이 남으면
+    /// 되돌리기 한 칸이 무엇을 되돌리는지 아무도 모른다.
+    ///
+    /// ⚠ 묶음 안에서 아무것도 안 바뀌었으면 되돌리기 칸도 알림도 없다.
+    /// </summary>
+    public void Batch(Action change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+
+        if (_batchDepth > 0)
+        {
+            change();
+            return;
+        }
+
+        string before = ProjectSnapshotCodec.Encode(Project);
+        _batchDepth++;
+        _batchKind = null;
+        bool completed = false;
+
+        try
+        {
+            change();
+            completed = true;
+        }
+        finally
+        {
+            _batchDepth--;
+            ProjectChangeKind? kind = _batchKind;
+            _batchKind = null;
+
+            if (kind is { } changed)
+            {
+                if (completed)
+                {
+                    PushUndo(before);
+                    Raise(changed);
+                }
+                else
+                {
+                    Restore(before);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -2344,6 +2424,14 @@ public sealed partial class ProjectEditor
 
     private void Raise(ProjectChangeKind kind)
     {
+        // 묶음 안이면 알림은 묶음이 끝날 때 한 번이다. 종류가 섞이면 구조로 올린다 —
+        // 덜 그려서 낡은 화면이 남는 것보다 한 번 더 그리는 편이 낫다.
+        if (_batchDepth > 0)
+        {
+            _batchKind = _batchKind is null || _batchKind == kind ? kind : ProjectChangeKind.Structure;
+            return;
+        }
+
         Revision++;
         Changed?.Invoke(this, new ProjectChangedEventArgs(kind));
     }
