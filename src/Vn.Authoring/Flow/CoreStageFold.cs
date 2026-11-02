@@ -37,7 +37,7 @@ public static class CoreStageFold
     /// </summary>
     internal static readonly HashSet<string> DrawnCoreCommands = new(StringComparer.Ordinal)
     {
-        "slot", "slot00", "slot01", "slot02",
+        "slot",
         "cast", "pose", "actor",
         "show", "face", "face_swap", "fade_in", "fade_out",
 
@@ -46,14 +46,11 @@ public static class CoreStageFold
         // 뱃지로 남고, 고칠 것이 없는 뱃지는 진짜 미표시를 그 안에 묻는다.
         "slide_in", "slide_out",
 
-        // 좌표 축 (W25에서 그리기 시작) — place 14종.
+        // 좌표 축 (W25에서 그리기 시작). 지점을 이름에 박은 place는 left · center · right 셋만 남았다(2026-11-03).
         "place", "place_left", "place_center", "place_right",
-        "place_tl", "place_top", "place_tr",
-        "place_bl", "place_bottom", "place_br",
-        "place_inner_tl", "place_inner_tr", "place_inner_bl", "place_inner_br",
 
-        // 뎁스 6종.
-        "size", "size_far", "size_back", "size_mid", "size_front", "size_close",
+        // 뎁스.
+        "size",
 
         // 이동·스케일·회전.
         "left", "right", "up", "down",

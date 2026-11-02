@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using Vn.Authoring.Definition;
 using Vn.Authoring.Model;
 using Vn.Authoring.Results;
 
@@ -441,7 +442,7 @@ internal static class PresentationResultJson
                 markers));
         }
 
-        return new PresentationResult(
+        var result = new PresentationResult(
             identity,
             (string?)json["sourceNode"] ?? string.Empty,
             (string?)json["sourceNodeName"] ?? string.Empty,
@@ -449,6 +450,64 @@ internal static class PresentationResultJson
             setupCommands,
             bindings,
             DialogueResultJson.ReadTimestamp(json["publishedAt"]));
+
+        return UpgradeLegacyCommands(result);
+    }
+
+    /// <summary>
+    /// 걷은 별칭 정의(2026-11-03)를 정본으로 옮긴다. 얼린 결과지만 무대 · 프리뷰 · 이미터가 모두 이 객체를 읽으므로
+    /// 여기 한 곳에서 옮긴다 — 옮김은 재생 결과를 바꾸지 않는다(<see cref="LegacyCommandUpgrade"/>).
+    /// 본문이 바뀌므로 내용 해시를 다시 잰다. 원래 무결하지 않았던 결과는 해시를 고치지 않는다 —
+    /// 도구 밖에서 바뀐 흔적을 옮김이 덮어 버리면 안 된다.
+    /// </summary>
+    private static PresentationResult UpgradeLegacyCommands(PresentationResult result)
+    {
+        bool changed = false;
+
+        PresentationResultCommand Upgrade(PresentationResultCommand command)
+        {
+            if (!LegacyCommandUpgrade.TryUpgrade(
+                    command.DefinitionId, command.Arguments,
+                    out string upgradedId, out Dictionary<string, string> upgradedArguments))
+            {
+                return command;
+            }
+
+            changed = true;
+            return command with { DefinitionId = upgradedId, Arguments = upgradedArguments };
+        }
+
+        PresentationResultCommand[] setup = result.SetupCommands.Select(Upgrade).ToArray();
+        PresentationResultBinding[] bindings = result.Bindings
+            .Select(binding => binding with { Commands = binding.Commands.Select(Upgrade).ToArray() })
+            .ToArray();
+
+        if (!changed)
+        {
+            return result;
+        }
+
+        bool wasIntact = ResultHash.IsIntact(result);
+
+        var upgraded = new PresentationResult(
+            result.Identity,
+            result.SourceNodeId,
+            result.SourceNodeName,
+            result.Source,
+            setup,
+            bindings,
+            result.PublishedAt);
+
+        return !wasIntact
+            ? upgraded
+            : new PresentationResult(
+                result.Identity with { ContentHash = ResultHash.Of(upgraded) },
+                result.SourceNodeId,
+                result.SourceNodeName,
+                result.Source,
+                setup,
+                bindings,
+                result.PublishedAt);
     }
 
     private static PresentationResultCommand ReadCommand(JsonObject commandJson, ResultIdentity identity)

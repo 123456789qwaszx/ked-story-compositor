@@ -437,7 +437,7 @@ public sealed class StageQuickTabTests
         MiniStagePreview preview = PreviewWith(
             session, nodeId, lineId,
             Command("char_rig_presentation.fade_out", ("slot", "c1")),
-            Command("common_control.pause", ("seconds", "0.2")));
+            Command("common_control.pause", ("duration", "0.2")));
 
         ButtonStarting(preview.Scene.BuildQuickTabProbe(null), "＋ 묶음")
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -519,7 +519,7 @@ public sealed class StageQuickTabTests
                 new StageQuickStep("char_rig_presentation.fade_out",
                     new Dictionary<string, string>(StringComparer.Ordinal) { ["slot"] = "c1" }),
                 new StageQuickStep("common_control.pause",
-                    new Dictionary<string, string>(StringComparer.Ordinal) { ["seconds"] = "0.2" })
+                    new Dictionary<string, string>(StringComparer.Ordinal) { ["duration"] = "0.2" })
             ])
         ];
 
@@ -558,7 +558,7 @@ public sealed class StageQuickTabTests
                 new StageQuickStep("char_rig_presentation.fade_out",
                     new Dictionary<string, string>(StringComparer.Ordinal) { ["slot"] = "c1" }),
                 new StageQuickStep("common_control.pause",
-                    new Dictionary<string, string>(StringComparer.Ordinal) { ["seconds"] = "0.2" })
+                    new Dictionary<string, string>(StringComparer.Ordinal) { ["duration"] = "0.2" })
             ])
         ];
 

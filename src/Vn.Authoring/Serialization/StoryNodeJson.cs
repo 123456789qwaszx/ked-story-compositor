@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using Vn.Authoring.Definition;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Model;
 using Vn.Authoring.Results;
@@ -392,6 +393,20 @@ internal static class StoryNodeJson
                 }
             }
 
+            // 걷은 별칭 정의(2026-11-03)는 읽을 때 정본으로 옮긴다.
+            if (LegacyCommandUpgrade.TryUpgrade(
+                    preset.CommandDefinitionId, preset.ArgumentValues,
+                    out string upgradedId, out Dictionary<string, string> upgradedArguments))
+            {
+                preset.CommandDefinitionId = upgradedId;
+                preset.ArgumentValues.Clear();
+
+                foreach ((string key, string value) in upgradedArguments)
+                {
+                    preset.ArgumentValues[key] = value;
+                }
+            }
+
             node.Presets.Add(preset);
         }
 
@@ -634,6 +649,24 @@ internal static class StoryNodeJson
             ?? throw new InvalidDataException(
                 $"PresentationNode '{nodeId}'의 command에 id가 없습니다.");
         string definitionId = (string?)commandJson["definitionId"] ?? string.Empty;
+        var stored = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        if (commandJson["arguments"] is JsonObject arguments)
+        {
+            foreach ((string key, JsonNode? value) in arguments)
+            {
+                stored[key] = (string?)value ?? string.Empty;
+            }
+        }
+
+        // 걷은 별칭 정의(2026-11-03)는 읽을 때 정본으로 옮긴다.
+        if (LegacyCommandUpgrade.TryUpgrade(
+                definitionId, stored, out string upgradedId, out Dictionary<string, string> upgradedArguments))
+        {
+            definitionId = upgradedId;
+            stored = upgradedArguments;
+        }
+
         var command = new PresentationCommandInstance(commandId, definitionId)
         {
             PresetId = (string?)commandJson["preset"],
@@ -641,12 +674,9 @@ internal static class StoryNodeJson
             Note = (string?)commandJson["note"]
         };
 
-        if (commandJson["arguments"] is JsonObject arguments)
+        foreach ((string key, string value) in stored)
         {
-            foreach ((string key, JsonNode? value) in arguments)
-            {
-                command.Arguments[key] = (string?)value ?? string.Empty;
-            }
+            command.Arguments[key] = value;
         }
 
         return command;

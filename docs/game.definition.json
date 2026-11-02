@@ -1,5 +1,5 @@
 {
-  "$comment": "ked-presentation-runtime 연출 커맨드 카탈로그 초안 — YarnCommandBridge_Reference.md에서 생성 (2026-08-03)",
+  "$comment": "ked-presentation-runtime 연출 커맨드 카탈로그 — 2026-11-03 정본만 남겼다(인자 하나를 이름에 박은 별칭 · <<Nfr>> · ui_patch · debug_log를 걷음, place_left · center · right는 남김). 옛 정의는 LegacyCommandUpgrade가 읽을 때 정본으로 옮긴다",
   "variables": [],
   "events": [],
   "conditions": [],
@@ -116,49 +116,20 @@
     },
     {
       "id": "common_control.pause",
-      "name": "대기(초)",
+      "name": "대기",
       "category": "common_control",
       "outputCommand": "pause",
       "execution": "queued",
       "parameters": [
         {
-          "name": "seconds",
-          "type": "seconds",
+          "name": "duration",
+          "type": "duration",
           "required": false,
           "default": "0.18",
-          "description": "초 단위 float"
+          "description": "다른 커맨드와 같은 시간 토큰(12fr · 0.5s · 0.5). 맨 숫자는 초"
         }
       ],
-      "notes": "인자는 fr 토큰이 아니라 초 단위 float. <<pause 12fr>>은 파싱 실패 — <<pause 0.5>> 또는 <<12fr>>을 쓸 것."
-    },
-    {
-      "id": "common_control.ui_patch",
-      "name": "UI 테마 패치",
-      "category": "common_control",
-      "outputCommand": "ui_patch",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "themeId",
-          "type": "themeId",
-          "required": false,
-          "default": "default"
-        }
-      ]
-    },
-    {
-      "id": "common_control.debug_log",
-      "name": "디버그 로그",
-      "category": "common_control",
-      "outputCommand": "debug_log",
-      "execution": "immediate",
-      "parameters": [
-        {
-          "name": "message",
-          "type": "string",
-          "required": true
-        }
-      ]
+      "notes": "대기는 이 커맨드 하나다. 옛 프레임 별칭 <<12fr>>은 2026-11-03에 걷었다 — <<pause 12fr>>."
     },
     {
       "id": "common_control.actor",
@@ -182,22 +153,6 @@
       "notes": "별칭은 대소문자를 구분하며 1단계만 치환된다. 미등록 @xxx는 경고 후 원문 그대로 통과."
     },
     {
-      "id": "control.frame_wait",
-      "name": "프레임 대기",
-      "category": "common_control",
-      "outputCommand": "<N>fr",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "n",
-          "type": "int",
-          "required": true,
-          "description": "대기 프레임 수(1~48, 24fps 기준). <<24fr>> = 1초 대기"
-        }
-      ],
-      "notes": "1fr~48fr 프레임 대기 별칭군을 하나로 묶은 합성 엔트리. 실제 출력은 <<Nfr>> 형태(예: <<24fr>>)로 렌더링된다. 49프레임 이상의 별칭은 존재하지 않으므로 pause를 사용할 것."
-    },
-    {
       "id": "char_rig_cast.slot",
       "name": "슬롯 생성",
       "category": "char_rig_cast",
@@ -214,66 +169,6 @@
           "type": "stageKey",
           "required": false,
           "default": "stage00"
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_cast.slot00",
-      "name": "슬롯 생성(Stage00)",
-      "category": "char_rig_cast",
-      "outputCommand": "slot00",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slotKey",
-          "type": "slotKey",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_cast.slot01",
-      "name": "슬롯 생성(Stage01)",
-      "category": "char_rig_cast",
-      "outputCommand": "slot01",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slotKey",
-          "type": "slotKey",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_cast.slot02",
-      "name": "슬롯 생성(Stage02)",
-      "category": "char_rig_cast",
-      "outputCommand": "slot02",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slotKey",
-          "type": "slotKey",
-          "required": true
         },
         {
           "name": "layer",
@@ -618,6 +513,33 @@
       "notes": "제자리 몸짓 — 순변위 0이라 최종 자리가 안 바뀐다(shake·hop·jolt·surprise를 곡선으로 그린다). 변위(t) = 진폭 × 진동곡선(t)이고 축마다 곡선이 따로 간다. 표적은 CharacterPortrait_Shake라 move_by·place·넛지와 다른 노드다 — 같은 라인에 겹쳐 쓰면 '총총 뛰며 이동'이 된다. 진동 곡선은 (0,0)→(1,0)이다. 표준 이징 이름은 핑퐁으로 받고(2026-08-21 증보), 이동 곡선(@이름)을 잘못 끼우면 내보내기가 막는다(CurveKindRules를 툴·런타임이 공유)."
     },
     {
+      "id": "char_rig_staging.motion",
+      "name": "모션 클립",
+      "category": "char_rig_staging",
+      "outputCommand": "motion",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "motion",
+          "type": "motionName",
+          "required": true,
+          "description": "motions.json(ked-motion-tool)의 클립 이름"
+        },
+        {
+          "name": "mode",
+          "type": "motionMode",
+          "required": false,
+          "description": "relative(정착값 위에 더함) · absolute(키 값 그대로). 생략하면 relative"
+        }
+      ],
+      "notes": "길이는 클립이 안다. 클립은 relative/absolute를 모른다 — 셋째 인자가 정한다(motions/2)."
+    },
+    {
       "id": "char_rig_staging.sibling_front",
       "name": "형제 중 최전면으로",
       "category": "char_rig_staging",
@@ -671,66 +593,6 @@
         }
       ],
       "notes": "재부모화 후 Front 정렬된다."
-    },
-    {
-      "id": "char_rig_staging.char_to_s0",
-      "name": "Stage00로 이동",
-      "category": "char_rig_staging",
-      "outputCommand": "char_to_s0",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_staging.char_to_s1",
-      "name": "Stage01로 이동",
-      "category": "char_rig_staging",
-      "outputCommand": "char_to_s1",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_staging.char_to_s2",
-      "name": "Stage02로 이동",
-      "category": "char_rig_staging",
-      "outputCommand": "char_to_s2",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ]
     },
     {
       "id": "char_rig_entrance.show",
@@ -1039,346 +901,6 @@
       "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
     },
     {
-      "id": "char_rig_placement.place_tl",
-      "name": "좌상단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_tl",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_top",
-      "name": "상단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_top",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_tr",
-      "name": "우상단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_tr",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_bl",
-      "name": "좌하단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_bl",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_bottom",
-      "name": "하단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_bottom",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_br",
-      "name": "우하단 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_br",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_inner_tl",
-      "name": "내곽 좌상 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_inner_tl",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_inner_tr",
-      "name": "내곽 우상 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_inner_tr",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_inner_bl",
-      "name": "내곽 좌하 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_inner_bl",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
-      "id": "char_rig_placement.place_inner_br",
-      "name": "내곽 우하 배치",
-      "category": "char_rig_placement",
-      "outputCommand": "place_inner_br",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "focus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "face",
-          "description": "캐릭터 신체 지점(두 번째 인자는 screenPoint가 아님)"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
-    },
-    {
       "id": "char_rig_depth.size",
       "name": "뎁스/크기 설정",
       "category": "char_rig_depth",
@@ -1417,166 +939,6 @@
         }
       ],
       "notes": "알 수 없는 프리셋/포커스는 경고 후 각각 Mid/Bust로 폴백된다."
-    },
-    {
-      "id": "char_rig_depth.size_far",
-      "name": "뎁스 Far",
-      "category": "char_rig_depth",
-      "outputCommand": "size_far",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "preserveFocus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "bust"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ]
-    },
-    {
-      "id": "char_rig_depth.size_back",
-      "name": "뎁스 Back",
-      "category": "char_rig_depth",
-      "outputCommand": "size_back",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "preserveFocus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "bust"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ]
-    },
-    {
-      "id": "char_rig_depth.size_mid",
-      "name": "뎁스 Mid",
-      "category": "char_rig_depth",
-      "outputCommand": "size_mid",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "preserveFocus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "bust"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ]
-    },
-    {
-      "id": "char_rig_depth.size_front",
-      "name": "뎁스 Front",
-      "category": "char_rig_depth",
-      "outputCommand": "size_front",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "preserveFocus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "bust"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ]
-    },
-    {
-      "id": "char_rig_depth.size_close",
-      "name": "뎁스 Close",
-      "category": "char_rig_depth",
-      "outputCommand": "size_close",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "preserveFocus",
-          "type": "focusPreset",
-          "required": false,
-          "default": "bust"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "0fr"
-        },
-        {
-          "name": "ease",
-          "type": "ease",
-          "required": false,
-          "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
-        }
-      ]
     },
     {
       "id": "char_rig_depth.size_reset",
@@ -1894,7 +1256,7 @@
         },
         {
           "name": "preset",
-          "type": "presetKey",
+          "type": "visualPreset",
           "required": true,
           "description": "clear/focus/defocus/dim/silhouette/inner_rim/outer_rim 및 별칭"
         },
@@ -1914,190 +1276,8 @@
       ]
     },
     {
-      "id": "char_rig_visual.char_visual_focus",
-      "name": "포커스(강조)",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_focus",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "10fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_defocus",
-      "name": "디포커스(후퇴)",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_defocus",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "17fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_dim",
-      "name": "딤",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_dim",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "6fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_silhouette",
-      "name": "실루엣",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_silhouette",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "6fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_inner_rim",
-      "name": "안쪽 림 라이트",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_inner_rim",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "6fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_outer_rim",
-      "name": "외곽 림 라이트",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_outer_rim",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "intensity",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0~1"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "6fr"
-        }
-      ]
-    },
-    {
-      "id": "char_rig_visual.char_visual_clear",
-      "name": "비주얼 효과 제거",
-      "category": "char_rig_visual",
-      "outputCommand": "char_visual_clear",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "6fr"
-        }
-      ]
-    },
-    {
       "id": "background.bg_spawn",
-      "name": "배경 생성(Stage00/Far)",
+      "name": "배경 생성",
       "category": "background",
       "outputCommand": "bg_spawn",
       "execution": "queued",
@@ -2111,81 +1291,18 @@
           "name": "spriteKey",
           "type": "spriteKey",
           "required": true
-        }
-      ]
-    },
-    {
-      "id": "background.bg_slot00",
-      "name": "배경 생성(Stage00)",
-      "category": "background",
-      "outputCommand": "bg_slot00",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "rigKey",
-          "type": "rigKey",
-          "required": true
         },
         {
-          "name": "spriteKey",
-          "type": "spriteKey",
-          "required": true
+          "name": "stage",
+          "type": "stageKey",
+          "required": false,
+          "description": "생략하면 stage00 (런타임 파서 표의 생략값)"
         },
         {
           "name": "layer",
           "type": "layerKey",
           "required": false,
-          "default": "far"
-        }
-      ]
-    },
-    {
-      "id": "background.bg_slot01",
-      "name": "배경 생성(Stage01)",
-      "category": "background",
-      "outputCommand": "bg_slot01",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "rigKey",
-          "type": "rigKey",
-          "required": true
-        },
-        {
-          "name": "spriteKey",
-          "type": "spriteKey",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "far"
-        }
-      ]
-    },
-    {
-      "id": "background.bg_slot02",
-      "name": "배경 생성(Stage02)",
-      "category": "background",
-      "outputCommand": "bg_slot02",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "rigKey",
-          "type": "rigKey",
-          "required": true
-        },
-        {
-          "name": "spriteKey",
-          "type": "spriteKey",
-          "required": true
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "far"
+          "description": "생략하면 far (런타임 파서 표의 생략값)"
         }
       ]
     },
@@ -2490,17 +1607,23 @@
       ]
     },
     {
-      "id": "transition.tx_slant_in",
-      "name": "사선 마스크 인",
+      "id": "transition.tx",
+      "name": "마스크 트랜지션",
       "category": "transition",
-      "outputCommand": "tx_slant_in",
+      "outputCommand": "tx",
       "execution": "queued",
       "parameters": [
+        {
+          "name": "preset",
+          "type": "maskPreset",
+          "required": true,
+          "description": "StageMaskMotionPresetDB의 키(slant_in · hstrip_open · iris_in · daze_close · strip_cover …)"
+        },
         {
           "name": "stage",
           "type": "stageKey",
           "required": false,
-          "default": "01"
+          "description": "생략하면 stage01 (런타임 파서 표의 생략값)"
         },
         {
           "name": "duration",
@@ -2508,364 +1631,8 @@
           "required": false,
           "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
         }
-      ]
-    },
-    {
-      "id": "transition.tx_slant_out",
-      "name": "사선 마스크 아웃",
-      "category": "transition",
-      "outputCommand": "tx_slant_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_hstrip_open",
-      "name": "가로 스트립 열기",
-      "category": "transition",
-      "outputCommand": "tx_hstrip_open",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_hstrip_close",
-      "name": "가로 스트립 닫기",
-      "category": "transition",
-      "outputCommand": "tx_hstrip_close",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_hstrip_in",
-      "name": "가로 스트립 컷 인",
-      "category": "transition",
-      "outputCommand": "tx_hstrip_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_hstrip_out",
-      "name": "가로 스트립 컷 아웃",
-      "category": "transition",
-      "outputCommand": "tx_hstrip_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_vstrip_open",
-      "name": "세로 스트립 열기",
-      "category": "transition",
-      "outputCommand": "tx_vstrip_open",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_vstrip_close",
-      "name": "세로 스트립 닫기",
-      "category": "transition",
-      "outputCommand": "tx_vstrip_close",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_vstrip_in",
-      "name": "세로 스트립 컷 인",
-      "category": "transition",
-      "outputCommand": "tx_vstrip_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_vstrip_out",
-      "name": "세로 스트립 컷 아웃",
-      "category": "transition",
-      "outputCommand": "tx_vstrip_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_band_in",
-      "name": "대각 밴드 인",
-      "category": "transition",
-      "outputCommand": "tx_band_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_band_out",
-      "name": "대각 밴드 아웃",
-      "category": "transition",
-      "outputCommand": "tx_band_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_iris_in",
-      "name": "아이리스 인",
-      "category": "transition",
-      "outputCommand": "tx_iris_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_iris_out",
-      "name": "아이리스 아웃",
-      "category": "transition",
-      "outputCommand": "tx_iris_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "01"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_daze_in",
-      "name": "몽롱함 페이드 인",
-      "category": "transition",
-      "outputCommand": "tx_daze_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "00"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_daze_out",
-      "name": "몽롱함 페이드 아웃",
-      "category": "transition",
-      "outputCommand": "tx_daze_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "00"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_strip_in",
-      "name": "세로 스트립 커버",
-      "category": "transition",
-      "outputCommand": "tx_strip_in",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "00"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
-    },
-    {
-      "id": "transition.tx_strip_out",
-      "name": "세로 스트립 커버 해제",
-      "category": "transition",
-      "outputCommand": "tx_strip_out",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "00"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "description": "빈 문자열이면 프리셋 자체의 duration 사용(durationOverride=-1). 값을 주면 오버라이드, 0이면 즉시 커밋"
-        }
-      ]
+      ],
+      "notes": "옛 tx_<이름> 18개를 이 하나로 접었다(2026-11-03). tx_daze_in → daze_close, tx_daze_out → daze_open, tx_strip_in → strip_cover, tx_strip_out → strip_clear."
     },
     {
       "id": "transition.tx_stage_mask_clear",
@@ -3076,7 +1843,7 @@
     },
     {
       "id": "screen_blur.screen_blur",
-      "name": "뎁스 블러(Stage00)",
+      "name": "뎁스 블러",
       "category": "screen_blur",
       "outputCommand": "screen_blur",
       "execution": "queued",
@@ -3093,52 +1860,12 @@
           "required": false,
           "default": "1",
           "description": "0 초과면 표시, 0 이하면 비활성"
-        }
-      ],
-      "notes": "layerKey 파싱 실패 시 커맨드 자체가 조용히 무시된다(스펙 큐잉 안 됨). blurRadius가 0 이하면 비활성."
-    },
-    {
-      "id": "screen_blur.screen_blur_s1",
-      "name": "뎁스 블러(Stage01)",
-      "category": "screen_blur",
-      "outputCommand": "screen_blur_s1",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
         },
         {
-          "name": "blurRadius",
-          "type": "float",
+          "name": "stage",
+          "type": "stageKey",
           "required": false,
-          "default": "1",
-          "description": "0 초과면 표시, 0 이하면 비활성"
-        }
-      ],
-      "notes": "layerKey 파싱 실패 시 커맨드 자체가 조용히 무시된다(스펙 큐잉 안 됨). blurRadius가 0 이하면 비활성."
-    },
-    {
-      "id": "screen_blur.screen_blur_s2",
-      "name": "뎁스 블러(Stage02)",
-      "category": "screen_blur",
-      "outputCommand": "screen_blur_s2",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        },
-        {
-          "name": "blurRadius",
-          "type": "float",
-          "required": false,
-          "default": "1",
-          "description": "0 초과면 표시, 0 이하면 비활성"
+          "description": "생략하면 stage00 (런타임 파서 표의 생략값)"
         }
       ],
       "notes": "layerKey 파싱 실패 시 커맨드 자체가 조용히 무시된다(스펙 큐잉 안 됨). blurRadius가 0 이하면 비활성."

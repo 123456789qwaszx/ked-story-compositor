@@ -156,7 +156,7 @@ public sealed class StageQuickCommandTests
     {
         var editor = new ProjectEditor(new StoryProject());
 
-        editor.PinQuickCommand(Chip("긴 암전", Step("transition.tx_daze_in")));
+        editor.PinQuickCommand(Chip("긴 암전", Step("transition.tx", ("preset", "daze_close"), ("stage", "stage00"))));
         Assert.NotNull(editor.Project.QuickCommands);
 
         editor.Undo();
@@ -170,18 +170,18 @@ public sealed class StageQuickCommandTests
     {
         var project = new StoryProject
         {
-            QuickCommands = [Chip("짧은 사이", Step("common_control.pause", ("seconds", "0.3")))]
+            QuickCommands = [Chip("짧은 사이", Step("common_control.pause", ("duration", "0.3s")))]
         };
 
         ProjectManifest manifest = ProjectManifestJson.Read(ProjectManifestJson.Write(project));
         StageQuickCommand fromManifest = Assert.Single(manifest.QuickCommands!);
         Assert.Equal("짧은 사이", fromManifest.DisplayName);
         Assert.Equal("common_control.pause", fromManifest.Steps[0].DefinitionId);
-        Assert.Equal("0.3", fromManifest.Steps[0].Arguments["seconds"]);
+        Assert.Equal("0.3s", fromManifest.Steps[0].Arguments["duration"]);
 
         StoryProject decoded = ProjectSnapshotCodec.Decode(ProjectSnapshotCodec.Encode(project));
         StageQuickCommand fromSnapshot = Assert.Single(decoded.QuickCommands!);
-        Assert.Equal("0.3", fromSnapshot.Steps[0].Arguments["seconds"]);
+        Assert.Equal("0.3s", fromSnapshot.Steps[0].Arguments["duration"]);
     }
 
     // ── 묶음 칩 (2026-08-24 소유자: "여러개의 커맨드 단위로 커스텀") ──────────
@@ -194,7 +194,7 @@ public sealed class StageQuickCommandTests
 
         editor.AppendQuickCommandSteps(index, [
             Step("char_rig_presentation.slide_out", ("slot", "c1"), ("direction", "right")),
-            Step("common_control.pause", ("seconds", "0.2"))
+            Step("common_control.pause", ("duration", "0.2"))
         ]);
 
         StageQuickCommand chip = editor.Project.EffectiveQuickCommands[index];
@@ -227,7 +227,7 @@ public sealed class StageQuickCommandTests
         Assert.Equal(ProjectEditor.DefaultQuickBundleName, created.DisplayName);
         Assert.Empty(created.Steps);
 
-        editor.AppendQuickCommandSteps(index, [Step("common_control.pause", ("seconds", "0.2"))]);
+        editor.AppendQuickCommandSteps(index, [Step("common_control.pause", ("duration", "0.2"))]);
         Assert.Single(editor.Project.EffectiveQuickCommands[index].Steps);
 
         // 잘못 담은 것을 하나씩 빼는 것은 정상이다 — 그때 칩째 사라지면 담던 자리를 잃는다.
@@ -281,14 +281,14 @@ public sealed class StageQuickCommandTests
         var editor = new ProjectEditor(new StoryProject());
         int index = editor.PinQuickCommand(Chip(
             "둘",
-            Step("common_control.pause", ("seconds", "0.2")),
-            Step("common_control.pause", ("seconds", "0.5"))));
+            Step("common_control.pause", ("duration", "0.2")),
+            Step("common_control.pause", ("duration", "0.5"))));
 
-        editor.SetQuickCommandArgument(index, stepIndex: 1, "seconds", "0.9");
+        editor.SetQuickCommandArgument(index, stepIndex: 1, "duration", "0.9");
 
         StageQuickCommand chip = editor.Project.EffectiveQuickCommands[index];
-        Assert.Equal("0.2", chip.Steps[0].Arguments["seconds"]);
-        Assert.Equal("0.9", chip.Steps[1].Arguments["seconds"]);
+        Assert.Equal("0.2", chip.Steps[0].Arguments["duration"]);
+        Assert.Equal("0.9", chip.Steps[1].Arguments["duration"]);
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public sealed class StageQuickCommandTests
         // 순서가 뜻이므로 같은 커맨드 둘을 뒤집은 것은 "같은 것을 두 번 담은" 것이 아니다.
         var editor = new ProjectEditor(new StoryProject());
         StageQuickStep fade = Step("char_rig_presentation.fade_out", ("slot", "c1"));
-        StageQuickStep wait = Step("common_control.pause", ("seconds", "0.2"));
+        StageQuickStep wait = Step("common_control.pause", ("duration", "0.2"));
 
         int first = editor.PinQuickCommand(Chip("A", fade, wait));
         int second = editor.PinQuickCommand(Chip("B", wait, fade));
@@ -316,7 +316,7 @@ public sealed class StageQuickCommandTests
                 Chip(
                     "퇴장 한 벌",
                     Step("char_rig_presentation.fade_out", ("slot", "c1")),
-                    Step("common_control.pause", ("seconds", "0.2")))
+                    Step("common_control.pause", ("duration", "0.2")))
             ]
         };
 
@@ -324,7 +324,7 @@ public sealed class StageQuickCommandTests
         StageQuickCommand fromManifest = Assert.Single(manifest.QuickCommands!);
         Assert.Equal(2, fromManifest.Steps.Count);
         Assert.Equal("char_rig_presentation.fade_out", fromManifest.Steps[0].DefinitionId);
-        Assert.Equal("0.2", fromManifest.Steps[1].Arguments["seconds"]);
+        Assert.Equal("0.2", fromManifest.Steps[1].Arguments["duration"]);
 
         StoryProject decoded = ProjectSnapshotCodec.Decode(ProjectSnapshotCodec.Encode(project));
         Assert.Equal(2, Assert.Single(decoded.QuickCommands!).Steps.Count);

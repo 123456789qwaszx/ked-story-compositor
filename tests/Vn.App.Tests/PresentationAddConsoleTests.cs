@@ -76,11 +76,11 @@ public sealed class PresentationAddConsoleTests
         Assert.NotEmpty(ItemsOf(console));
 
         // 검색은 탭을 덮는다 — 전 범위 평면 결과. TextChanged는 비동기라 잡을 돌린다.
-        boxes[0].Text = "size_close";
+        boxes[0].Text = "size";
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         Button hit = Assert.Single(ItemsOf(console), item =>
             item.GetLogicalDescendants().OfType<TextBlock>()
-                .Any(text => (text.Text ?? "").Contains("<<size_close>>", StringComparison.Ordinal)));
+                .Any(text => (text.Text ?? "").Contains("<<size>>", StringComparison.Ordinal)));
 
         // 항목 클릭 = 그 라인에 커맨드가 붙고 콘솔이 닫힌다.
         hit.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -88,7 +88,7 @@ public sealed class PresentationAddConsoleTests
         Assert.True(closed);
         PresentationNode node = session.Project.FindPresentation(nodeId)!;
         PresentationCommandInstance added = Assert.Single(node.FindBinding(lineId)!.Commands);
-        Assert.Equal("char_rig_depth.size_close", added.DefinitionId);
+        Assert.Equal("char_rig_depth.size", added.DefinitionId);
     });
 
     [Fact]
@@ -99,9 +99,12 @@ public sealed class PresentationAddConsoleTests
         Control console = editor.BuildAddConsole(null, setup: true, () => { })!;
         TextBox search = console.GetLogicalDescendants().OfType<TextBox>().First();
 
-        search.Text = "size_far";
+        search.Text = "size";
         Avalonia.Threading.Dispatcher.UIThread.RunJobs(); // TextChanged는 비동기다
-        ItemsOf(console)[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        ItemsOf(console)
+            .First(item => item.GetLogicalDescendants().OfType<TextBlock>()
+                .Any(text => (text.Text ?? "").Contains("<<size>>", StringComparison.Ordinal)))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         PresentationNode node = session.Project.FindPresentation(nodeId)!;
         Assert.Single(node.SetupCommands);
@@ -110,6 +113,6 @@ public sealed class PresentationAddConsoleTests
         Control next = editor.BuildAddConsole(null, setup: true, () => { })!;
         Button first = ItemsOf(next).First();
         Assert.Contains(first.GetLogicalDescendants().OfType<TextBlock>(),
-            text => (text.Text ?? "").Contains("<<size_far>>", StringComparison.Ordinal));
+            text => (text.Text ?? "").Contains("<<size>>", StringComparison.Ordinal));
     });
 }

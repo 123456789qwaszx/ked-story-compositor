@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Definition;
 using Vn.Authoring.Model;
 using Vn.Authoring.Results;
 
@@ -328,10 +329,13 @@ public static class ProjectManifestJson
             return Array.Empty<string>();
         }
 
+        // 걷은 별칭 정의(2026-11-03)는 정본 id로 — 둘이 같은 정본으로 모이면 하나만 남긴다.
         return array
             .Select(item => (string?)item)
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Cast<string>()
+            .Select(LegacyCommandUpgrade.UpgradeId)
+            .Distinct(StringComparer.Ordinal)
             .Take(StoryProject.MaxRecentCommands)
             .ToArray();
     }
@@ -481,7 +485,11 @@ public static class ProjectManifestJson
                     }
                 }
 
-                steps.Add(new StageQuickStep(definitionId, arguments));
+                // 걷은 별칭 정의(2026-11-03)는 읽을 때 정본으로 옮긴다.
+                steps.Add(LegacyCommandUpgrade.TryUpgrade(
+                        definitionId, arguments, out string upgradedId, out Dictionary<string, string> upgradedArguments)
+                    ? new StageQuickStep(upgradedId, upgradedArguments)
+                    : new StageQuickStep(definitionId, arguments));
             }
 
             // 단계 없는 칩은 <b>버리지 않는다</b> — 막 만든 빈 묶음이 그 모양이다

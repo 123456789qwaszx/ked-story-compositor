@@ -23,8 +23,22 @@ public static class ArgumentTokenCandidates
         ["stageKey"] = ["stage00", "stage01", "stage02"],
         ["layerKey"] = ["far", "back", "mid", "front", "close"],
         ["focusPreset"] = ["face", "bust", "body", "feet", "hand_left", "hand_right"],
-        ["screenPoint"] = ["center", "left", "right", "top", "bottom", "tl", "tr", "bl", "br"],
+        ["screenPoint"] = ["center", "left", "right", "top", "bottom", "tl", "tr", "bl", "br",
+            "inner_tl", "inner_tr", "inner_bl", "inner_br"],
         ["depthPreset"] = ["far", "back", "mid", "front", "close"],
+
+        // 2026-11-03 정본만 남기면서 이름에 박혀 있던 것이 인자로 내려왔다(place_* · char_visual_* · tx_*).
+        ["visualPreset"] = ["focus", "defocus", "dim", "silhouette", "inner_rim", "outer_rim", "clear"],
+        ["maskPreset"] =
+        [
+            "slant_in", "slant_out",
+            "hstrip_open", "hstrip_close", "hstrip_in", "hstrip_out",
+            "vstrip_open", "vstrip_close", "vstrip_in", "vstrip_out",
+            "band_in", "band_out", "iris_in", "iris_out",
+            "shutter_close", "shutter_open", "daze_close", "daze_open",
+            "strip_cover", "strip_clear"
+        ],
+        ["motionMode"] = ["relative", "absolute"],
         ["boxKind"] = ["Portrait", "Speaker", "LetterBox", "OnlyText", "BlackBook", "Surface"]
     };
 

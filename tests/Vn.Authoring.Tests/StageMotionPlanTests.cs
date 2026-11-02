@@ -186,8 +186,8 @@ public class StageMotionPlanTests
         StageMotionPlan plan = Plan(
             Command("char_rig_placement.place_left",
                 ("slot", "c1"), ("focus", "face"), ("duration", "12fr"), ("ease", "OutBack")),
-            Command("char_rig_depth.size_close",
-                ("slot", "c1"), ("preserveFocus", "bust"), ("duration", "10fr"), ("ease", "Linear")))!;
+            Command("char_rig_depth.size",
+                ("slot", "c1"), ("depth", "close"), ("preserveFocus", "bust"), ("duration", "10fr"), ("ease", "Linear")))!;
 
         Assert.Equal(
             [EaseKind.OutBack, EaseKind.Linear],

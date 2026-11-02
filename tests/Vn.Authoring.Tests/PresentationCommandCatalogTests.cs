@@ -28,7 +28,10 @@ public class PresentationCommandCatalogTests
         // 2026-08-21: 제자리 몸짓 gesture 개통 → 126.
         // 2026-10-29: 런타임이 배경 리그를 지웠다 — bg_*는 캐스팅하지 않은 캐릭터 슬롯이 됐고
         // bg_place·bg_size가 어휘에서 빠졌다 → 124. 카테고리는 15 그대로(background에 9개가 남았다).
-        Assert.Equal(124, catalog.Definitions.Count);
+        // 2026-11-03: 런타임이 정본만 남겼다 — 인자 하나를 이름에 박은 별칭 51개(slotNN · char_to_sN · bg_slotNN ·
+        // screen_blur_sN · place_* 10 · size_<라벨> 5 · char_visual_<프리셋> 7 · tx_<프리셋> 18)와 <N>fr · ui_patch ·
+        // debug_log를 걷고(-54), 정본 tx와 빠져 있던 motion을 더했다(+2) → 72. 카테고리는 15 그대로.
+        Assert.Equal(72, catalog.Definitions.Count);
         Assert.Equal(15, catalog.Categories.Count);
         Assert.Same(catalog, PresentationCommandCatalog.For(definition: null));
     }
@@ -47,21 +50,16 @@ public class PresentationCommandCatalogTests
             .Select(item => item.OutputCommandName)
             .ToHashSet(StringComparer.Ordinal);
 
-        // 예외는 한쪽에 하나씩이고, 둘 다 사유가 있다. 늘리려면 사유를 여기 적어야 한다.
-        //   <N>fr  — 1fr~48fr 동적 별칭군을 묶은 합성 항목이라 등록 이름과 글자가 다르다.
-        //   motion — 런타임에만 있다. 카탈로그에 넣는 일은 연출 툴인 이 저장소가 맡고, 아직 하지 않았다
-        //            (docs/plans/director-split.md §4 — 모션 이름은 ked-motion-tool의 motions.json에서).
-        // (face_swap은 2026-08-20부터 툴 전용 예외였는데, 지금은 런타임도 등록한다 — 예외에서 뺐다.)
-        string[] toolOnly = ["<N>fr"];
-        string[] runtimeOnly = ["motion"];
+        // 예외는 없다(2026-11-03). 전에는 툴 쪽에 <N>fr(1fr~48fr 동적 별칭을 묶은 합성 항목),
+        // 런타임 쪽에 motion이 있었다 — 런타임이 <<Nfr>>을 걷었고(<<pause 12fr>>), motion은 카탈로그에 넣었다.
+        // 예외를 다시 만들려면 사유를 여기 적어야 한다.
+        Assert.Equal(
+            Array.Empty<string>(),
+            catalog.Except(runtime).OrderBy(name => name, StringComparer.Ordinal));
 
         Assert.Equal(
             Array.Empty<string>(),
-            catalog.Except(runtime).Except(toolOnly).OrderBy(name => name, StringComparer.Ordinal));
-
-        Assert.Equal(
-            Array.Empty<string>(),
-            runtime.Except(catalog).Except(runtimeOnly).OrderBy(name => name, StringComparer.Ordinal));
+            runtime.Except(catalog).OrderBy(name => name, StringComparer.Ordinal));
     }
 
     [Fact]
@@ -84,7 +82,7 @@ public class PresentationCommandCatalogTests
         // 기본값이 실려 오는 예 — `control_flow.pres_hold`가 이 자리였는데 2026-08-18에
         // 카탈로그에서 걷혔다(런타임에 `pres_*`가 없다).
         PresentationCommandDefinition pause = catalog.Find("common_control.pause")!;
-        Assert.Equal("0.18", pause.DefaultArgumentValues()["seconds"]);
+        Assert.Equal("0.18", pause.DefaultArgumentValues()["duration"]);
     }
 
     [Fact]

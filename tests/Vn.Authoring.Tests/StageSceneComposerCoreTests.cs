@@ -138,7 +138,7 @@ public class StageSceneComposerCoreTests
     }
 
     [Fact]
-    public void size_close가_초상을_더_크게_그린다()
+    public void size_close면_초상을_더_크게_그린다()
     {
         StageCommand[] common =
         [
@@ -148,10 +148,10 @@ public class StageSceneComposerCoreTests
         ];
 
         StagePortraitPlacement mid = SinglePortrait(
-            CoreState([.. common, new StageCommand("size_mid", ["c1"])]),
+            CoreState([.. common, new StageCommand("size", ["c1", "mid"])]),
             Projection("c1"));
         StagePortraitPlacement close = SinglePortrait(
-            CoreState([.. common, new StageCommand("size_close", ["c1"])]),
+            CoreState([.. common, new StageCommand("size", ["c1", "close"])]),
             Projection("c1"));
 
         Assert.True(
@@ -247,11 +247,11 @@ public class StageSceneComposerCoreTests
             new StageCommand("slot", ["c1"]),
             new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]),
             new StageCommand("show", ["c1"]),
-            new StageCommand("size_close", ["c1"]),
+            new StageCommand("size", ["c1", "close"]),
             new StageCommand("slot", ["c2"]),
             new StageCommand("cast", ["c2", "parkeunseol", "a", "1"]),
             new StageCommand("show", ["c2"]),
-            new StageCommand("size_far", ["c2"]));
+            new StageCommand("size", ["c2", "far"]));
 
         StageSceneLayout layout = StageSceneComposer.Compose(
             Projection("c1", "c2"), speakerName: null, speakerCharacterId: null, Width, Height, core);

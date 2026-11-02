@@ -8,19 +8,17 @@
 #   여기에 여러 줄로 쓰인 등록(핸들러 이름이 다음 줄에 오는 형태)이 빠지므로,
 #   실제로는 파일 전체에서 AddCommandHandler 블록을 훑어 이름만 모은다.
 #
-# 동적 별칭 1fr~48fr(BindFramePauseAliases)은 이름이 48개로 불어나므로 여기 싣지 않는다.
-# 카탈로그는 그것을 합성 항목 <N>fr 하나로 들고, 테스트가 예외로 안다.
+# 2026-11-03부터 런타임은 정본만 등록한다 — 인자 하나를 이름에 박은 별칭(slotNN · char_to_sN · bg_slotNN ·
+# screen_blur_sN · place_* · size_<라벨> · char_visual_<프리셋> · tx_<프리셋>)과 프레임 대기 별칭 <<Nfr>>,
+# ui_patch · debug_log를 걷었다(place_left · center · right는 남김). 그래서 이 목록과 카탈로그는 예외 없이 같다.
 #
-# 스냅샷 시점: 2026-10-29 (재생 저장소 dev 701d3a3f — 배경 리그 제거로 bg_place·bg_size가 빠졌다.
-#   그 사이 motion·face_swap이 등록됐다)
+# 스냅샷 시점: 2026-11-03 (무대 ked-stage-runtime refactor/canonical-commands의 파서 표 67개 +
+#   재생 저장소 브리지의 대사창 5개 — box_hide · box_show · box_close · surface_layout · surface_reset)
 actor
 bg_fade_in
 bg_fade_out
 bg_move
 bg_scale
-bg_slot00
-bg_slot01
-bg_slot02
 bg_spawn
 bg_sprite
 bgm
@@ -32,18 +30,7 @@ char_move_to
 char_rotate_to
 char_scale_to
 char_to
-char_to_s0
-char_to_s1
-char_to_s2
 char_visual
-char_visual_clear
-char_visual_defocus
-char_visual_dim
-char_visual_focus
-char_visual_inner_rim
-char_visual_outer_rim
-char_visual_silhouette
-debug_log
 down
 face
 face_swap
@@ -59,19 +46,9 @@ move_by
 move_reset
 pause
 place
-place_bl
-place_bottom
-place_br
 place_center
-place_inner_bl
-place_inner_br
-place_inner_tl
-place_inner_tr
 place_left
 place_right
-place_tl
-place_top
-place_tr
 pose
 right
 rotate_by
@@ -80,8 +57,6 @@ scale_by
 scale_reset
 screen_blur
 screen_blur_reset
-screen_blur_s1
-screen_blur_s2
 screen_flash
 screen_flash_clear
 screen_noise
@@ -98,42 +73,16 @@ show
 sibling_back
 sibling_front
 size
-size_back
-size_close
-size_far
-size_front
-size_mid
 size_reset
 slide_in
 slide_out
 slot
-slot00
-slot01
-slot02
 stop_all_sfx
 stop_bgm
 stop_voice
 surface_layout
 surface_reset
-tx_band_in
-tx_band_out
-tx_daze_in
-tx_daze_out
-tx_hstrip_close
-tx_hstrip_in
-tx_hstrip_open
-tx_hstrip_out
-tx_iris_in
-tx_iris_out
-tx_slant_in
-tx_slant_out
+tx
 tx_stage_mask_clear
-tx_strip_in
-tx_strip_out
-tx_vstrip_close
-tx_vstrip_in
-tx_vstrip_open
-tx_vstrip_out
-ui_patch
 up
 voice

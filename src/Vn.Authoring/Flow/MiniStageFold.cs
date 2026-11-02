@@ -228,14 +228,14 @@ public static class MiniStageFold
 
         switch (definition.OutputCommandName)
         {
-            case "bg_spawn" or "bg_sprite" or "bg_slot00" or "bg_slot01" or "bg_slot02"
+            case "bg_spawn" or "bg_sprite"
                 when Arg("spriteKey") is { } spriteKey:
                 state.BackgroundKey = spriteKey;
                 // 리그 키도 접는다 — 직접 조작의 배경 교체(bg_sprite)가 대상 리그를 알아야 한다.
                 state.BackgroundRigKey = Arg("rigKey") ?? state.BackgroundRigKey;
                 break;
 
-            case "slot" or "slot00" or "slot01" or "slot02" when Arg("slotKey") is { } slotKey:
+            case "slot" when Arg("slotKey") is { } slotKey:
                 EnsureSlot(state, slotKey);
                 break;
 
