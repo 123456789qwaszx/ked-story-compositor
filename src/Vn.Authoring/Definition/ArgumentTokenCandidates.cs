@@ -27,7 +27,7 @@ public static class ArgumentTokenCandidates
             "inner_tl", "inner_tr", "inner_bl", "inner_br"],
         ["depthPreset"] = ["far", "back", "mid", "front", "close"],
 
-        // 2026-11-03 정본만 남기면서 이름에 박혀 있던 것이 인자로 내려왔다(place_* · char_visual_* · tx_*).
+        // 2026-11-03 정본만 남기면서 이름에 박혀 있던 것이 인자로 내려왔다(place_* · tx_*). visualPreset은 일반형 char_visual의 것.
         ["visualPreset"] = ["focus", "defocus", "dim", "silhouette", "inner_rim", "outer_rim", "clear"],
         ["maskPreset"] =
         [

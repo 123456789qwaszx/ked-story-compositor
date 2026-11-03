@@ -73,11 +73,12 @@ public class CommandTextTests
     [Fact]
     public void 숫자_타입_불일치는_오류다()
     {
-        // char_visual의 intensity는 float다. (int 인자는 2026-11-03 frame_wait의 n이 걷히며 카탈로그에서 사라졌다.)
-        CommandTextParseResult parsed = CommandText.Parse("<<char_visual c1 dim 넘김>>", Catalog);
+        // frame_wait의 n은 int다 — W65 이후 카탈로그에 남은 유일한 int 인자다.
+        // (출력이 <<Nfr>> 형태인 합성 항목이라 정의 Id로 지목한다.)
+        CommandTextParseResult parsed = CommandText.Parse("control.frame_wait 넘김", Catalog);
 
         Assert.False(parsed.Success);
-        Assert.Contains("숫자", parsed.Error, StringComparison.Ordinal);
+        Assert.Contains("정수", parsed.Error, StringComparison.Ordinal);
     }
 
     [Fact]

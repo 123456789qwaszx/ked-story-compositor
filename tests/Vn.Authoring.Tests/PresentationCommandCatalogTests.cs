@@ -28,10 +28,11 @@ public class PresentationCommandCatalogTests
         // 2026-08-21: 제자리 몸짓 gesture 개통 → 126.
         // 2026-10-29: 런타임이 배경 리그를 지웠다 — bg_*는 캐스팅하지 않은 캐릭터 슬롯이 됐고
         // bg_place·bg_size가 어휘에서 빠졌다 → 124. 카테고리는 15 그대로(background에 9개가 남았다).
-        // 2026-11-03: 런타임이 정본만 남겼다 — 인자 하나를 이름에 박은 별칭 51개(slotNN · char_to_sN · bg_slotNN ·
-        // screen_blur_sN · place_* 10 · size_<라벨> 5 · char_visual_<프리셋> 7 · tx_<프리셋> 18)와 <N>fr · ui_patch ·
-        // debug_log를 걷고(-54), 정본 tx와 빠져 있던 motion을 더했다(+2) → 72. 카테고리는 15 그대로.
-        Assert.Equal(72, catalog.Definitions.Count);
+        // 2026-11-03: 런타임이 정본만 남겼다 — 인자 하나를 이름에 박은 별칭 44개(slotNN · char_to_sN · bg_slotNN ·
+        // screen_blur_sN · place_* 10 · size_<라벨> 5 · tx_<프리셋> 18)와 ui_patch · debug_log를 걷고(-46),
+        // 정본 tx와 빠져 있던 motion을 더했다(+2) → 80. 프레임 대기 <N>fr과 char_visual_<효과> 일곱은
+        // 소유자 결정으로 남았다. 카테고리는 15 그대로.
+        Assert.Equal(80, catalog.Definitions.Count);
         Assert.Equal(15, catalog.Categories.Count);
         Assert.Same(catalog, PresentationCommandCatalog.For(definition: null));
     }
@@ -50,12 +51,14 @@ public class PresentationCommandCatalogTests
             .Select(item => item.OutputCommandName)
             .ToHashSet(StringComparer.Ordinal);
 
-        // 예외는 없다(2026-11-03). 전에는 툴 쪽에 <N>fr(1fr~48fr 동적 별칭을 묶은 합성 항목),
-        // 런타임 쪽에 motion이 있었다 — 런타임이 <<Nfr>>을 걷었고(<<pause 12fr>>), motion은 카탈로그에 넣었다.
-        // 예외를 다시 만들려면 사유를 여기 적어야 한다.
+        // 예외는 툴 쪽에 하나다. 늘리려면 사유를 여기 적어야 한다.
+        //   <N>fr  — 1fr~48fr 동적 별칭군을 묶은 합성 항목이라 등록 이름과 글자가 다르다.
+        // (motion은 런타임 전용 예외였는데 2026-11-03에 카탈로그에 넣었다 — 예외에서 뺐다.)
+        string[] toolOnly = ["<N>fr"];
+
         Assert.Equal(
             Array.Empty<string>(),
-            catalog.Except(runtime).OrderBy(name => name, StringComparer.Ordinal));
+            catalog.Except(runtime).Except(toolOnly).OrderBy(name => name, StringComparer.Ordinal));
 
         Assert.Equal(
             Array.Empty<string>(),

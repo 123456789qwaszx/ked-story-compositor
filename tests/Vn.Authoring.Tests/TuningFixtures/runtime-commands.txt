@@ -8,11 +8,14 @@
 #   여기에 여러 줄로 쓰인 등록(핸들러 이름이 다음 줄에 오는 형태)이 빠지므로,
 #   실제로는 파일 전체에서 AddCommandHandler 블록을 훑어 이름만 모은다.
 #
-# 2026-11-03부터 런타임은 정본만 등록한다 — 인자 하나를 이름에 박은 별칭(slotNN · char_to_sN · bg_slotNN ·
-# screen_blur_sN · place_* · size_<라벨> · char_visual_<프리셋> · tx_<프리셋>)과 프레임 대기 별칭 <<Nfr>>,
-# ui_patch · debug_log를 걷었다(place_left · center · right는 남김). 그래서 이 목록과 카탈로그는 예외 없이 같다.
+# 동적 별칭 1fr~48fr(BindFramePauseAliases)은 이름이 48개로 불어나므로 여기 싣지 않는다.
+# 카탈로그는 그것을 합성 항목 <N>fr 하나로 들고, 테스트가 예외로 안다.
 #
-# 스냅샷 시점: 2026-11-03 (무대 ked-stage-runtime refactor/canonical-commands의 파서 표 67개 +
+# 2026-11-03부터 런타임은 정본만 등록한다 — 인자 하나를 이름에 박은 별칭(slotNN · char_to_sN · bg_slotNN ·
+# screen_blur_sN · place_* · size_<라벨> · tx_<프리셋>)과 ui_patch · debug_log를 걷었다.
+# 예외(소유자 결정): place_left · center · right, 프레임 대기 <<Nfr>>, char_visual_<효과> 일곱.
+#
+# 스냅샷 시점: 2026-11-03 (무대 ked-stage-runtime refactor/canonical-commands @ 316602e의 파서 표 74개 +
 #   재생 저장소 브리지의 대사창 5개 — box_hide · box_show · box_close · surface_layout · surface_reset)
 actor
 bg_fade_in
@@ -31,6 +34,13 @@ char_rotate_to
 char_scale_to
 char_to
 char_visual
+char_visual_clear
+char_visual_defocus
+char_visual_dim
+char_visual_focus
+char_visual_inner_rim
+char_visual_outer_rim
+char_visual_silhouette
 down
 face
 face_swap

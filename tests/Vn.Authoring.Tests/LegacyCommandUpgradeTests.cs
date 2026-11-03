@@ -33,12 +33,12 @@ public class LegacyCommandUpgradeTests
             Assert.Null(legacy == "common_control.pause" ? null : catalog.Find(legacy));
 
             LegacyCommandUpgrade.TryUpgrade(
-                legacy, Args(("seconds", "0.3"), ("n", "12")), out string id, out Dictionary<string, string> arguments);
+                legacy, Args(("seconds", "0.3")), out string id, out Dictionary<string, string> arguments);
 
             PresentationCommandDefinition target = catalog.Find(id)
                 ?? throw new Xunit.Sdk.XunitException($"{legacy} → {id}가 카탈로그에 없다");
 
-            foreach (string key in arguments.Keys.Where(key => key is not "seconds" and not "n"))
+            foreach (string key in arguments.Keys.Where(key => key is not "seconds"))
             {
                 Assert.True(target.FindParameter(key) is not null, $"{legacy} → {id}: 인자 '{key}'가 목적지에 없다");
             }
@@ -60,27 +60,26 @@ public class LegacyCommandUpgradeTests
     }
 
     [Fact]
-    public void 남긴_place_셋은_옮기지_않는다()
+    public void 남긴_예외는_옮기지_않는다()
     {
-        Assert.False(LegacyCommandUpgrade.TryUpgrade(
-            "char_rig_placement.place_left", Args(("slot", "c1")), out _, out _));
+        // 소유자 결정(2026-11-03): place_left · center · right, 프레임 대기, char_visual_<효과>는 정본이다.
+        foreach (string id in new[]
+                 {
+                     "char_rig_placement.place_left", "control.frame_wait",
+                     "char_rig_visual.char_visual_focus", "char_rig_visual.char_visual_clear"
+                 })
+        {
+            Assert.False(LegacyCommandUpgrade.TryUpgrade(id, Args(("slot", "c1"), ("n", "12")), out _, out _), id);
+            Assert.NotNull(PresentationCommandCatalog.Default.Find(id));
+        }
     }
 
     [Fact]
-    public void size_라벨과_char_visual_프리셋은_인자가_된다()
+    public void size_라벨은_인자가_된다()
     {
         (string id, Dictionary<string, string> args) = Upgrade("char_rig_depth.size_close", ("slot", "c1"));
         Assert.Equal("char_rig_depth.size", id);
         Assert.Equal("close", args["depth"]);
-
-        // char_visual 정본의 시간 생략값은 6fr. focus는 10fr였다 — 명시해 옮긴다.
-        (id, args) = Upgrade("char_rig_visual.char_visual_focus", ("slot", "c1"));
-        Assert.Equal("char_rig_visual.char_visual", id);
-        Assert.Equal("focus", args["preset"]);
-        Assert.Equal("10fr", args["duration"]);
-
-        (_, args) = Upgrade("char_rig_visual.char_visual_dim", ("slot", "c1"));
-        Assert.False(args.ContainsKey("duration"), "dim은 생략값이 같으므로 쓰지 않는다");
     }
 
     [Fact]
@@ -107,14 +106,9 @@ public class LegacyCommandUpgradeTests
     }
 
     [Fact]
-    public void 프레임_대기와_옛_pause는_시간_토큰_pause가_된다()
+    public void 옛_pause의_초_인자는_시간_토큰_인자가_된다()
     {
-        (string id, Dictionary<string, string> args) = Upgrade("control.frame_wait", ("n", "12"));
-        Assert.Equal("common_control.pause", id);
-        Assert.Equal("12fr", args["duration"]);
-        Assert.False(args.ContainsKey("n"));
-
-        (id, args) = Upgrade("common_control.pause", ("seconds", "0.5"));
+        (string id, Dictionary<string, string> args) = Upgrade("common_control.pause", ("seconds", "0.5"));
         Assert.Equal("common_control.pause", id);
         Assert.Equal("0.5", args["duration"]);
 

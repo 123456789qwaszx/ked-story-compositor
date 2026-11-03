@@ -4,15 +4,16 @@ namespace Vn.Authoring.Definition;
 /// 걷은 별칭 정의 → 정본 정의 (2026-11-03).
 ///
 /// 런타임 어휘에서 "인자 하나를 이름에 박아 다시 부르던" 이름(slotNN · char_to_sN · bg_slotNN · screen_blur_sN ·
-/// place_* · size_&lt;라벨&gt; · char_visual_&lt;프리셋&gt; · tx_&lt;프리셋&gt; · &lt;&lt;Nfr&gt;&gt;)을 걷고 정본만 남겼다.
-/// 예외는 place_left · place_center · place_right 셋이다(소유자 결정). 카탈로그에도 정본만 있다.
+/// place_* · size_&lt;라벨&gt; · tx_&lt;프리셋&gt;)을 걷고 정본만 남겼다. 카탈로그에도 정본만 있다.
+/// 예외(소유자 결정)는 걷지 않았으므로 옮기지 않는다: place_left · place_center · place_right,
+/// 프레임 대기 &lt;&lt;Nfr&gt;&gt;(control.frame_wait), char_visual_&lt;효과&gt; 일곱(캐릭터 비주얼은 이름에서 효과가 드러나야 한다).
 ///
 /// 이 툴의 데이터는 명령을 <b>정의 id + 이름 인자</b>로 저장한다. 걷은 정의를 가리키는 저장본이 있으면
 /// <b>읽을 때</b> 여기서 정본으로 옮긴다 — 작업 데이터(연출 노드 · 프리셋 · 칩 · 최근 명령)도, 얼린 발행본도.
 /// 여기서만 옮기므로 무대 · 프리뷰 · 폴드 · 이미터는 옛 이름을 모른다.
 ///
 /// <b>옮김은 재생 결과를 바꾸지 않는다.</b> 옛 정의의 생략값이 정본과 다른 자리는 값을 명시해 옮긴다
-/// (place_*의 focus "face" · char_visual_focus/defocus의 시간 · tx_daze/strip의 무대).
+/// (place_*의 focus "face" · tx_daze/strip의 무대).
 /// 이름에 박혀 있던 값은 고정값으로 덮는다 — 옛 정의에는 그 인자가 없었으니 덮을 것도 없다.
 /// </summary>
 public static class LegacyCommandUpgrade
@@ -20,13 +21,11 @@ public static class LegacyCommandUpgrade
     /// <param name="Fixed">언제나 이 값으로 둔다 — 옛 이름에 박혀 있던 것.</param>
     /// <param name="Defaults">비어 있을 때만 채운다 — 옛 정의의 생략값이 정본과 다른 자리.</param>
     /// <param name="Renames">옛 인자 이름 → 정본 인자 이름.</param>
-    /// <param name="Transform">이름 · 값 둘 다 바뀌는 특수한 경우(&lt;&lt;Nfr&gt;&gt;의 n → pause의 duration).</param>
     private sealed record Rule(
         string TargetId,
         IReadOnlyDictionary<string, string>? Fixed = null,
         IReadOnlyDictionary<string, string>? Defaults = null,
-        IReadOnlyDictionary<string, string>? Renames = null,
-        Func<IReadOnlyDictionary<string, string>, Dictionary<string, string>>? Transform = null);
+        IReadOnlyDictionary<string, string>? Renames = null);
 
     private static readonly IReadOnlyDictionary<string, Rule> Rules = BuildRules();
 
@@ -70,22 +69,6 @@ public static class LegacyCommandUpgrade
             rules[$"char_rig_depth.size_{label}"] = new Rule("char_rig_depth.size", Fixed: One("depth", label));
         }
 
-        // 정본 char_visual의 시간 생략값은 6fr. focus(10fr) · defocus(17fr)만 달랐다.
-        foreach (string preset in new[] { "focus", "defocus", "dim", "silhouette", "inner_rim", "outer_rim", "clear" })
-        {
-            string? oldDuration = preset switch
-            {
-                "focus" => "10fr",
-                "defocus" => "17fr",
-                _ => null
-            };
-
-            rules[$"char_rig_visual.char_visual_{preset}"] = new Rule(
-                "char_rig_visual.char_visual",
-                Fixed: One("preset", preset),
-                Defaults: oldDuration is null ? null : One("duration", oldDuration));
-        }
-
         // 마스크 트랜지션 — 옛 이름 → 프리셋 키. 정본 tx의 무대 생략값은 stage01, daze · strip은 00이었다.
         foreach ((string name, string preset) in new[]
                  {
@@ -114,27 +97,6 @@ public static class LegacyCommandUpgrade
             "common_control.pause",
             Renames: One("seconds", "duration"));
 
-        rules["control.frame_wait"] = new Rule(
-            "common_control.pause",
-            Transform: arguments =>
-            {
-                var result = new Dictionary<string, string>(StringComparer.Ordinal);
-
-                foreach ((string key, string value) in arguments)
-                {
-                    if (string.Equals(key, "n", StringComparison.Ordinal))
-                    {
-                        result["duration"] = string.IsNullOrWhiteSpace(value) ? value : value.Trim() + "fr";
-                    }
-                    else
-                    {
-                        result[key] = value;
-                    }
-                }
-
-                return result;
-            });
-
         return rules;
     }
 
@@ -157,9 +119,7 @@ public static class LegacyCommandUpgrade
             return false;
         }
 
-        Dictionary<string, string> result = rule.Transform is { } transform
-            ? transform(arguments)
-            : new Dictionary<string, string>(arguments, StringComparer.Ordinal);
+        var result = new Dictionary<string, string>(arguments, StringComparer.Ordinal);
 
         if (rule.Renames is { } renames)
         {

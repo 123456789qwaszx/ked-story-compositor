@@ -1,5 +1,5 @@
 {
-  "$comment": "ked-presentation-runtime 연출 커맨드 카탈로그 — 2026-11-03 정본만 남겼다(인자 하나를 이름에 박은 별칭 · <<Nfr>> · ui_patch · debug_log를 걷음, place_left · center · right는 남김). 옛 정의는 LegacyCommandUpgrade가 읽을 때 정본으로 옮긴다",
+  "$comment": "ked-presentation-runtime 연출 커맨드 카탈로그 — 2026-11-03 정본만 남겼다(인자 하나를 이름에 박은 별칭 · ui_patch · debug_log를 걷음 — 예외: place_left · center · right, 프레임 대기 <N>fr, char_visual_<효과> 일곱). 옛 정의는 LegacyCommandUpgrade가 읽을 때 정본으로 옮긴다",
   "variables": [],
   "events": [],
   "conditions": [],
@@ -151,6 +151,22 @@
         }
       ],
       "notes": "별칭은 대소문자를 구분하며 1단계만 치환된다. 미등록 @xxx는 경고 후 원문 그대로 통과."
+    },
+    {
+      "id": "control.frame_wait",
+      "name": "프레임 대기",
+      "category": "common_control",
+      "outputCommand": "<N>fr",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "n",
+          "type": "int",
+          "required": true,
+          "description": "대기 프레임 수(1~48, 24fps 기준). <<24fr>> = 1초 대기"
+        }
+      ],
+      "notes": "1fr~48fr 프레임 대기 별칭군을 하나로 묶은 합성 엔트리. 실제 출력은 <<Nfr>> 형태(예: <<24fr>>)로 렌더링된다. 49프레임 이상의 별칭은 존재하지 않으므로 pause를 사용할 것."
     },
     {
       "id": "char_rig_cast.slot",
@@ -1266,6 +1282,188 @@
           "required": false,
           "default": "1",
           "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "6fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_focus",
+      "name": "포커스(강조)",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_focus",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "10fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_defocus",
+      "name": "디포커스(후퇴)",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_defocus",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "17fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_dim",
+      "name": "딤",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_dim",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "6fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_silhouette",
+      "name": "실루엣",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_silhouette",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "6fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_inner_rim",
+      "name": "안쪽 림 라이트",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_inner_rim",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "6fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_outer_rim",
+      "name": "외곽 림 라이트",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_outer_rim",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "0~1"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "6fr"
+        }
+      ]
+    },
+    {
+      "id": "char_rig_visual.char_visual_clear",
+      "name": "비주얼 효과 제거",
+      "category": "char_rig_visual",
+      "outputCommand": "char_visual_clear",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
         },
         {
           "name": "duration",
