@@ -25,7 +25,20 @@ public sealed record RouteSurveyChoice(
 
 /// <summary>에피소드가 줄 앞에서 다녀오는 분기 카드 — "한 번 갔다가 진행"을 그대로 적는다.</summary>
 /// <param name="Passes">길 위 그 자리의 스탯으로 첫머리 조건이 성립하는가. 길이 닿지 않으면 null, 조건이 평가 불가여도 null.</param>
-public sealed record RouteSurveyDetour(string BranchEpisodeId, string Title, string? Condition, bool? Passes, bool Reached);
+/// <param name="LineId">분기 표식이 붙은 줄 — 이 줄 <b>앞에서</b> 다녀온다.</param>
+/// <param name="LineNumber">그 줄이 카드의 살아 있는 줄 중 몇 번째인가(1부터). 무대의 줄 번호와 같다.</param>
+/// <param name="Speaker">그 줄의 화자(주 언어). 없으면 빈 문자열.</param>
+/// <param name="Text">그 줄의 대사(주 언어). 없으면 빈 문자열.</param>
+public sealed record RouteSurveyDetour(
+    string BranchEpisodeId,
+    string Title,
+    string? Condition,
+    bool? Passes,
+    bool Reached,
+    string LineId,
+    int LineNumber,
+    string Speaker,
+    string Text);
 
 /// <summary>설문의 문항 하나 = 에피소드 하나.</summary>
 /// <param name="StepIndex">길 위의 몇 번째인가(0부터). 길이 닿지 않으면 -1.</param>
@@ -94,7 +107,8 @@ public sealed class RouteSurvey
         ArgumentNullException.ThrowIfNull(chapter);
 
         // 분기 — 카드 줄의 표식에서. 첫머리 조건은 다녀갈 카드의 첫 줄 BeginIf의 식(공급된 조건).
-        var detourTargets = new Dictionary<string, List<(string BranchEpisodeId, string? Condition)>>(StringComparer.Ordinal);
+        // 어느 줄에 붙었는지도 같이 적는다 (2026-11-04 소유자: "정확히 어떤 줄에서 생기는지를 모르겠습니다").
+        var detourTargets = new Dictionary<string, List<DetourSource>>(StringComparer.Ordinal);
         var branchCards = new HashSet<string>(StringComparer.Ordinal);
 
         if (project is not null)
@@ -107,8 +121,12 @@ public sealed class RouteSurvey
 
             foreach ((string episodeId, DialogueNode card) in cards)
             {
+                int lineNumber = 0;
+
                 foreach (ScriptLine line in card.Script.ActiveLines)
                 {
+                    lineNumber++;
+
                     foreach (string targetNodeId in card.FindExtension(line.Id)?.DetourTargetNodeIds ?? [])
                     {
                         if (!episodeByNodeId.TryGetValue(targetNodeId, out string? branchEpisode) ||
@@ -119,12 +137,13 @@ public sealed class RouteSurvey
 
                         branchCards.Add(branchEpisode);
 
-                        if (!detourTargets.TryGetValue(episodeId, out List<(string, string?)>? list))
+                        if (!detourTargets.TryGetValue(episodeId, out List<DetourSource>? list))
                         {
                             detourTargets[episodeId] = list = [];
                         }
 
-                        list.Add((branchEpisode, HeadCondition(project, definition, branchCard)));
+                        LocalizedLine text = card.Script.Text(line.Id);
+                        list.Add(new DetourSource(branchEpisode, HeadCondition(project, definition, branchCard), line.Id, lineNumber, text.Speaker, text.Text));
                     }
                 }
             }
@@ -132,7 +151,9 @@ public sealed class RouteSurvey
 
         PreviewRouteWalker.Result walk = PreviewRouteWalker.Walk(
             chapter, route, null,
-            episodeId => detourTargets.TryGetValue(episodeId, out List<(string, string?)>? list) ? list : []);
+            episodeId => detourTargets.TryGetValue(episodeId, out List<DetourSource>? list)
+                ? list.Select(source => (source.BranchEpisodeId, source.Condition)).ToList()
+                : []);
 
         var titles = chapter.Episodes.ToDictionary(
             episode => episode.EpisodeId,
@@ -165,7 +186,7 @@ public sealed class RouteSurvey
                         stats is null ? null : ChapterGateJudge.Judge(chapter, edge.ConditionLabel, stats)))
                     .ToList();
 
-                List<RouteSurveyDetour> detours = detourTargets.TryGetValue(episodeId, out List<(string BranchEpisodeId, string? Condition)>? targets)
+                List<RouteSurveyDetour> detours = detourTargets.TryGetValue(episodeId, out List<DetourSource>? targets)
                     ? targets.Select(target =>
                     {
                         PreviewRouteWalker.Detour? judged = walk.Detours.FirstOrDefault(detour =>
@@ -175,7 +196,11 @@ public sealed class RouteSurvey
                             titles.GetValueOrDefault(target.BranchEpisodeId, target.BranchEpisodeId),
                             target.Condition,
                             judged?.Passes,
-                            judged is not null);
+                            judged is not null,
+                            target.LineId,
+                            target.LineNumber,
+                            target.Speaker,
+                            target.Text);
                     }).ToList()
                     : [];
 
@@ -193,6 +218,9 @@ public sealed class RouteSurvey
 
         return new RouteSurvey(chapter, route, walk, episodes, scenes);
     }
+
+    /// <summary>판에서 읽은 분기 표식 하나 — 어느 줄 앞에서 어느 카드로, 그 카드의 첫머리 조건은 무엇인가.</summary>
+    private sealed record DetourSource(string BranchEpisodeId, string? Condition, string LineId, int LineNumber, string Speaker, string Text);
 
     /// <summary>분기 카드의 첫머리 조건 — 첫 줄의 BeginIf가 가리키는 공급 조건의 식. 없으면 null(무조건 돈다).</summary>
     private static string? HeadCondition(StoryProject project, GameDefinition? definition, DialogueNode branchCard)

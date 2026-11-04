@@ -425,7 +425,14 @@ public sealed class RouteSurveyView : UserControl
     private static string Stats(IReadOnlyList<ChapterRunStatValue>? stats) =>
         stats is null ? "미도달" : string.Join("\n", stats.Select(value => $"{value.Stat.DisplayName} {value.DisplayText}"));
 
-    /// <summary>다녀오는 분기 — 차례대로 한 줄씩: 카드 · 조건 · 판정.</summary>
+    /// <summary>대사 앞부분만 — 한 줄 넘게 늘어지지 않게.</summary>
+    private static string Clip(string text, int max)
+    {
+        string oneLine = text.Replace("\r", string.Empty).Replace('\n', ' ').Trim();
+        return oneLine.Length <= max ? oneLine : oneLine[..max] + "…";
+    }
+
+    /// <summary>다녀오는 분기 — 차례대로 한 줄씩: 카드 · 줄 · 조건 · 판정.</summary>
     private static Control Detours(RouteSurveyEpisode episode)
     {
         if (episode.Detours.Count == 0)
@@ -445,11 +452,16 @@ public sealed class RouteSurveyView : UserControl
                 _ => ("? 평가 불가 — 무대에서 고른다", null)
             };
 
+            // 어느 줄 앞에서 갈라지는지 — 줄 번호는 무대의 줄 번호와 같다 (2026-11-04 소유자: "정확히 어떤 줄에서 생기는지").
+            string at = string.IsNullOrWhiteSpace(detour.Speaker) && string.IsNullOrWhiteSpace(detour.Text)
+                ? $"{detour.LineNumber}줄 앞"
+                : $"{detour.LineNumber}줄 앞 — {(string.IsNullOrWhiteSpace(detour.Speaker) ? string.Empty : detour.Speaker + ": ")}“{Clip(detour.Text, 24)}”";
+
             var line = new TextBlock
             {
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
-                Text = $"↳ {detour.Title}\n   {(string.IsNullOrEmpty(detour.Condition) ? "조건 없음" : detour.Condition)} · {mark}"
+                Text = $"↳ {detour.Title}\n   {at}\n   {(string.IsNullOrEmpty(detour.Condition) ? "조건 없음" : detour.Condition)} · {mark}"
             };
 
             if (brush is not null)

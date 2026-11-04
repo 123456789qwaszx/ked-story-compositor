@@ -203,10 +203,18 @@ public sealed class PreviewRouteTests
         Assert.False(wrapup.Detours[1].Passes);
         Assert.Contains("stat(\"성실\") >= 2", wrapup.Detours[0].Condition);
 
-        // 교무실에 설 때 성실 3 · 요령 0 — Praise 통과, Kasmi · Pass 막힘.
+        // 어느 줄 앞에서 갈라지는가 — Wrapup은 첫 줄(시구레 "이제 교무실에…") 앞. 줄 번호는 무대의 줄 번호와 같다.
+        Assert.All(wrapup.Detours, detour => Assert.Equal(1, detour.LineNumber));
+        Assert.Equal("시구레", wrapup.Detours[0].Speaker);
+        Assert.StartsWith("이제 교무실에", wrapup.Detours[0].Text);
+        Assert.Equal("ln_yfg43av8", wrapup.Detours[0].LineId);
+
+        // 교무실에 설 때 성실 3 · 요령 0 — Praise 통과, Kasmi · Pass 막힘. 갈라지는 자리는 넷째 줄(시구레 "메뉴에서 저장하면…") 앞.
         RouteSurveyEpisode staffroom = survey.Find("Festival_Staffroom")!;
         Assert.Equal(3, staffroom.StatsOnArrival!.Single(value => value.Stat.Key == "성실").Value);
         Assert.Equal([false, true, false], staffroom.Detours.Select(detour => detour.Passes).ToList());
+        Assert.All(staffroom.Detours, detour => Assert.Equal(4, detour.LineNumber));
+        Assert.StartsWith("메뉴에서 저장하면", staffroom.Detours[0].Text);
 
         // 중간 점에서 시작할 때 쓸 스탯 — 길 위면 있고, 아니면 없다.
         Assert.Equal(3, survey.Walk.StatsAt(chapter, "Festival_Staffroom")!["성실"]);
