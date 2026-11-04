@@ -37,6 +37,8 @@ public sealed class ChapterMinimapView : UserControl
     private static readonly IBrush BandFill = new SolidColorBrush(Color.FromArgb(0x22, 0xff, 0xff, 0xff));
     private static readonly IBrush BandAltFill = new SolidColorBrush(Color.FromArgb(0x10, 0xff, 0xff, 0xff));
     private static readonly IBrush BandText = new SolidColorBrush(Color.FromArgb(0x99, 0xff, 0xff, 0xff));
+    private static readonly IBrush PlanStroke = new SolidColorBrush(Color.FromRgb(0x5a, 0xa9, 0xf0));
+    private static readonly IBrush WarnBrush = new SolidColorBrush(Color.FromRgb(0xf0, 0x6a, 0x5a));
 
     private readonly Canvas _canvas = new();
     private readonly ScrollViewer _scroll;
@@ -124,11 +126,18 @@ public sealed class ChapterMinimapView : UserControl
     }
 
     /// <summary>지도를 다시 그린다. 모델이 없으면 비운다.</summary>
-    public void Show(ChapterMinimap? map, ChapterRunTrail? trail, string? currentDialogueId)
+    /// <summary>선택지 선을 눌렀다 — (갈림 에피소드, 선택지 문구). 활성 루트에 적힌다.</summary>
+    public event Action<string, string>? EdgeClicked;
+
+    private PreviewRouteWalker.Result? _plan;
+
+    /// <param name="plan">미리 정한 루트로 걸은 예정 길 — 파란 점선으로, 멈춘 자리는 ⚠. null이면 안 그린다.</param>
+    public void Show(ChapterMinimap? map, ChapterRunTrail? trail, string? currentDialogueId, PreviewRouteWalker.Result? plan = null)
     {
         _map = map;
         _trail = trail;
         _currentDialogueId = currentDialogueId;
+        _plan = plan;
         Redraw();
     }
 
@@ -157,6 +166,10 @@ public sealed class ChapterMinimapView : UserControl
         HashSet<string> visited = _trail?.Visited.ToHashSet(StringComparer.Ordinal) ?? [];
         HashSet<string> blocked = _trail?.BlockedBranches.ToHashSet(StringComparer.Ordinal) ?? [];
         HashSet<(string, string)> taken = _trail?.TakenEdges.ToHashSet() ?? [];
+        HashSet<(string, string, string?)> planned = _plan?.Edges
+            .Select(edge => (edge.FromEpisodeId, edge.ToEpisodeId, string.IsNullOrWhiteSpace(edge.OptionLabel) ? null : edge.OptionLabel))
+            .ToHashSet() ?? [];
+        string? stoppedAt = _plan is { ReachedEnd: false } ? _plan.StoppedAt : null;
         bool hasTrail = _trail is { Steps.Count: > 0 };
         string? currentEpisode = _map.FindByDialogue(_currentDialogueId)?.EpisodeId;
 
@@ -206,27 +219,50 @@ public sealed class ChapterMinimapView : UserControl
             }
 
             bool wasTaken = taken.Contains((edge.FromEpisodeId, edge.ToEpisodeId));
+            bool isPlanned = planned.Contains((edge.FromEpisodeId, edge.ToEpisodeId, edge.Label));
             var line = new Line
             {
                 StartPoint = from,
                 EndPoint = to,
-                Stroke = wasTaken ? TakenStroke : EdgeStroke,
-                StrokeThickness = wasTaken ? 3 : edge.Kind == ChapterMinimapEdgeKind.Choice ? 1.6 : 1,
-                Opacity = hasTrail && !wasTaken ? 0.35 : 0.9,
+                Stroke = wasTaken ? TakenStroke : isPlanned ? PlanStroke : EdgeStroke,
+                StrokeThickness = wasTaken ? 3 : isPlanned ? 2.4 : edge.Kind == ChapterMinimapEdgeKind.Choice ? 1.6 : 1,
+                Opacity = hasTrail && !wasTaken && !isPlanned ? 0.35 : 0.9,
                 StrokeDashArray = edge.Kind switch
                 {
+                    _ when isPlanned && !wasTaken => new AvaloniaList<double> { 6, 3 },
                     ChapterMinimapEdgeKind.Auto => new AvaloniaList<double> { 4, 3 },
                     ChapterMinimapEdgeKind.Detour => new AvaloniaList<double> { 1.5, 3 },
                     _ => null
-                }
+                },
+                IsHitTestVisible = false
             };
 
-            if (edge.Label is not null)
+            _canvas.Children.Add(line);
+
+            // 선택지 선은 누를 수 있다 — 루트에 적힌다. 보이는 선은 가늘어 넓은 투명 선이 대신 맞는다.
+            if (edge.Kind == ChapterMinimapEdgeKind.Choice && edge.Label is { } label)
+            {
+                var hit = new Line
+                {
+                    StartPoint = from,
+                    EndPoint = to,
+                    Stroke = Brushes.Transparent,
+                    StrokeThickness = 10,
+                    Cursor = new Cursor(StandardCursorType.Hand)
+                };
+                ToolTip.SetTip(hit, (isPlanned ? "✔ 루트에 적힘 — " : string.Empty) + label + "\n(누르면 루트에 적거나 뺍니다)");
+                string fromId = edge.FromEpisodeId;
+                hit.PointerPressed += (_, args) =>
+                {
+                    args.Handled = true;
+                    EdgeClicked?.Invoke(fromId, label);
+                };
+                _canvas.Children.Add(hit);
+            }
+            else if (edge.Label is not null)
             {
                 ToolTip.SetTip(line, edge.Label);
             }
-
-            _canvas.Children.Add(line);
         }
 
         // 점.
@@ -267,6 +303,16 @@ public sealed class ChapterMinimapView : UserControl
                 _ => "에피소드"
             };
             string state = isBlocked ? " · 조건에 막혀 곧장 돌아옴" : isVisited ? " · 지나옴" : string.Empty;
+
+            if (string.Equals(node.EpisodeId, stoppedAt, StringComparison.Ordinal))
+            {
+                var warn = new TextBlock { Text = "⚠", FontSize = 13, Foreground = WarnBrush, IsHitTestVisible = false };
+                ToolTip.SetTip(warn, _plan!.StoppedBecause);
+                Canvas.SetLeft(warn, at.X + NodeSize / 2);
+                Canvas.SetTop(warn, at.Y - NodeSize);
+                _canvas.Children.Add(warn);
+                state += $" · 예정 길이 여기서 멈춤: {_plan.StoppedBecause}";
+            }
             ToolTip.SetTip(shape, $"{node.Title} ({node.EpisodeId})\n{kind} · 장면 {node.SceneId}{state}" +
                 (node.DialogueNodeId is null ? "\n⚠ 카드가 없어 고를 수 없습니다 — director에서 세우세요" : string.Empty));
 

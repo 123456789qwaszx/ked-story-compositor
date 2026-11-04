@@ -126,6 +126,14 @@ internal sealed class AuthoringSession
     /// </summary>
     public Dictionary<string, string> SimulationValues { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// 챕터 런의 지금 스탯을 대본 조건 평가기 값으로 (2026-11-04) — 키는 <c>stat("키")</c>. 무대 프리뷰가 런이 설 때와
+    /// 간선을 탈 때 갱신한다. 이것이 있어야 분기 카드의 첫머리 조건(<c>&lt;&lt;if stat("성실") &gt;= 2&gt;&gt;</c>)이
+    /// 수동 선택 없이 런의 스탯으로 판정된다 — 그 전에는 평가 불가라 늘 사람이 골라야 했다.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ChapterStatValues { get; set; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     // ── 런타임 tuning (W23) ────────────────────────────────────────────────
 
     private RuntimeTuningLibrary? _tuningLibrary;

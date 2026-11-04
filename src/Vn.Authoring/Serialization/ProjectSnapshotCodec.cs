@@ -71,6 +71,11 @@ public static class ProjectSnapshotCodec
                 project.RecentCommandIds.Select(id => (JsonNode)id).ToArray());
         }
 
+        if (ProjectManifestJson.WritePreviewRoutes(project.PreviewRoutes) is { } previewRoutes)
+        {
+            root["previewRoutes"] = previewRoutes;
+        }
+
         // 자주 쓰는 칩도 스냅샷에 실린다 — 안 실으면 undo가 방금 담은 칩을 못 되돌리고,
         // 더 나쁘게는 <b>관계없는 undo가 칩 목록을 통째로 기본값으로 되돌린다</b>
         // (작가 화자가 겪었던 잠복 버그와 같은 자리다).
@@ -200,6 +205,7 @@ public static class ProjectSnapshotCodec
         project.Chapters.AddRange(ChapterDocumentJson.Read(root["chapters"]));
         project.WriterSpeakers.AddRange(ProjectManifestJson.ReadWriterSpeakers(root["writerSpeakers"]));
         project.EaseCurves.AddRange(ProjectManifestJson.ReadEaseCurves(root["easeCurves"]));
+        project.PreviewRoutes.AddRange(ProjectManifestJson.ReadPreviewRoutes(root["previewRoutes"]));
 
         if (root["results"] is JsonObject resultsObject)
         {

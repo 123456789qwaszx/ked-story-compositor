@@ -29,6 +29,26 @@ public static class ConditionExpression
 
         string text = expression.Trim();
 
+        // `a && b` (2026-11-04) — 챕터 조건이 항 둘 이상이면 번역기가 &&로 잇는다(`stat("성실") >= 3 && stat("요령") < 3`).
+        // 전부 평가되어야 참/거짓이고, 하나라도 못 읽으면 평가 실패다 — 반만 보고 판정하지 않는다.
+        if (text.Contains("&&", StringComparison.Ordinal))
+        {
+            bool all = true;
+
+            foreach (string part in text.Split("&&", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!TryEvaluate(part, values, out bool partial))
+                {
+                    return false;
+                }
+
+                all &= partial;
+            }
+
+            result = all;
+            return true;
+        }
+
         foreach (string op in Operators)
         {
             int index = text.IndexOf(op, StringComparison.Ordinal);

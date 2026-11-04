@@ -85,6 +85,9 @@ public sealed class StoryProject
     /// </summary>
     public List<EaseCurve> EaseCurves { get; init; } = new();
 
+    /// <summary>미리 정한 루트(전체 재생의 선택지 · 시작 스탯) — 이 툴의 파일에 산다. 2026-11-04.</summary>
+    public List<PreviewRoute> PreviewRoutes { get; init; } = new();
+
     /// <summary>발행된 불변 결과. 추가만 되고 내용이 바뀌지 않는다.</summary>
     public ResultRepository Results { get; init; } = new();
 
@@ -223,6 +226,7 @@ public sealed class StoryProject
             Links = Links.Select(link => link.Clone()).ToList(),
             WriterSpeakers = WriterSpeakers.Select(speaker => speaker.Clone()).ToList(),
             EaseCurves = EaseCurves.Select(curve => curve.Clone()).ToList(),
+            PreviewRoutes = PreviewRoutes.Select(route => route.Clone()).ToList(),
             Results = Results.Clone(),
             Compositions = Compositions.Select(item => item.Clone()).ToList()
         };

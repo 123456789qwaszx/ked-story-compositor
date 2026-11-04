@@ -322,6 +322,105 @@ public static class ProjectManifestJson
         };
     }
 
+    internal static JsonArray? WritePreviewRoutes(IReadOnlyList<PreviewRoute> routes)
+    {
+        if (routes.Count == 0)
+        {
+            return null;
+        }
+
+        var array = new JsonArray();
+
+        foreach (PreviewRoute route in routes)
+        {
+            var item = new JsonObject
+            {
+                ["id"] = route.Id,
+                ["name"] = route.Name,
+                ["chapterId"] = route.ChapterId
+            };
+
+            if (route.IsActive)
+            {
+                item["active"] = true;
+            }
+
+            if (route.Stats.Count > 0)
+            {
+                var stats = new JsonObject();
+                foreach ((string key, int value) in route.Stats.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                {
+                    stats[key] = value;
+                }
+
+                item["stats"] = stats;
+            }
+
+            if (route.Choices.Count > 0)
+            {
+                item["choices"] = new JsonArray(route.Choices
+                    .Select(choice => (JsonNode)new JsonObject { ["from"] = choice.FromEpisodeId, ["option"] = choice.OptionLabel })
+                    .ToArray());
+            }
+
+            array.Add(item);
+        }
+
+        return array;
+    }
+
+    internal static List<PreviewRoute> ReadPreviewRoutes(JsonNode? json)
+    {
+        var routes = new List<PreviewRoute>();
+
+        if (json is not JsonArray array)
+        {
+            return routes;
+        }
+
+        foreach (JsonNode? node in array)
+        {
+            if (node is not JsonObject item || (string?)item["id"] is not { Length: > 0 } id)
+            {
+                continue;
+            }
+
+            var route = new PreviewRoute(id, (string?)item["name"])
+            {
+                ChapterId = (string?)item["chapterId"] ?? string.Empty,
+                IsActive = (bool?)item["active"] ?? false
+            };
+
+            if (item["stats"] is JsonObject stats)
+            {
+                foreach ((string key, JsonNode? value) in stats)
+                {
+                    if (value is not null && int.TryParse(value.ToString(), out int number))
+                    {
+                        route.Stats[key] = number;
+                    }
+                }
+            }
+
+            if (item["choices"] is JsonArray choices)
+            {
+                foreach (JsonNode? choice in choices)
+                {
+                    if (choice is JsonObject pick &&
+                        (string?)pick["from"] is { Length: > 0 } from &&
+                        (string?)pick["option"] is { } option)
+                    {
+                        route.Choices.Add(new PreviewRouteChoice(from, option));
+                    }
+                }
+            }
+
+            routes.Add(route);
+        }
+
+        return routes;
+    }
+
     internal static IReadOnlyList<string> ReadRecentCommands(JsonNode? json)
     {
         if (json is not JsonArray array)

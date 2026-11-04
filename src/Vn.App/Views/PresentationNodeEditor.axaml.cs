@@ -339,7 +339,9 @@ public partial class PresentationNodeEditor : UserControl
                 assignment.Variable,
                 _session!.SimulationValues.TryGetValue(assignment.Variable, out string? overridden)
                     ? overridden
-                    : assignment.Value)),
+                    : assignment.Value))
+                // 챕터 런의 스탯 (2026-11-04) — stat("키")로 읽는 첫머리 조건이 런 값으로 판정된다.
+                .Concat(_session!.ChapterStatValues.Select(pair => (pair.Key, pair.Value))),
             _session!.BranchSelection);
     }
 

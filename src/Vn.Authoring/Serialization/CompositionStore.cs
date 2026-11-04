@@ -211,6 +211,11 @@ public static class CompositionStore
             root["recentCommands"] = new JsonArray(layer.RecentCommandIds.Select(id => (JsonNode)id).ToArray());
         }
 
+        if (ProjectManifestJson.WritePreviewRoutes(layer.PreviewRoutes) is { } previewRoutes)
+        {
+            root["previewRoutes"] = previewRoutes;
+        }
+
         if (ProjectManifestJson.WriteAssetRoots(layer.AssetRoots) is { } assetRoots)
         {
             root["assetRoots"] = assetRoots;
@@ -267,6 +272,7 @@ public static class CompositionStore
         layer.EaseCurves.AddRange(ProjectManifestJson.ReadEaseCurves(root["easeCurves"]));
         layer.QuickCommands = ProjectManifestJson.ReadQuickCommands(root["quickCommands"]);
         layer.RecentCommandIds.AddRange(ProjectManifestJson.ReadRecentCommands(root["recentCommands"]));
+        layer.PreviewRoutes.AddRange(ProjectManifestJson.ReadPreviewRoutes(root["previewRoutes"]));
         layer.AssetRoots = ProjectManifestJson.ReadAssetRoots(root["assetRoots"]);
         layer.ExportFormats = ProjectManifestJson.ReadExportFormats(root["exportFormats"]);
         layer.OutputPath = AssetRootSettings.NormalizePath((string?)root["outputPath"]);
@@ -349,6 +355,9 @@ public sealed class PresentationLayer
 
     public List<string> RecentCommandIds { get; } = new();
 
+    /// <summary>미리 정한 루트 — 재생 설정이라 이 툴의 파일에 산다(2026-11-04).</summary>
+    public List<PreviewRoute> PreviewRoutes { get; } = new();
+
     public AssetRootSettings AssetRoots { get; set; } = new();
 
     public ExportFormatSelection ExportFormats { get; set; } = new();
@@ -358,7 +367,7 @@ public sealed class PresentationLayer
     /// <summary>연출이 하나도 없다 — 노드 · 배선 · 결과 · 곡선 · 빠른 명령 · 설정 모두.</summary>
     public bool IsEmpty =>
         Nodes.Count == 0 && Links.Count == 0 && Compositions.Count == 0 && Results.IsEmpty &&
-        EaseCurves.Count == 0 && QuickCommands is null && RecentCommandIds.Count == 0 &&
+        EaseCurves.Count == 0 && QuickCommands is null && RecentCommandIds.Count == 0 && PreviewRoutes.Count == 0 &&
         AssetRoots.IsEmpty && ExportFormats.IsDefault && OutputPath is null;
 
     public static PresentationLayer Empty() => new();
@@ -393,6 +402,7 @@ public sealed class PresentationLayer
         layer.Compositions.AddRange(project.Compositions.Select(item => item.Clone()));
         layer.EaseCurves.AddRange(project.EaseCurves.Select(curve => curve.Clone()));
         layer.RecentCommandIds.AddRange(project.RecentCommandIds);
+        layer.PreviewRoutes.AddRange(project.PreviewRoutes.Select(route => route.Clone()));
 
         foreach (DialogueResult result in project.Results.DialogueResults)
         {
@@ -426,6 +436,7 @@ public sealed class PresentationLayer
             StartNodeId = manuscript.StartNodeId,
             AssetRoots = layer.AssetRoots.Clone(),
             RecentCommandIds = new List<string>(layer.RecentCommandIds),
+            PreviewRoutes = layer.PreviewRoutes.Select(route => route.Clone()).ToList(),
             QuickCommands = layer.QuickCommands?.Select(chip => chip.Copy()).ToList(),
             ExportFormats = layer.ExportFormats.Clone(),
             OutputPath = layer.OutputPath,

@@ -56,6 +56,19 @@
                          접어 두고 남긴다(이름으로 찾기 · 커스텀 씬). 전체 재생이 지나온 길이 지도에 덧칠된다.) -->
                     <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,6">
                         <views:ChapterMinimapView x:Name="Minimap" Height="240" />
+                        <!-- 미리 정한 루트 (2026-11-04 소유자: "일종의 픽스처 느낌으로 미리 루트를 설정") — 갈림마다 고를 선택지와
+                             시작 스탯. 지도의 선을 누르면 적히고, 전체 재생이 그대로 간다. 챕터마다 여럿, 활성 하나. -->
+                        <DockPanel x:Name="RouteBar">
+                            <Button x:Name="RouteRemoveButton" DockPanel.Dock="Right" Content="✕" FontSize="11" MinWidth="0" Padding="6,0"
+                                    ToolTip.Tip="활성 루트를 지웁니다." />
+                            <Button x:Name="RouteStatsButton" DockPanel.Dock="Right" Content="스탯…" FontSize="11" MinWidth="0" Padding="6,0" Margin="2,0"
+                                    ToolTip.Tip="이 루트의 시작 스탯 — 비우면 스탯 시트의 초기값." />
+                            <Button x:Name="RouteAddButton" DockPanel.Dock="Right" Content="＋ 루트" FontSize="11" MinWidth="0" Padding="6,0" Margin="2,0"
+                                    ToolTip.Tip="새 루트를 만들고 활성으로 둡니다. 지도의 선택지 선을 누르면 그 루트에 적힙니다." />
+                            <ComboBox x:Name="RouteCombo" FontSize="11" HorizontalAlignment="Stretch" MinWidth="80"
+                                      PlaceholderText="루트 (없음)" />
+                        </DockPanel>
+                        <TextBlock x:Name="RoutePlanText" FontSize="10" Opacity="0.75" TextWrapping="Wrap" />
                         <!-- 씬 선택기 (2026-08-21 소유자) — "미리 다 해둔 다음에 무대
                              프리뷰측에서 뭘 할지 고르도록". 에피소드(📄)·커스텀 씬(✎)을
                              고르면 연출 채널이 자동으로 서고(발행·연결 전부) 터미널이 채워진다. -->

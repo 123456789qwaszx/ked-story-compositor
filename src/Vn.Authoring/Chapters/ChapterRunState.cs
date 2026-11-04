@@ -120,12 +120,20 @@ public sealed class ChapterRunState
     private Contract.ProgressionState? _working;
     private readonly List<Contract.EpisodeOption> _pending = [];
 
-    public ChapterRunState(ChapterGraphModel chapter)
+    /// <param name="startStats">
+    /// 시작 스탯 덮어쓰기(2026-11-04 — 미리 정한 루트의 것). 없는 키는 시트 초기값. 런타임 상태도 같은 값으로 세워
+    /// 선택지 판정(Resolve)과 HUD가 같은 스탯을 본다.
+    /// </param>
+    public ChapterRunState(ChapterGraphModel chapter, IReadOnlyDictionary<string, int>? startStats = null)
     {
         ArgumentNullException.ThrowIfNull(chapter);
         _chapter = chapter;
         // 증명기·워커와 같은 시드 — 초기값 그대로(경계 보정 없음. 밖이면 검증이 짚을 일이다).
-        _stats = chapter.Stats.Select(stat => stat.Initial).ToArray();
+        _stats = chapter.Stats
+            .Select(stat => startStats is not null && startStats.TryGetValue(stat.Key, out int seeded)
+                ? Math.Clamp(seeded, stat.Minimum, stat.Maximum)
+                : stat.Initial)
+            .ToArray();
 
         Contract.ChapterProgressionDto? dto =
             JsonSerializer.Deserialize<Contract.ChapterProgressionDto>(
@@ -138,9 +146,25 @@ public sealed class ChapterRunState
         {
             _runtime = loaded.Chapter;
             _sceneEntry = _runtime.CreateEntryState();
+
+            if (startStats is { Count: > 0 })
+            {
+                _sceneEntry = Contract.ProgressionState.Restore(
+                    _runtime,
+                    _sceneEntry.CurrentEpisodeId,
+                    _chapter.Stats.Select((stat, index) => (stat.Key, _stats[index]))
+                        .ToDictionary(pair => pair.Key, pair => pair.Item2, StringComparer.Ordinal));
+            }
+
             _working = _sceneEntry;
         }
     }
+
+    /// <summary>지금 스탯을 대본 조건 평가기의 값 표로 — 키는 Yarn의 읽기 표기(<c>stat("키")</c>) 그대로다.</summary>
+    public IReadOnlyDictionary<string, string> AsConditionValues() =>
+        _chapter.Stats
+            .Select((stat, index) => (Key: Rendering.YarnSyntax.StatRead(stat.Key), Value: _stats[index].ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
     /// <summary>이 판이 어느 챕터의 것인가 — 챕터가 바뀌면 판도 새로 선다.</summary>
     public string ChapterId => _chapter.ChapterId;
