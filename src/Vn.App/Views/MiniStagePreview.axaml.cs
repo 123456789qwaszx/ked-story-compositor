@@ -1078,7 +1078,7 @@ public partial class MiniStagePreview : UserControl
             {
                 Width = 60,
                 FontSize = 11,
-                Watermark = stat.Initial.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                PlaceholderText = stat.Initial.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Text = route.Stats.TryGetValue(stat.Key, out int value) ? value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty
             };
             box.LostFocus += (_, _) => UiGuard.Run(_session, "루트 시작 스탯", () =>
