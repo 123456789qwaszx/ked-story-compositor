@@ -53,11 +53,15 @@ public partial class PresentationNodeEditor : UserControl
 
     internal string? NodeId => _nodeId;
 
+    /// <summary>이번 Rebuild가 노드에 <b>들어선</b> 것인가(편집 반영의 다시 그리기가 아니라) — 재생 중 진입 규칙은 이때만 든다.</summary>
+    private bool _entering;
+
     internal void Show(string? nodeId)
     {
         if (!string.Equals(_nodeId, nodeId, StringComparison.Ordinal))
         {
             _selectedLineId = null;
+            _entering = true;
         }
 
         _nodeId = nodeId;
@@ -66,6 +70,9 @@ public partial class PresentationNodeEditor : UserControl
 
     internal void Rebuild()
     {
+        bool entering = _entering;
+        _entering = false;
+
         if (_session is null || _session.Project.FindPresentation(_nodeId) is not { } presentation)
         {
             LineHost.Children.Clear();
@@ -98,6 +105,8 @@ public partial class PresentationNodeEditor : UserControl
             // Setup 편집은 우측이 아니라 무대 프리뷰 작업대의 몫이다 (2026-08-21 소유자:
             // "Setup 역시 우측에서 제거") — 터미널의 Setup 구획 클릭이 입구다.
 
+            bool deferred = false;
+
             if (workspace.Dialogue is not { } dialogue)
             {
                 TargetText.Text = presentation.Source is { } missing
@@ -114,6 +123,12 @@ public partial class PresentationNodeEditor : UserControl
                 if (_selectedLineId is null || dialogue.FindLine(_selectedLineId) is null)
                 {
                     _selectedLineId = dialogue.Lines.FirstOrDefault()?.LineId;
+                }
+
+                // 재생 중 진입 (2026-11-04) — 경로의 첫 줄 · 줄 앞 분기 · 읽을 줄 없음을 여기서 가른다.
+                if (entering)
+                {
+                    deferred = DeferEntryDetour(dialogue);
                 }
 
                 // 라인별 커맨드 편집은 2026-08-20에 무대 프리뷰 탭(터미널 아래 디테일)으로
@@ -137,7 +152,12 @@ public partial class PresentationNodeEditor : UserControl
                 }
             }
 
-            RefreshStagePreview();
+            // 미뤄 둔 진입(분기로 나감 · 읽을 줄 없어 되돌아감)은 이 노드의 첫 줄을 무대에 밀지 않는다 —
+            // 밀면 타자가 그 줄부터 시작해 버린다. 다음 차례의 처리가 무대를 옮긴다.
+            if (!deferred)
+            {
+                RefreshStagePreview();
+            }
         }
         finally
         {
@@ -400,7 +420,151 @@ public partial class PresentationNodeEditor : UserControl
             return true;
         }
 
-        SelectStageLine(path.LineIds[Math.Max(next, 0)]);
+        string nextLineId = path.LineIds[Math.Max(next, 0)];
+
+        // 줄 앞 분기 — 다음 줄에 <<detour>> 표식이 있으면 그 줄을 읽기 전에 다녀온다.
+        if (delta > 0 && TryDetourBeforeLine(dialogue, nextLineId))
+        {
+            return true;
+        }
+
+        SelectStageLine(nextLineId);
+        return true;
+    }
+
+    // ── 줄 앞 분기 (2026-11-04 소유자: "분기를 타야 하는데 분기는 안 타는 것 같아") ─────────────
+    //
+    // 런타임의 <<detour 카드>>는 줄 <b>앞</b>에 선다 — 카드로 갔다가(카드 첫머리 <<if>>가 안 맞으면 아무것도 안 읽고)
+    // 돌아와 그 줄을 읽는다. 한 줄에 여럿이면 차례대로. 재생 경로(PlaybackPath)는 조건 갈래의 출구만 알았고 줄의
+    // 표식(DialogueResultLine.DetourTargetNodeIds)은 보지 않았다 — 그래서 샘플의 분기 카드가 한 번도 재생되지 않았다.
+    // 복귀는 갈래 출구와 같은 스택(StagePlayback.DetourReturn)을 쓰되 ResumeAtLine=true로 "그 줄부터"다.
+
+    /// <summary>
+    /// 이 줄에 붙은 분기 중 아직 안 다녀온 첫 것으로 나간다. 나갔으면 true — 부른 쪽은 줄을 고르지 않는다.
+    /// 재생 중이 아니면 아무것도 안 한다(사람이 줄을 짚는 것은 분기를 타지 않는다).
+    /// </summary>
+    private bool TryDetourBeforeLine(DialogueResult dialogue, string lineId)
+    {
+        if (_session is null || StagePreview is null || _nodeId is null || !StagePreview.Playback.IsPlaying)
+        {
+            return false;
+        }
+
+        IReadOnlyList<string> targets = dialogue.FindLine(lineId)?.DetourTargetNodeIds ?? [];
+
+        if (targets.Count == 0)
+        {
+            return false;
+        }
+
+        IReadOnlySet<string> spent = StagePreview.Playback.SpentExitsOf(_nodeId);
+
+        foreach (string target in targets)
+        {
+            string key = StagePlayback.LineDetourKey(lineId, target);
+
+            if (spent.Contains(key) || _session.Project.FindNode(target) is not DialogueNode)
+            {
+                continue;
+            }
+
+            StagePreview.Playback.PushDetour(new StagePlayback.DetourReturn(_nodeId, lineId, key, ResumeAtLine: true));
+            return TryEnterNextNode(target);
+        }
+
+        return false;
+    }
+
+    /// <summary>▶를 누른 줄 앞의 분기부터 — 나갔으면 true.</summary>
+    internal bool TryDetourAtCurrentLine()
+    {
+        if (_selectedLineId is null || _session?.Project.FindPresentation(_nodeId) is not { } presentation)
+        {
+            return false;
+        }
+
+        PresentationWorkspace workspace = PresentationBindingResolver.Resolve(_session.Project, presentation);
+        return workspace.Dialogue is { } dialogue && TryDetourBeforeLine(dialogue, _selectedLineId);
+    }
+
+    /// <summary>
+    /// 줄 앞 분기에서 돌아왔다 — 같은 줄에 남은 분기가 있으면 다음 것으로 또 나가고, 없으면 그 줄을 읽는다.
+    /// 떠날 때 고른 줄이 그대로면(선택이 안 바뀜) 프리뷰를 다시 밀어 타자가 처음부터 선다.
+    /// </summary>
+    internal void ResumeAtStageLine(string lineId)
+    {
+        if (_session?.Project.FindPresentation(_nodeId) is not { } presentation)
+        {
+            return;
+        }
+
+        PresentationWorkspace workspace = PresentationBindingResolver.Resolve(_session.Project, presentation);
+
+        if (workspace.Dialogue is { } dialogue && TryDetourBeforeLine(dialogue, lineId))
+        {
+            return;
+        }
+
+        if (string.Equals(_selectedLineId, lineId, StringComparison.Ordinal))
+        {
+            RefreshStagePreview();
+            return;
+        }
+
+        SelectStageLine(lineId);
+    }
+
+    /// <summary>
+    /// 재생 중 노드에 들어섰다 — 경로의 첫 줄에 서고, 그 줄 앞 분기가 있으면 먼저 다녀온다. 읽을 줄이 하나도 없으면
+    /// (분기 카드의 첫머리 조건이 안 맞음) 곧장 나간다 — 돌아갈 자리가 있으면 거기로. 선택 이벤트 안에서 또 선택을
+    /// 옮기지 않도록 나가는 쪽은 다음 차례로 미룬다. 미뤘으면 true — 부른 쪽은 이 노드의 첫 줄을 무대에 밀지 않는다.
+    /// </summary>
+    private bool DeferEntryDetour(DialogueResult dialogue)
+    {
+        if (StagePreview?.Playback.IsPlaying != true || _selectedLineId is null)
+        {
+            return false;
+        }
+
+        PlaybackPath.Result path = TracePlaybackPath(dialogue);
+        string? node = _nodeId;
+
+        // 미룬 처리는 그 사이 무대가 다른 노드로 옮겨졌으면(분기 복귀가 먼저 처리했다 등) 하지 않는다.
+        bool StillHere() => StagePreview?.Playback.IsPlaying == true && string.Equals(_nodeId, node, StringComparison.Ordinal);
+
+        if (path.LineIds.Count == 0)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (StillHere() && !ExitAlongPath(path))
+                {
+                    StagePreview!.Playback.StopAtEnd();
+                }
+            });
+            return true;
+        }
+
+        if (!path.LineIds.Contains(_selectedLineId, StringComparer.Ordinal))
+        {
+            _selectedLineId = path.LineIds[0];
+        }
+
+        string first = _selectedLineId;
+        IReadOnlyList<string> targets = dialogue.FindLine(first)?.DetourTargetNodeIds ?? [];
+        IReadOnlySet<string> spent = StagePreview!.Playback.SpentExitsOf(_nodeId ?? string.Empty);
+
+        if (!targets.Any(target => !spent.Contains(StagePlayback.LineDetourKey(first, target))))
+        {
+            return false;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (StillHere() && !TryDetourBeforeLine(dialogue, first))
+            {
+                RefreshStagePreview();
+            }
+        });
         return true;
     }
 

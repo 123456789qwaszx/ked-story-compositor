@@ -96,16 +96,25 @@ public partial class MainWindow : Window
                 PresentationEditor.SelectStageLineById(lineId);
             }
         };
-        StagePreview.DetourResumeRequested += lineId =>
+        StagePreview.DetourResumeRequested += (lineId, atLine) =>
         {
             // detour 복귀 (2026-08-22) — 돌아간 노드의 편집기가 떠난 줄을 짚고 한 줄
             // 나아간다. 다녀온 detour는 경로에서 빠져 있으므로(PopDetour가 표시했다)
             // 그 한 걸음이 곧 "나머지 대본"의 첫 줄이다.
-            if (PresentationEditor.IsVisible)
+            // 줄 앞 분기(2026-11-04)에서 돌아온 것이면 그 줄을 아직 안 읽었다 — 그 줄부터(남은 분기가 있으면 또 나간다).
+            if (!PresentationEditor.IsVisible)
             {
-                PresentationEditor.SelectStageLineById(lineId);
-                PresentationEditor.MoveStageLine(1);
+                return;
             }
+
+            if (atLine)
+            {
+                PresentationEditor.ResumeAtStageLine(lineId);
+                return;
+            }
+
+            PresentationEditor.SelectStageLineById(lineId);
+            PresentationEditor.MoveStageLine(1);
         };
         StagePreview.SceneChosen += EnterPresentationChannel;
         // 작업대 = Inspector (2026-08-21 소유자: "점의 세부 조절창과 연출 편집창이
@@ -127,6 +136,9 @@ public partial class MainWindow : Window
             // 재생이 이어진다. 전환된 노드의 편집기가 열리며 첫 라인 프리뷰를 민다.
             return PresentationEditor.IsVisible && PresentationEditor.TryExitPlaybackNode();
         };
+        // ▶를 누른 줄 앞에 <<detour>>가 있으면 그 분기부터 (2026-11-04) — 줄을 읽기 전에 다녀온다.
+        StagePreview.PlayEntryRequested = () =>
+            PresentationEditor.IsVisible && PresentationEditor.TryDetourAtCurrentLine();
         StagePreview.ManipulationApplied += () =>
         {
             // 직접 조작은 연출 노드의 바인딩을 바꿨다 — 커맨드 행에 즉시 보여야 한다.

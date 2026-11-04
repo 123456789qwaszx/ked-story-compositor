@@ -172,6 +172,46 @@ public sealed class StageTimelineTests
         Assert.Empty(playback.SpentExitsOf("nd_a"));
     });
 
+    /// <summary>
+    /// 줄 앞 분기 (2026-11-04 소유자: "분기를 타야 하는데 분기는 안 타는 것 같아") — 복귀는 "그 줄부터"이고, 다녀왔음 키는
+    /// 줄과 대상의 쌍이라 한 줄의 분기 여럿이 각각 표시된다. 새 전체 재생은 RunStarted를 울려 호스트가 ▶ 누른 줄 앞의
+    /// 분기부터 다녀올 수 있고, 일시정지 재개는 울리지 않는다.
+    /// </summary>
+    [Fact]
+    public void 줄_앞_분기는_그_줄부터_돌아오고_새_재생만_RunStarted를_운다() => HeadlessUi.Run(() =>
+    {
+        var playback = new StagePlayback();
+        playback.OnRequest(0, 2, "첫 줄", isChoice: false, transitionSeconds: 0);
+
+        int started = 0;
+        playback.RunStarted += () => started++;
+
+        playback.Play();
+        Assert.Equal(1, started);
+
+        string first = StagePlayback.LineDetourKey("ln_w1", "nd_remade");
+        string second = StagePlayback.LineDetourKey("ln_w1", "nd_sticker");
+        Assert.NotEqual(first, second);
+
+        playback.PushDetour(new StagePlayback.DetourReturn("nd_wrapup", "ln_w1", first, ResumeAtLine: true));
+        StagePlayback.DetourReturn back = playback.PopDetour()!.Value;
+        Assert.True(back.ResumeAtLine);
+        Assert.Equal("ln_w1", back.ResumeAfterLineId);
+        Assert.Contains(first, playback.SpentExitsOf("nd_wrapup"));
+        Assert.DoesNotContain(second, playback.SpentExitsOf("nd_wrapup"));
+
+        // 갈래 출구의 키(줄 Id 그대로)와 섞이지 않는다 — 경로 계산은 줄 Id로만 묻는다.
+        Assert.DoesNotContain("ln_w1", playback.SpentExitsOf("nd_wrapup"));
+
+        playback.Pause();
+        playback.Play();
+        Assert.Equal(1, started);
+
+        playback.StopAtEnd();
+        playback.Play();
+        Assert.Equal(2, started);
+    });
+
     [Fact]
     public void 재생_중에_라인을_옮기면_재생이_멈춘다() => HeadlessUi.Run(() =>
     {

@@ -113,7 +113,7 @@ internal static class DetourReturnPlayback
         returned = ret;
         preview.Playback.OnNodeSwitch();
         session.Select(ret.NodeId);
-        preview.RequestDetourResume(ret.ResumeAfterLineId);
+        preview.RequestDetourResume(ret.ResumeAfterLineId, ret.ResumeAtLine);
         return true;
     }
 }

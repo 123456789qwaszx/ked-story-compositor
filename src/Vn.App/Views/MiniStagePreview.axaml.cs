@@ -282,6 +282,12 @@ public partial class MiniStagePreview : UserControl
     /// </summary>
     internal Func<bool>? NodeExitRequested;
 
+    /// <summary>
+    /// 새 전체 재생이 지금 줄에서 섰다 (2026-11-04) — 활성 편집기가 그 줄 앞의 <c>&lt;&lt;detour&gt;&gt;</c>를 먼저
+    /// 다녀온다. 나갔으면 true(무대는 분기 카드로 넘어간다), 아니면 지금 줄이 그대로 재생된다.
+    /// </summary>
+    internal Func<bool>? PlayEntryRequested;
+
     /// <summary>무대 직접 조작이 편집을 만들었다 — 편집기가 다시 그린다.</summary>
     internal event Action? ManipulationApplied;
 
@@ -293,10 +299,11 @@ public partial class MiniStagePreview : UserControl
     /// 나아간다. 셸이 라우팅하는 이유는 하나다: 나가는 노드의 편집기와 돌아가는 노드의
     /// 편집기가 서로 다를 수 있다(연출 노드 ↔ 커스텀 대사 노드).
     /// </summary>
-    internal event Action<string>? DetourResumeRequested;
+    /// <param name="atLine">true = 그 줄<b>부터</b>(줄 앞 분기에서 돌아옴), false = 그 줄 <b>다음</b>부터(갈래 출구에서 돌아옴).</param>
+    internal event Action<string, bool>? DetourResumeRequested;
 
     /// <summary>편집기가 복귀를 확정한 뒤 부른다 — 선택은 이미 그 노드로 옮겨져 있다.</summary>
-    internal void RequestDetourResume(string lineId) => DetourResumeRequested?.Invoke(lineId);
+    internal void RequestDetourResume(string lineId, bool atLine) => DetourResumeRequested?.Invoke(lineId, atLine);
 
     // ── 에피소드 끝 선택지 (2026-08-27 소유자 보고: 에피소드가 끝나도 선택지가 안 선다) ──
     //
@@ -386,32 +393,89 @@ public partial class MiniStagePreview : UserControl
             return true;
         }
 
-        // 미리 정한 루트 (2026-11-04) — 이 갈림의 선택이 루트에 있고 지금 고를 수 있으면 묻지 않고 간다.
-        if (ActiveRoute(chapter.ChapterId) is { } route && route.ChoiceAt(episodeId) is { } pick)
+        // 미리 정한 루트 (2026-11-04) — 이 갈림의 선택이 루트에 있고 지금 고를 수 있으면, 선택지를 띄워 그것을 비추고
+        // 잠깐 뒤에 스스로 고른다 (소유자: "루트탭에서 이미 어떤 선택지로 갈지 정해뒀으니까, 약간의 딜레이를 둔 다음에
+        // 자동으로 선택되도록"). 루트에 없거나 지금 스탯으로 막혔으면 사람이 고른다 — 이유는 상태줄에.
+        PreviewRoute? route = ActiveRoute(chapter.ChapterId);
+        PreviewRouteChoice? pick = route?.ChoiceAt(episodeId);
+        string? wanted = pick?.OptionLabel;
+        ChapterRunOption? planned = wanted is null
+            ? null
+            : advance.Options.FirstOrDefault(option =>
+                string.Equals(option.Edge.OptionLabel, wanted, StringComparison.Ordinal));
+        bool automatic = planned is { IsSelectable: true };
+
+        if (pick is not null && !automatic)
         {
-            ChapterRunOption? planned = advance.Options.FirstOrDefault(option =>
-                string.Equals(option.Edge.OptionLabel, pick.OptionLabel, StringComparison.Ordinal));
-
-            if (planned is { IsSelectable: true })
-            {
-                _session.SetStatus($"루트 '{route.Name}'대로 — {episodeId}에서 '{pick.OptionLabel}'");
-                ChooseEpisodeEdge(chapter, file!, source, planned.Edge);
-                return true;
-            }
-
             _session.SetStatus(planned is null
-                ? $"루트 '{route.Name}'의 '{pick.OptionLabel}'이 {episodeId}에 없습니다(숨김 조건?) — 직접 고르세요."
-                : $"루트 '{route.Name}'의 '{pick.OptionLabel}'이 지금 스탯으로 잠겨 있습니다 — 직접 고르세요.");
+                ? $"루트 '{route!.Name}'의 '{pick.OptionLabel}'이 {episodeId}에 없습니다(숨김 조건?) — 직접 고르세요."
+                : $"루트 '{route!.Name}'의 '{pick.OptionLabel}'이 지금 스탯으로 잠겨 있습니다 — 직접 고르세요.");
         }
 
         StageChoiceOption[] options = advance.Options
-            .Select(option => BuildEpisodeOption(chapter, file!, source, option))
+            .Select(option => BuildEpisodeOption(chapter, file!, source, option, highlight: automatic && ReferenceEquals(option, planned)))
             .ToArray();
 
         _current = _current with { ChoiceOptions = options };
         Render();
         Playback.WaitForChoiceInput();
+
+        if (automatic)
+        {
+            _session.SetStatus($"루트 '{route!.Name}'대로 — {episodeId}에서 '{pick!.OptionLabel}'을 고릅니다.");
+            ArmAutoChoice(options, () => ChooseEpisodeEdge(chapter, file!, source, planned!.Edge));
+        }
+
         return true;
+    }
+
+    // ── 루트 자동 선택 (2026-11-04) ─────────────────────────────────────────────────────
+
+    /// <summary>선택지가 선 뒤 루트대로 고르기까지의 여유 — 무엇이 골라지는지 눈에 들어올 만큼만. 배속을 따른다.</summary>
+    private const double AutoChoiceDelaySeconds = 0.9;
+
+    private Avalonia.Threading.DispatcherTimer? _autoChoice;
+
+    /// <summary>
+    /// 띄운 선택지(<paramref name="presented"/>)가 그대로 서 있고 재생이 계속 중일 때만 고른다 — 그 사이 사람이 눌렀거나
+    /// (화면이 바뀜) 일시정지했으면 고르지 않는다.
+    /// </summary>
+    private void ArmAutoChoice(StageChoiceOption[] presented, Action choose)
+    {
+        CancelAutoChoice();
+
+        var timer = new Avalonia.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(AutoChoiceDelaySeconds / Math.Max(0.25, Playback.SpeedMultiplier))
+        };
+
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+
+            if (!ReferenceEquals(_autoChoice, timer))
+            {
+                return;
+            }
+
+            _autoChoice = null;
+
+            if (!Playback.IsPlaying || !ReferenceEquals(_current?.ChoiceOptions, presented) || _session is null)
+            {
+                return;
+            }
+
+            UiGuard.Run(_session, "루트 자동 선택", choose);
+        };
+
+        _autoChoice = timer;
+        timer.Start();
+    }
+
+    private void CancelAutoChoice()
+    {
+        _autoChoice?.Stop();
+        _autoChoice = null;
     }
 
     // ── 챕터 런 상태 (2026-08-27 소유자: "선택을 따라가며 스탯 HUD가 챕터 단위로
@@ -469,8 +533,10 @@ public partial class MiniStagePreview : UserControl
     /// </summary>
     internal void NoteDetourReturn(string callerNodeId, string branchNodeId, bool played)
     {
-        if (_session?.Project.FindDialogue(callerNodeId) is not { } caller ||
-            _session.Project.FindDialogue(branchNodeId) is not { } branch)
+        // 재생 노드는 연출 노드다 — 그 노드가 말하는 카드로 푼다(⛔ 전에는 카드 Id로만 찾아 조용히 아무것도 안 적었다).
+        if (_session is null ||
+            PlayingDialogueOf(callerNodeId) is not { } caller ||
+            PlayingDialogueOf(branchNodeId) is not { } branch)
         {
             return;
         }
@@ -527,11 +593,13 @@ public partial class MiniStagePreview : UserControl
     /// 목록에서 빠지고 해금조건 미달만 잠긴 채 남는다. 다른 갈래를 억지로 확인하려면
     /// 씬 선택기가 뒷길이다.
     /// </summary>
+    /// <param name="highlight">루트가 고르기로 한 선택지 — 테두리를 밝혀 "이것이 곧 골라진다"를 보인다.</param>
     private StageChoiceOption BuildEpisodeOption(
         ChapterGraphModel chapter,
         StoryFile file,
         DialogueNode source,
-        ChapterRunOption option)
+        ChapterRunOption option,
+        bool highlight = false)
     {
         ChapterEdge edge = option.Edge;
         if (!option.IsSelectable)
@@ -545,8 +613,8 @@ public partial class MiniStagePreview : UserControl
         }
 
         return new StageChoiceOption(
-            edge.OptionLabel!,
-            IsSelected: false,
+            (highlight ? "▶ " : string.Empty) + edge.OptionLabel!,
+            IsSelected: highlight,
             Choose: () => ChooseEpisodeEdge(chapter, file, source, edge));
     }
 
@@ -633,6 +701,8 @@ public partial class MiniStagePreview : UserControl
         {
             return;
         }
+
+        CancelAutoChoice();   // 사람이 먼저 눌렀든 자동이든, 고르는 것은 한 번이다.
 
         // EpisodeId는 챕터 안에서만 유일하다 — 같은 판에서만 찾는다.
         //
@@ -827,12 +897,28 @@ public partial class MiniStagePreview : UserControl
         // 재생 배선 — 시간의 원천은 이 타이머 하나, 라인 이동은 기존 선택 경로다.
         Playback.MoveRequested += delta => LineMoveRequested?.Invoke(delta);
         Playback.NodeExitRequested = () => NodeExitRequested?.Invoke() == true;
+        Playback.RunStarted += () => PlayEntryRequested?.Invoke();
         // 챕터 런 스탯은 detour 이력과 같은 수명이다 — 새 전체 재생이 처음값으로 되돌린다.
+        //
+        // "처음값"은 <b>지금 무대에 선 씬의</b> 것이다 (2026-11-04): 지도 점을 눌러 중간에서 들어왔으면 루트가 그 자리까지
+        // 걸어온 스탯(StartTrailAt과 같은 규칙). ⛔ 전에는 런을 비워 버려서, 중간에서 ▶를 누르면 시작 스탯으로 되돌아가
+        // 루트의 선택지가 숨김·잠김에 걸려 멈췄고(소유자: "선택지에서 턱 걸려"), 분기 카드의 첫머리 조건도 평가 불가였다.
         Playback.RunReset += () =>
         {
-            _chapterRun = null;
-            PublishRunStats();
+            CancelAutoChoice();
             _trail.Clear();
+
+            if (CurrentComboSceneId() is { } sceneId &&
+                _session?.Project.FindDialogue(sceneId) is { MarkedEpisodeId: not null } scene)
+            {
+                StartTrailAt(scene);
+            }
+            else
+            {
+                _chapterRun = null;
+                PublishRunStats();
+            }
+
             RefreshMinimap();
         };
         _scene.PlaybackAdvance = Playback.TryAdvanceByInput;

@@ -262,7 +262,9 @@ public sealed class StagePlayback
 
         // 새 전체 재생은 detour 이력을 안 물려받는다 — 안 그러면 두 번째 재생에서
         // 다녀온 detour가 통째로 건너뛰어진다. 일시정지에서 이어 붙는 재생은 예외다.
-        if (!_pausedMidRun)
+        bool fresh = !_pausedMidRun;
+
+        if (fresh)
         {
             ResetDetours();
         }
@@ -283,7 +285,19 @@ public sealed class StagePlayback
         TypingProgress?.Invoke();
         TransitionChanged?.Invoke();
         StateChanged?.Invoke();
+
+        // 새 판이 지금 줄에서 섰다 — 호스트가 이 줄 앞 분기를 먼저 다녀올 수 있다(그러면 노드 전환이 대기를 건다).
+        if (fresh)
+        {
+            RunStarted?.Invoke();
+        }
     }
+
+    /// <summary>
+    /// 새 전체 재생이 지금 줄에서 시작됐다(일시정지 재개는 아니다) — 상태가 다 선 뒤에 운다. 호스트는 여기서
+    /// 그 줄 앞의 <c>&lt;&lt;detour&gt;&gt;</c>를 먼저 다녀올 수 있다(2026-11-04).
+    /// </summary>
+    public event Action? RunStarted;
 
     public void Pause()
     {
@@ -476,12 +490,23 @@ public sealed class StagePlayback
     // 거기서 끝난다(기본 출구 = jump는 애초에 돌아오지 않는다).
 
     /// <param name="NodeId">돌아갈 대사 노드.</param>
-    /// <param name="ResumeAfterLineId">그 노드에서 <b>이 줄 다음</b>부터 잇는다.</param>
-    /// <param name="ExitOwnerLineId">다녀온 detour를 소유한 줄 — 다시 타지 않도록 표시한다.</param>
+    /// <param name="ResumeAfterLineId">그 노드에서 <b>이 줄 다음</b>부터 잇는다 — <paramref name="ResumeAtLine"/>이면 <b>이 줄부터</b>.</param>
+    /// <param name="ExitOwnerLineId">
+    /// 다녀온 detour를 소유한 줄 — 다시 타지 않도록 표시한다. 갈래 출구는 그 줄의 Id, 줄 앞 분기(<c>&lt;&lt;detour&gt;&gt;</c> 표식,
+    /// 2026-11-04)는 <c>줄Id→대상노드Id</c> — 한 줄에 분기가 여럿이면 하나씩 다녀오며 각각 표시된다.
+    /// </param>
+    /// <param name="ResumeAtLine">
+    /// true면 돌아와서 <paramref name="ResumeAfterLineId"/> <b>그 줄을</b> 재생한다(줄 앞 분기는 줄을 아직 안 읽고 나갔다).
+    /// false면 그 줄 <b>다음</b>부터(갈래 출구는 그 줄을 읽고 나갔다).
+    /// </param>
     public readonly record struct DetourReturn(
         string NodeId,
         string ResumeAfterLineId,
-        string ExitOwnerLineId);
+        string ExitOwnerLineId,
+        bool ResumeAtLine = false);
+
+    /// <summary>줄 앞 분기의 "다녀왔음" 키 — <see cref="SpentExitsOf"/>에 이 모양으로 든다.</summary>
+    public static string LineDetourKey(string lineId, string targetNodeId) => lineId + "→" + targetNodeId;
 
     private readonly List<DetourReturn> _detours = new();
     private readonly Dictionary<string, HashSet<string>> _spentExits = new(StringComparer.Ordinal);
