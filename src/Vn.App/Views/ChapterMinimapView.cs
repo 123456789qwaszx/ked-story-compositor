@@ -28,6 +28,8 @@ public sealed class ChapterMinimapView : UserControl
     private const double MinSpacing = 34;        // 점 사이 최소 간격 — director 자리를 축소해도 겹치지 않게
     /// <summary>폭 맞춤의 기준은 상수가 아니라 <b>지금 보이는 폭</b>이다 (2026-11-04 소유자: "좌우로 흰 공간만 넓히지 말고 실제 미니맵이 보이는 영역을 늘려").</summary>
     private double _lastViewportWidth;
+    private Point? _panStart;
+    private Vector _panOffset;
 
     private static readonly IBrush NodeFill = new SolidColorBrush(Color.FromRgb(0x4a, 0x4f, 0x58));
     private static readonly IBrush NodeStroke = new SolidColorBrush(Color.FromRgb(0xc8, 0xcc, 0xd2));
@@ -73,7 +75,13 @@ public sealed class ChapterMinimapView : UserControl
         ToolTip.SetTip(zoomFit, "폭에 맞춤");
         zoomOut.Click += (_, _) => SetZoom(_zoom / ZoomStep);
         zoomIn.Click += (_, _) => SetZoom(_zoom * ZoomStep);
-        zoomFit.Click += (_, _) => SetZoom(1);
+        zoomFit.Click += (_, _) =>
+        {
+            if (_map is not null)
+            {
+                SetZoom(FitZoom(_map));
+            }
+        };
 
         var routeOnlyBox = new CheckBox { Content = "루트만", FontSize = 11, Padding = new Thickness(4, 0, 0, 0), MinHeight = 0 };
         ToolTip.SetTip(routeOnlyBox, "켜면 [루트] 탭에서 정한 예정 길과 그 분기만 그립니다. 끄면 안 가는 길도 보입니다.");
@@ -89,13 +97,46 @@ public sealed class ChapterMinimapView : UserControl
 
         _scroll.SizeChanged += (_, args) =>
         {
-            if (Math.Abs(args.NewSize.Width - _lastViewportWidth) < 1)
+            _lastViewportWidth = args.NewSize.Width;
+            Redraw();   // 배율은 그대로 — 캔버스가 보이는 영역을 다시 채운다. 처음 폭을 알았을 때만 맞춤(_fitPending)이 든다.
+        };
+
+        // 가운데 단추 끌기 = 이동 (2026-11-04 소유자). 연출 그래프와 같은 손놀림.
+        _scroll.PointerPressed += (_, args) =>
+        {
+            if (!args.GetCurrentPoint(_scroll).Properties.IsMiddleButtonPressed)
             {
                 return;
             }
 
-            _lastViewportWidth = args.NewSize.Width;
-            Redraw();
+            _panStart = args.GetPosition(this);
+            _panOffset = _scroll.Offset;
+            args.Pointer.Capture(_scroll);
+            args.Handled = true;
+        };
+        _scroll.PointerMoved += (_, args) =>
+        {
+            if (_panStart is not { } start || !args.GetCurrentPoint(_scroll).Properties.IsMiddleButtonPressed)
+            {
+                return;
+            }
+
+            Point now = args.GetPosition(this);
+            _scroll.Offset = new Vector(
+                Math.Max(0, _panOffset.X - (now.X - start.X)),
+                Math.Max(0, _panOffset.Y - (now.Y - start.Y)));
+            args.Handled = true;
+        };
+        _scroll.PointerReleased += (_, args) =>
+        {
+            if (_panStart is null)
+            {
+                return;
+            }
+
+            _panStart = null;
+            args.Pointer.Capture(null);
+            args.Handled = true;
         };
 
         _scroll.PointerWheelChanged += (_, args) =>
@@ -120,7 +161,7 @@ public sealed class ChapterMinimapView : UserControl
     }
 
     private const double ZoomStep = 1.25;
-    private const double ZoomMin = 0.4;
+    private const double ZoomMin = 0.1;
     private const double ZoomMax = 4;
 
     /// <summary>폭 맞춤 배율에 곱하는 수. 1이 "폭에 맞춤"이다.</summary>
@@ -165,11 +206,21 @@ public sealed class ChapterMinimapView : UserControl
     private bool _routeOnly;
 
     private PreviewRouteWalker.Result? _plan;
+
+    /// <summary>챕터를 처음 열었을 때 한 번 폭에 맞춘다 — 그 뒤 배율은 사람의 것이다.</summary>
+    private bool _fitPending = true;
+    private string? _shownChapterId;
     private readonly List<TextBlock> _numberOverlays = [];
 
     /// <param name="plan">미리 정한 루트로 걸은 예정 길 — 파란 점선으로, 멈춘 자리는 ⚠. null이면 안 그린다.</param>
     public void Show(ChapterMinimap? map, ChapterRunTrail? trail, string? currentDialogueId, PreviewRouteWalker.Result? plan = null)
     {
+        if (!string.Equals(map?.ChapterId, _shownChapterId, StringComparison.Ordinal))
+        {
+            _shownChapterId = map?.ChapterId;
+            _fitPending = true;
+        }
+
         _map = map;
         _trail = trail;
         _currentDialogueId = currentDialogueId;
@@ -189,12 +240,19 @@ public sealed class ChapterMinimapView : UserControl
             return;
         }
 
+        if (_fitPending && _lastViewportWidth > 0)
+        {
+            _fitPending = false;
+            _zoom = FitZoom(_map);
+        }
+
         (double minX, double minY, double maxX, double maxY) = _map.Bounds;
-        double scale = ScaleFor(_map, minX, maxX) * _zoom;
+        double scale = BaseScale(_map) * _zoom;
         double width = (maxX - minX) * scale + MapPadding * 2 + NodeSize;
         double height = (maxY - minY) * scale + MapPadding * 2 + NodeSize;
-        _canvas.Width = Math.Max(width, 80);
-        _canvas.Height = Math.Max(height, 80);
+        // 캔버스는 보이는 영역을 늘 채운다 — 기둥을 넓히면 지도의 보이는 자리가 늘지, 옆에 빈 띠가 생기지 않는다.
+        _canvas.Width = Math.Max(width, _scroll.Viewport.Width);
+        _canvas.Height = Math.Max(height, _scroll.Viewport.Height);
 
         Point At(ChapterMinimapNode node) => new((node.X - minX) * scale + MapPadding, (node.Y - minY) * scale + MapPadding);
         var positions = _map.Nodes.ToDictionary(node => node.EpisodeId, At, StringComparer.Ordinal);
@@ -469,14 +527,14 @@ public sealed class ChapterMinimapView : UserControl
         }
     }
 
-    /// <summary>director 자리를 폭에 맞춰 축소하되, 가장 가까운 두 점이 겹치지 않을 만큼은 지킨다.</summary>
-    private double ScaleFor(ChapterMinimap map, double minX, double maxX)
+    /// <summary>
+    /// 기본 배율 — director 자리를 그대로(1배) 쓰되, 가장 가까운 두 점이 겹치면 그만큼만 키운다. 배율은 기둥 폭과 <b>무관</b>하다
+    /// (2026-11-04 소유자: "연출 그래프에서 그랬듯이 지도 자체의 보이는 영역이 늘어나도록") — 기둥을 넓히면 더 넓은 자리가 보이고,
+    /// 크기는 확대 · 축소(Ctrl+휠 · − ＋)와 [맞춤]만 바꾼다.
+    /// </summary>
+    private static double BaseScale(ChapterMinimap map)
     {
-        double span = Math.Max(maxX - minX, 1);
-        // 보이는 폭에 맞춘다 — 기둥을 넓히면 지도가 커진다. 1배 상한은 없다: director 자리는 큰 화면의 것이라 좁은 기둥에서는 늘 축소이고,
-        // 넓게 펴면 그만큼 크게 본다(점 크기는 그대로, 간격만 는다).
-        double available = Math.Max(_lastViewportWidth > 0 ? _lastViewportWidth : 320, 120) - MapPadding * 2 - NodeSize;
-        double fit = available / span;
+        double fit = 1;
 
         double nearest = double.MaxValue;
         for (int i = 0; i < map.Nodes.Count; i++)
@@ -495,6 +553,16 @@ public sealed class ChapterMinimapView : UserControl
         }
 
         return Math.Max(fit, MinSpacing / nearest);
+    }
+
+    /// <summary>지금 보이는 폭에 지도 전체가 들어가는 배율 — [맞춤]과 챕터를 처음 열 때.</summary>
+    private double FitZoom(ChapterMinimap map)
+    {
+        (double minX, _, double maxX, _) = map.Bounds;
+        double span = Math.Max((maxX - minX) * BaseScale(map), 1);
+        double available = Math.Max(_lastViewportWidth > 0 ? _lastViewportWidth : 320, 120) - MapPadding * 2 - NodeSize;
+
+        return Math.Clamp(available / span, ZoomMin, ZoomMax);
     }
 
     private static Shape ShapeFor(ChapterMinimapNode node, IBrush fill)

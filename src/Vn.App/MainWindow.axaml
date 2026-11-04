@@ -71,7 +71,10 @@
                     <DockPanel>
                         <Button x:Name="MapCollapseButton" DockPanel.Dock="Right" Content="◀" FontSize="11" MinWidth="0" Padding="6,0"
                                 ToolTip.Tip="지도를 접습니다." />
-                        <TextBlock Text="챕터 지도" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock DockPanel.Dock="Left" Text="챕터" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <!-- 챕터 고르기 (2026-11-04 소유자: "챕터를 지도 위쪽에서 드롭다운으로") — 무대의 챕터 선택기와 같은 것(활성 판)을 비춘다. -->
+                        <ComboBox x:Name="MapChapterCombo" FontSize="11" HorizontalAlignment="Stretch" MinWidth="80"
+                                  PlaceholderText="챕터 선택" />
                     </DockPanel>
                 </Border>
                 <views:ChapterMinimapView x:Name="Minimap" />

@@ -225,13 +225,53 @@ public partial class MainWindow : Window
         RouteSurvey.RouteChanged += RefreshMinimap;
         MapCollapseButton.Click += (_, _) => SetMapCollapsed(true);
         MapExpandButton.Click += (_, _) => SetMapCollapsed(false);
+        MapChapterCombo.SelectionChanged += (_, _) =>
+        {
+            if (_syncingMapChapter || MapChapterCombo.SelectedItem is not string chapterId)
+            {
+                return;
+            }
+
+            // 무대의 챕터 선택기와 같은 길 — 활성 판 하나를 바꾼다(판이 없는 챕터는 목록에 없다).
+            UiGuard.Run(_session, "챕터 고르기", () =>
+                _session.SelectFile(EpisodeNaming.BoardOf(_session.Project, chapterId)?.Id));
+        };
+        _session.FileGraphStateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshMinimap);
         RefreshMinimap();
     }
 
+    private bool _syncingMapChapter;
+
     private void RefreshMinimap()
     {
+        RefreshMapChapterCombo();
         (ChapterMinimap? map, ChapterRunTrail trail, string? current, PreviewRouteWalker.Result? plan) = StagePreview.MinimapState();
         Minimap.Show(map, trail, current, plan);
+    }
+
+    /// <summary>지도 위 챕터 드롭다운 — 판이 있는 챕터만, 선택은 활성 판을 비춘다.</summary>
+    private void RefreshMapChapterCombo()
+    {
+        _syncingMapChapter = true;
+
+        try
+        {
+            string[] ids = _session.ChapterEntries()
+                .Where(entry => EpisodeNaming.BoardOf(_session.Project, entry.ChapterId) is not null)
+                .Select(entry => entry.ChapterId)
+                .ToArray();
+
+            if (!ids.SequenceEqual((MapChapterCombo.ItemsSource as IEnumerable<string>) ?? [], StringComparer.Ordinal))
+            {
+                MapChapterCombo.ItemsSource = ids;
+            }
+
+            MapChapterCombo.SelectedItem = _session.ActiveFile?.Name is { } name && ids.Contains(name) ? name : null;
+        }
+        finally
+        {
+            _syncingMapChapter = false;
+        }
     }
 
     /// <summary>지도 기둥을 접고 편다 — 접으면 세로 단추 하나만 남는다.</summary>
