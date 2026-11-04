@@ -217,6 +217,29 @@ public partial class MainWindow : Window
         SupplyChapters();
         ShowSelectedNode();
         RefreshShell();
+
+        // 챕터 지도 (2026-11-04) — 무대가 "그릴 것"을 들고, 셸의 왼쪽 기둥이 그린다. 점을 누르면 무대의 씬 선택과 같은 길.
+        StagePreview.MinimapChanged += RefreshMinimap;
+        Minimap.NodeClicked += StagePreview.EnterSceneFromMap;
+        RouteSurvey.Attach(_session, () => _session.ChapterEntries());
+        RouteSurvey.RouteChanged += RefreshMinimap;
+        MapCollapseButton.Click += (_, _) => SetMapCollapsed(true);
+        MapExpandButton.Click += (_, _) => SetMapCollapsed(false);
+        RefreshMinimap();
+    }
+
+    private void RefreshMinimap()
+    {
+        (ChapterMinimap? map, ChapterRunTrail trail, string? current, PreviewRouteWalker.Result? plan) = StagePreview.MinimapState();
+        Minimap.Show(map, trail, current, plan);
+    }
+
+    /// <summary>지도 기둥을 접고 편다 — 접으면 세로 단추 하나만 남는다.</summary>
+    private void SetMapCollapsed(bool collapsed)
+    {
+        MapPane.IsVisible = !collapsed;
+        MapSplitter.IsVisible = !collapsed;
+        MapExpandButton.IsVisible = collapsed;
     }
 
     /// <summary>
@@ -226,6 +249,7 @@ public partial class MainWindow : Window
     private void SupplyChapters()
     {
         StagePreview.SupplyChapters(_session.ChapterEntries());
+        RouteSurvey.Refresh();
     }
 
     /// <summary>

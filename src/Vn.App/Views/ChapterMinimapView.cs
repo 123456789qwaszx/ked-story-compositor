@@ -38,6 +38,8 @@ public sealed class ChapterMinimapView : UserControl
     private static readonly IBrush BandAltFill = new SolidColorBrush(Color.FromArgb(0x10, 0xff, 0xff, 0xff));
     private static readonly IBrush BandText = new SolidColorBrush(Color.FromArgb(0x99, 0xff, 0xff, 0xff));
     private static readonly IBrush PlanStroke = new SolidColorBrush(Color.FromRgb(0x5a, 0xa9, 0xf0));
+    private static readonly IBrush PlanFill = new SolidColorBrush(Color.FromRgb(0x3a, 0x6e, 0x9e));
+    private static readonly IBrush PlanDimFill = new SolidColorBrush(Color.FromArgb(0x66, 0x5a, 0xa9, 0xf0));
     private static readonly IBrush WarnBrush = new SolidColorBrush(Color.FromRgb(0xf0, 0x6a, 0x5a));
 
     private readonly Canvas _canvas = new();
@@ -72,7 +74,13 @@ public sealed class ChapterMinimapView : UserControl
         zoomIn.Click += (_, _) => SetZoom(_zoom * ZoomStep);
         zoomFit.Click += (_, _) => SetZoom(1);
 
+        var routeOnlyBox = new CheckBox { Content = "루트만", FontSize = 11, Padding = new Thickness(4, 0, 0, 0), MinHeight = 0 };
+        ToolTip.SetTip(routeOnlyBox, "켜면 [루트] 탭에서 정한 예정 길과 그 분기만 그립니다. 끄면 안 가는 길도 보입니다.");
+        routeOnlyBox.IsCheckedChanged += (_, _) => RouteOnly = routeOnlyBox.IsChecked == true;
+
         var bottom = new DockPanel { Margin = new Thickness(0, 2, 0, 0) };
+        DockPanel.SetDock(routeOnlyBox, Dock.Left);
+        bottom.Children.Add(routeOnlyBox);
         var zoomBar = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 2, Children = { zoomOut, zoomIn, zoomFit } };
         DockPanel.SetDock(zoomBar, Dock.Right);
         bottom.Children.Add(zoomBar);
@@ -126,8 +134,23 @@ public sealed class ChapterMinimapView : UserControl
     }
 
     /// <summary>지도를 다시 그린다. 모델이 없으면 비운다.</summary>
-    /// <summary>선택지 선을 눌렀다 — (갈림 에피소드, 선택지 문구). 활성 루트에 적힌다.</summary>
-    public event Action<string, string>? EdgeClicked;
+    /// <summary>루트만 보기 (2026-11-04 소유자: "체크를 해둔다면 미리 고르기로 한 선택지의 루트만 표시") — 예정 길 밖의 점과 선을 숨긴다.</summary>
+    public bool RouteOnly
+    {
+        get => _routeOnly;
+        set
+        {
+            if (_routeOnly == value)
+            {
+                return;
+            }
+
+            _routeOnly = value;
+            Redraw();
+        }
+    }
+
+    private bool _routeOnly;
 
     private PreviewRouteWalker.Result? _plan;
 
@@ -170,6 +193,16 @@ public sealed class ChapterMinimapView : UserControl
             .Select(edge => (edge.FromEpisodeId, edge.ToEpisodeId, string.IsNullOrWhiteSpace(edge.OptionLabel) ? null : edge.OptionLabel))
             .ToHashSet() ?? [];
         string? stoppedAt = _plan is { ReachedEnd: false } ? _plan.StoppedAt : null;
+        // 예정 길이 다녀오는 분기 — (부른 에피소드, 분기 카드) → 첫머리 조건 성립 여부(null = 평가 불가).
+        Dictionary<string, bool?> plannedDetours = _plan?.Detours
+            .GroupBy(detour => detour.BranchEpisodeId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First().Passes, StringComparer.Ordinal) ?? new(StringComparer.Ordinal);
+        HashSet<string> onRoute = _plan?.EpisodeIds.ToHashSet(StringComparer.Ordinal) ?? [];
+        foreach (string branch in plannedDetours.Keys)
+        {
+            onRoute.Add(branch);
+        }
+        bool routeOnly = _routeOnly && _plan is not null;
         bool hasTrail = _trail is { Steps.Count: > 0 };
         string? currentEpisode = _map.FindByDialogue(_currentDialogueId)?.EpisodeId;
 
@@ -219,7 +252,14 @@ public sealed class ChapterMinimapView : UserControl
             }
 
             bool wasTaken = taken.Contains((edge.FromEpisodeId, edge.ToEpisodeId));
-            bool isPlanned = planned.Contains((edge.FromEpisodeId, edge.ToEpisodeId, edge.Label));
+            bool isPlanned = planned.Contains((edge.FromEpisodeId, edge.ToEpisodeId, edge.Label)) ||
+                (edge.Kind == ChapterMinimapEdgeKind.Detour && onRoute.Contains(edge.FromEpisodeId) && plannedDetours.ContainsKey(edge.ToEpisodeId));
+
+            if (routeOnly && !isPlanned && !wasTaken)
+            {
+                continue;   // 루트만 보기 — 안 가는 길은 그리지 않는다
+            }
+
             var line = new Line
             {
                 StartPoint = from,
@@ -237,32 +277,13 @@ public sealed class ChapterMinimapView : UserControl
                 IsHitTestVisible = false
             };
 
-            _canvas.Children.Add(line);
+            if (edge.Label is not null)
+            {
+                ToolTip.SetTip(line, (isPlanned ? "✔ 루트 — " : string.Empty) + edge.Label);
+                line.IsHitTestVisible = true;   // 툴팁만 — 루트는 [루트] 탭에서 정한다
+            }
 
-            // 선택지 선은 누를 수 있다 — 루트에 적힌다. 보이는 선은 가늘어 넓은 투명 선이 대신 맞는다.
-            if (edge.Kind == ChapterMinimapEdgeKind.Choice && edge.Label is { } label)
-            {
-                var hit = new Line
-                {
-                    StartPoint = from,
-                    EndPoint = to,
-                    Stroke = Brushes.Transparent,
-                    StrokeThickness = 10,
-                    Cursor = new Cursor(StandardCursorType.Hand)
-                };
-                ToolTip.SetTip(hit, (isPlanned ? "✔ 루트에 적힘 — " : string.Empty) + label + "\n(누르면 루트에 적거나 뺍니다)");
-                string fromId = edge.FromEpisodeId;
-                hit.PointerPressed += (_, args) =>
-                {
-                    args.Handled = true;
-                    EdgeClicked?.Invoke(fromId, label);
-                };
-                _canvas.Children.Add(hit);
-            }
-            else if (edge.Label is not null)
-            {
-                ToolTip.SetTip(line, edge.Label);
-            }
+            _canvas.Children.Add(line);
         }
 
         // 점.
@@ -272,10 +293,27 @@ public sealed class ChapterMinimapView : UserControl
             bool isVisited = visited.Contains(node.EpisodeId);
             bool isBlocked = blocked.Contains(node.EpisodeId);
             bool isCurrent = string.Equals(node.EpisodeId, currentEpisode, StringComparison.Ordinal);
-            IBrush fill = isVisited ? VisitedFill : isBlocked ? Brushes.Transparent : NodeFill;
+            bool isOnPlan = onRoute.Contains(node.EpisodeId);
+            bool? plannedPass = plannedDetours.TryGetValue(node.EpisodeId, out bool? verdict) ? verdict : null;
+
+            if (routeOnly && !isOnPlan && !isVisited && !isCurrent)
+            {
+                continue;
+            }
+
+            // 채움: 실제로 지나왔으면 주황, 예정이면 파랑(분기는 조건이 성립할 때만 — 막히면 빈 네모, 모르면 반투명), 아니면 회색.
+            IBrush fill = isVisited ? VisitedFill
+                : isBlocked ? Brushes.Transparent
+                : isOnPlan && node.Shape == ChapterMinimapShape.Branch ? (plannedPass == true ? PlanStroke : plannedPass == false ? Brushes.Transparent : PlanDimFill)
+                : isOnPlan ? PlanFill
+                : NodeFill;
 
             Shape shape = ShapeFor(node, fill);
-            shape.Opacity = hasTrail && !isVisited && !isBlocked && !isCurrent ? 0.55 : 1;
+            if (isOnPlan && !isVisited)
+            {
+                shape.Stroke = PlanStroke;
+            }
+            shape.Opacity = hasTrail && !isVisited && !isBlocked && !isCurrent && !isOnPlan ? 0.55 : 1;
             Canvas.SetLeft(shape, at.X - shape.Width / 2);
             Canvas.SetTop(shape, at.Y - shape.Height / 2);
 
@@ -302,7 +340,9 @@ public sealed class ChapterMinimapView : UserControl
                 ChapterMinimapShape.Fork => "선택지 갈림",
                 _ => "에피소드"
             };
-            string state = isBlocked ? " · 조건에 막혀 곧장 돌아옴" : isVisited ? " · 지나옴" : string.Empty;
+            string state = isBlocked ? " · 조건에 막혀 곧장 돌아옴" : isVisited ? " · 지나옴"
+                : plannedPass == true ? " · 루트에서 다녀옴(조건 성립)" : plannedPass == false ? " · 루트에서 다녀오지만 조건에 막힘" : plannedPass is null && isOnPlan && node.Shape == ChapterMinimapShape.Branch ? " · 루트에서 다녀옴(조건 평가 불가)"
+                : isOnPlan ? " · 루트 위" : string.Empty;
 
             if (string.Equals(node.EpisodeId, stoppedAt, StringComparison.Ordinal))
             {

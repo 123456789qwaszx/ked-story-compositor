@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Vn.App.Services;
 using Vn.Authoring.Assets;
@@ -424,25 +423,45 @@ public partial class MiniStagePreview : UserControl
     /// <summary>전체 재생이 지나온 길 — 지도의 덧칠. 런과 같은 수명이다(RunReset이 비운다).</summary>
     private readonly ChapterRunTrail _trail = new();
 
-    /// <summary>
-    /// 지금 활성 판의 챕터 지도를 다시 그린다 — 자리는 director의 것(편집 없음), 덧칠은 길.
-    /// 그릴 챕터가 없으면(챕터 판이 아니다) 비운다.
-    /// </summary>
-    private void RefreshMinimap()
+    /// <summary>지도(셸의 왼쪽 기둥)가 다시 그려야 한다 — 길 · 자리 · 루트가 바뀌었다.</summary>
+    internal event Action? MinimapChanged;
+
+    /// <summary>지도가 그릴 것 전부 — 챕터 지도(자리는 director의 것) · 지나온 길 · 지금 카드 · 루트의 예정 길(분기 판정 포함).</summary>
+    internal (ChapterMinimap? Map, ChapterRunTrail Trail, string? CurrentDialogueId, PreviewRouteWalker.Result? Plan) MinimapState()
     {
-        ChapterGraphModel? model = _session?.ActiveFile?.Name is { } chapterId
+        ChapterGraphModel? model = ActiveChapterModel();
+
+        if (model is null || _session is null)
+        {
+            return (null, _trail, CurrentComboSceneId(), null);
+        }
+
+        RouteSurvey survey = RouteSurvey.Build(model, _session.Project, _session.Definition, ActiveRoute(model.ChapterId));
+
+        return (ChapterMinimap.Build(model, _session.Project), _trail, CurrentComboSceneId(), survey.Walk);
+    }
+
+    private ChapterGraphModel? ActiveChapterModel() =>
+        _session?.ActiveFile?.Name is { } chapterId
             ? _chapters.FirstOrDefault(entry => string.Equals(entry.ChapterId, chapterId, StringComparison.Ordinal))?.Model
             : null;
 
-        PreviewRoute? route = model is null ? null : ActiveRoute(model.ChapterId);
-        PreviewRouteWalker.Result? plan = model is null ? null : PreviewRouteWalker.Walk(model, route);
+    private void RefreshMinimap() => MinimapChanged?.Invoke();
 
-        Minimap.Show(
-            model is null || _session is null ? null : ChapterMinimap.Build(model, _session.Project),
-            _trail,
-            CurrentComboSceneId(),
-            plan);
-        RefreshRouteBar(model, route, plan);
+    /// <summary>
+    /// 지도의 점을 눌렀다 — 드롭다운과 같은 길로 그 씬이 무대에 오른다. 루트가 그 점까지 닿으면 런이 <b>그 자리의 스탯</b>으로
+    /// 선다(2026-11-04 소유자: "직선 루트니까 어떤 에피소드부터 시작하던지 중간 노드를 클릭해도 무리가 없을거야").
+    /// </summary>
+    internal void EnterSceneFromMap(string dialogueNodeId)
+    {
+        if (_session?.Project.FindDialogue(dialogueNodeId) is not { } node)
+        {
+            return;
+        }
+
+        StartTrailAt(node);
+        RebuildScenePicker(dialogueNodeId);
+        SceneChosen?.Invoke(dialogueNodeId);
     }
 
     /// <summary>
@@ -764,60 +783,6 @@ public partial class MiniStagePreview : UserControl
                 SceneChosen?.Invoke(scenes[SceneCombo.SelectedIndex].Id);
             }
         };
-        // 지도의 점 = 드롭다운의 항목 — 같은 길(SceneChosen)로 간다. 고른 자리에서 길이 새로 시작한다.
-        Minimap.NodeClicked += dialogueNodeId =>
-        {
-            if (_session?.Project.FindDialogue(dialogueNodeId) is { } node)
-            {
-                StartTrailAt(node);
-                RebuildScenePicker(dialogueNodeId);
-                SceneChosen?.Invoke(dialogueNodeId);
-            }
-        };
-        // 지도의 선택지 선을 누르면 활성 루트에 적힌다(없으면 하나 만든다). 같은 선을 다시 누르면 빠진다.
-        Minimap.EdgeClicked += (fromEpisodeId, optionLabel) => UiGuard.Run(_session, "루트 선택", () =>
-        {
-            if (_session?.ActiveFile?.Name is not { } chapterId)
-            {
-                return;
-            }
-
-            PreviewRoute route = ActiveRoute(chapterId) ?? _session.Editor.AddPreviewRoute(chapterId);
-            bool already = string.Equals(route.ChoiceAt(fromEpisodeId)?.OptionLabel, optionLabel, StringComparison.Ordinal);
-            _session.Editor.SetPreviewRouteChoice(route.Id, fromEpisodeId, already ? null : optionLabel);
-            RefreshMinimap();
-        });
-        RouteCombo.SelectionChanged += (_, _) =>
-        {
-            if (_updatingRouteBar || _session?.ActiveFile?.Name is not { } chapterId ||
-                RouteCombo.Tag is not List<string?> ids || RouteCombo.SelectedIndex < 0 || RouteCombo.SelectedIndex >= ids.Count)
-            {
-                return;
-            }
-
-            UiGuard.Run(_session, "루트 고르기", () =>
-            {
-                _session.Editor.SetActivePreviewRoute(chapterId, ids[RouteCombo.SelectedIndex]);
-                RefreshMinimap();
-            });
-        };
-        RouteAddButton.Click += (_, _) => UiGuard.Run(_session, "새 루트", () =>
-        {
-            if (_session?.ActiveFile?.Name is { } chapterId)
-            {
-                _session.Editor.AddPreviewRoute(chapterId);
-                RefreshMinimap();
-            }
-        });
-        RouteRemoveButton.Click += (_, _) => UiGuard.Run(_session, "루트 지우기", () =>
-        {
-            if (_session?.ActiveFile?.Name is { } chapterId && ActiveRoute(chapterId) is { } route)
-            {
-                _session.Editor.RemovePreviewRoute(route.Id);
-                RefreshMinimap();
-            }
-        });
-        RouteStatsButton.Click += (_, _) => UiGuard.Run(_session, "루트 시작 스탯", ShowRouteStatsFlyout);
         _script.LineClicked += lineId =>
         {
             // 라인 선택은 Setup 선택을 걷는다. 같은 라인 재클릭이라 편집기가 다시 밀지
@@ -1012,106 +977,24 @@ public partial class MiniStagePreview : UserControl
     /// 커스텀 씬(✎)이 뒤고, 무리 안에서는 <b>이름 순</b>이다 (같은 날 소유자: "이름 순으로
     /// 정렬 해달라" — 파일 순서는 판의 생성 순서라, 찾는 사람의 눈에는 무작위였다).
     /// </summary>
-    private bool _updatingRouteBar;
-
-    /// <summary>루트 줄 — 활성 루트와 예정 길의 결론("끝까지 4 에피소드" · "Festival_Wrapup에서 막힘: …").</summary>
-    private void RefreshRouteBar(ChapterGraphModel? model, PreviewRoute? route, PreviewRouteWalker.Result? plan)
-    {
-        _updatingRouteBar = true;
-
-        try
-        {
-            List<PreviewRoute> routes = model is null || _session is null
-                ? []
-                : _session.Editor.PreviewRoutesOf(model.ChapterId).ToList();
-            var ids = new List<string?> { null };
-            var items = new List<string> { "(루트 없음 — 갈림마다 묻는다)" };
-
-            foreach (PreviewRoute item in routes)
-            {
-                ids.Add(item.Id);
-                items.Add($"{item.Name} · 선택 {item.Choices.Count}" + (item.Stats.Count > 0 ? $" · 스탯 {item.Stats.Count}" : string.Empty));
-            }
-
-            RouteCombo.ItemsSource = items;
-            RouteCombo.Tag = ids;
-            RouteCombo.SelectedIndex = route is null ? 0 : Math.Max(0, ids.IndexOf(route.Id));
-            RouteBar.IsEnabled = model is not null;
-            RouteRemoveButton.IsEnabled = route is not null;
-            RouteStatsButton.IsEnabled = route is not null;
-
-            RoutePlanText.Text = plan is null || route is null
-                ? string.Empty
-                : plan.ReachedEnd
-                    ? $"예정: {string.Join(" → ", plan.EpisodeIds)} (끝까지)"
-                    : $"예정: {string.Join(" → ", plan.EpisodeIds)} ⚠ {plan.StoppedBecause}";
-        }
-        finally
-        {
-            _updatingRouteBar = false;
-        }
-    }
-
-    /// <summary>활성 루트의 시작 스탯 — 스탯마다 칸 하나, 비우면 시트 초기값. 다음 전체 재생부터 쓴다.</summary>
-    private void ShowRouteStatsFlyout()
-    {
-        if (_session?.ActiveFile?.Name is not { } chapterId || ActiveRoute(chapterId) is not { } route)
-        {
-            return;
-        }
-
-        ChapterGraphModel? model = _chapters.FirstOrDefault(entry =>
-            string.Equals(entry.ChapterId, chapterId, StringComparison.Ordinal))?.Model;
-
-        if (model is null || model.Stats.Count == 0)
-        {
-            _session.SetStatus("이 챕터에는 스탯이 없습니다.");
-            return;
-        }
-
-        var panel = new StackPanel { Spacing = 4, MinWidth = 220 };
-        panel.Children.Add(new TextBlock { Text = $"'{route.Name}'의 시작 스탯 — 비우면 초기값", FontSize = 11, Opacity = 0.8 });
-
-        foreach (ChapterStat stat in model.Stats)
-        {
-            var box = new TextBox
-            {
-                Width = 60,
-                FontSize = 11,
-                PlaceholderText = stat.Initial.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Text = route.Stats.TryGetValue(stat.Key, out int value) ? value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty
-            };
-            box.LostFocus += (_, _) => UiGuard.Run(_session, "루트 시작 스탯", () =>
-            {
-                int? parsed = int.TryParse(box.Text, out int number) ? number : null;
-                _session.Editor.SetPreviewRouteStat(route.Id, stat.Key, parsed);
-                RefreshMinimap();
-            });
-
-            panel.Children.Add(new StackPanel
-            {
-                Orientation = Avalonia.Layout.Orientation.Horizontal,
-                Spacing = 6,
-                Children =
-                {
-                    new TextBlock { Text = $"{stat.DisplayName} ({stat.Minimum}~{stat.Maximum})", FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, MinWidth = 110 },
-                    box
-                }
-            });
-        }
-
-        panel.Children.Add(new TextBlock { Text = "다음 전체 재생부터 이 값으로 시작합니다.", FontSize = 10, Opacity = 0.7 });
-
-        var flyout = new Flyout { Content = panel, Placement = PlacementMode.Bottom };
-        flyout.ShowAt(RouteStatsButton);
-    }
-
     /// <summary>씬 선택기(드롭다운 · 지도)로 들어갔다 — 이어진 길이 아니므로 거기서 길이 새로 선다.</summary>
     private void StartTrailAt(DialogueNode node)
     {
-        if (node.MarkedEpisodeId is not null)
+        if (node.MarkedEpisodeId is null)
         {
-            _trail.Start(EpisodeNaming.EpisodeIdOf(node));
+            return;
+        }
+
+        string episodeId = EpisodeNaming.EpisodeIdOf(node);
+        _trail.Start(episodeId);
+
+        // 루트가 이 점까지 닿으면 런을 그 자리의 스탯으로 세운다 — 앞을 안 거쳐도 뒤가 맞는다. 안 닿으면 시작 스탯 그대로.
+        if (ActiveChapterModel() is { } model && _session is not null)
+        {
+            PreviewRoute? route = ActiveRoute(model.ChapterId);
+            IReadOnlyDictionary<string, int>? stats = PreviewRouteWalker.Walk(model, route).StatsAt(model, episodeId);
+            _chapterRun = new ChapterRunState(model, stats ?? route?.Stats);
+            PublishRunStats();
         }
     }
 

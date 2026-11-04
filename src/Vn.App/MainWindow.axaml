@@ -63,9 +63,35 @@
             <TextBlock x:Name="StatusText" FontSize="11" TextWrapping="Wrap" />
         </Border>
 
-        <!-- 창은 무대 하나다 (2026-10-29 — ked-story-director에서 갈라지며). 이야기의 뼈대와 대사를 쓰는
-             두 그래프(챕터 그래프 · 연출 그래프)는 director의 것이라 걷혔다. 어느 씬을 연출할지는 무대의
-             챕터 · 씬 선택기가 고른다(docs/plans/compositor-split.md C1). -->
-        <views:MiniStagePreview x:Name="StagePreview" />
+        <!-- 왼쪽 기둥: 챕터 지도 (2026-11-04 소유자: "가장 좌측 탭으로 길쭉하게 빼둡시다. 접었다 폈다도 할 수 있게").
+             점이 에피소드, 선이 간선, 띠가 장면 — 점을 누르면 그 씬이 무대에 오른다. 루트는 [루트] 탭에서 정하고 지도는 보여 준다. -->
+        <Grid ColumnDefinitions="Auto,Auto,*">
+            <DockPanel Grid.Column="0" x:Name="MapPane" Width="320">
+                <Border DockPanel.Dock="Top" Padding="8,4" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1">
+                    <DockPanel>
+                        <Button x:Name="MapCollapseButton" DockPanel.Dock="Right" Content="◀" FontSize="11" MinWidth="0" Padding="6,0"
+                                ToolTip.Tip="지도를 접습니다." />
+                        <TextBlock Text="챕터 지도" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Border>
+                <views:ChapterMinimapView x:Name="Minimap" />
+            </DockPanel>
+            <Button Grid.Column="0" x:Name="MapExpandButton" IsVisible="False" Content="▶ 지도" FontSize="11" MinWidth="0" Padding="4,10"
+                    VerticalAlignment="Stretch" ToolTip.Tip="지도를 폅니다." />
+            <GridSplitter Grid.Column="1" x:Name="MapSplitter" ResizeDirection="Columns" Width="4"
+                          Background="{DynamicResource ThemeBorderLowBrush}" />
+            <!-- 창은 무대 하나다 (2026-10-29 — ked-story-director에서 갈라지며). 이야기의 뼈대와 대사를 쓰는
+                 두 그래프(챕터 그래프 · 연출 그래프)는 director의 것이라 걷혔다. 어느 씬을 연출할지는 무대의
+                 챕터 · 씬 선택기가 고른다(docs/plans/compositor-split.md C1).
+                 2026-11-04: 무대 옆에 [루트] 탭 하나 — 전체 재생이 갈림마다 고를 선택지를 설문처럼 정한다. 그래프 탭은 여전히 없다. -->
+            <TabControl Grid.Column="2" x:Name="WorkTabs">
+                <TabItem Header="무대">
+                    <views:MiniStagePreview x:Name="StagePreview" />
+                </TabItem>
+                <TabItem Header="루트">
+                    <views:RouteSurveyView x:Name="RouteSurvey" />
+                </TabItem>
+            </TabControl>
+        </Grid>
     </DockPanel>
 </Window>

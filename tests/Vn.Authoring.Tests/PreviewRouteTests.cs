@@ -1,4 +1,5 @@
 using Vn.Authoring.Chapters;
+using Vn.Authoring.Definition;
 using Vn.Authoring.Editing;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Model;
@@ -161,5 +162,68 @@ public sealed class PreviewRouteTests
 
         // HUD와 Resolve가 같은 값을 본다.
         Assert.Equal(3, run.Values.Single(value => value.Stat.Key == "성실").Value);
+    }
+
+    [Fact]
+    public void 설문은_길_위_자리마다_스탯과_판정과_분기를_적는다()
+    {
+        (StoryProject project, ChapterGraphModel chapter) = FestivalEve();
+        var editor = new ProjectEditor(project);
+        PreviewRoute route = editor.AddPreviewRoute("festival_eve");
+        editor.SetPreviewRouteChoice(route.Id, "Festival_Classroom", "처음부터 다시 그린다");
+        editor.SetPreviewRouteChoice(route.Id, "Festival_Wrapup", "선생님께 진행 상황도 보고한다");
+
+        RouteSurvey survey = RouteSurvey.Build(chapter, project, GameDefinition.Empty, route);
+
+        Assert.True(survey.Walk.ReachedEnd, survey.Walk.StoppedBecause);
+        Assert.Empty(survey.Unanswered);
+
+        // 장면 순 · 길 순 — 교실의 길 위 넷이 앞, 길 밖(Shortcut · 분기 카드)이 뒤.
+        Assert.Equal(["교실", "교무실 앞"], survey.Scenes.Select(scene => scene.SceneId).ToList());
+        Assert.Equal(["Festival_Classroom", "Festival_Remake", "Festival_Wrapup"],
+            survey.Episodes.Where(episode => episode.SceneId == "교실" && episode.OnRoute).Select(episode => episode.EpisodeId).ToList());
+        Assert.False(survey.Find("Festival_Shortcut")!.OnRoute);
+        Assert.Null(survey.Find("Festival_Shortcut")!.StatsOnArrival);
+        Assert.True(survey.Find("Festival_Wrapup_Remade")!.IsBranchCard);
+
+        // Wrapup에 설 때 성실 2 — 보고한다는 보이고(숨김 조건 성실≥2), 카스미는 잠김(해금 요령≥2).
+        RouteSurveyEpisode wrapup = survey.Find("Festival_Wrapup")!;
+        Assert.Equal(2, wrapup.StatsOnArrival!.Single(value => value.Stat.Key == "성실").Value);
+        Assert.True(wrapup.IsFork);
+        RouteSurveyChoice report = wrapup.Choices.Single(choice => choice.Label == "선생님께 진행 상황도 보고한다");
+        Assert.True(report.IsSelected);
+        Assert.True(report.IsSelectable);
+        RouteSurveyChoice kasmi = wrapup.Choices.Single(choice => choice.Label == "카스미에게 마무리를 부탁하고 간다");
+        Assert.Equal(ChapterGateVerdict.Blocked, kasmi.Unlock);
+        Assert.False(kasmi.IsSelectable);
+
+        // 분기 — Wrapup에서 Remade(성실≥2 → 통과) · Sticker(성실<2 → 막힘). "한 번 갔다가 진행".
+        Assert.Equal(["Festival_Wrapup_Remade", "Festival_Wrapup_Sticker"], wrapup.Detours.Select(detour => detour.BranchEpisodeId).ToList());
+        Assert.True(wrapup.Detours[0].Passes);
+        Assert.False(wrapup.Detours[1].Passes);
+        Assert.Contains("stat(\"성실\") >= 2", wrapup.Detours[0].Condition);
+
+        // 교무실에 설 때 성실 3 · 요령 0 — Praise 통과, Kasmi · Pass 막힘.
+        RouteSurveyEpisode staffroom = survey.Find("Festival_Staffroom")!;
+        Assert.Equal(3, staffroom.StatsOnArrival!.Single(value => value.Stat.Key == "성실").Value);
+        Assert.Equal([false, true, false], staffroom.Detours.Select(detour => detour.Passes).ToList());
+
+        // 중간 점에서 시작할 때 쓸 스탯 — 길 위면 있고, 아니면 없다.
+        Assert.Equal(3, survey.Walk.StatsAt(chapter, "Festival_Staffroom")!["성실"]);
+        Assert.Null(survey.Walk.StatsAt(chapter, "Festival_Shortcut"));
+    }
+
+    [Fact]
+    public void 루트가_없으면_설문은_첫_갈림까지만_길이고_나머지는_미도달이다()
+    {
+        (StoryProject project, ChapterGraphModel chapter) = FestivalEve();
+
+        RouteSurvey survey = RouteSurvey.Build(chapter, project, GameDefinition.Empty, null);
+
+        Assert.Equal(["Festival_Classroom"], survey.Walk.EpisodeIds);
+        Assert.Single(survey.Unanswered);
+        Assert.Equal("Festival_Classroom", survey.Unanswered[0].EpisodeId);
+        Assert.All(survey.Find("Festival_Wrapup")!.Choices, choice => Assert.Null(choice.IsSelectable));
+        Assert.All(survey.Find("Festival_Wrapup")!.Detours, detour => Assert.False(detour.Reached));
     }
 }

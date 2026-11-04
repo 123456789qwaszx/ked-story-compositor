@@ -28,6 +28,30 @@ public sealed class MainChromeTests
     });
 
     [Fact]
+    public void 왼쪽에_챕터_지도_기둥이_있고_무대_옆에_루트_탭이_있다() => HeadlessUi.Run(() =>
+    {
+        // 2026-11-04 소유자: "미니맵은 그냥 가장 좌측 탭으로 길쭉하게 빼둡시다. 접었다 폈다도 할 수 있게" ·
+        // "선택지가 별도 탭에서 설문처럼". 그래프 탭은 여전히 없다 — 루트 탭은 설문이지 그래프가 아니다.
+        var window = new MainWindow();
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.NotNull(window.FindControl<ChapterMinimapView>("Minimap"));
+        Assert.True(window.FindControl<Control>("MapPane")!.IsVisible);
+
+        TabControl tabs = window.FindControl<TabControl>("WorkTabs")!;
+        Assert.Equal(2, tabs.ItemCount);
+        Assert.NotNull(window.FindControl<RouteSurveyView>("RouteSurvey"));
+
+        // 접으면 기둥이 사라지고 펴는 단추만 남는다.
+        window.FindControl<Button>("MapCollapseButton")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.False(window.FindControl<Control>("MapPane")!.IsVisible);
+        Assert.True(window.FindControl<Button>("MapExpandButton")!.IsVisible);
+
+        window.Close();
+    });
+
+    [Fact]
     public void 상태줄은_곁눈으로_읽는_크기다() => HeadlessUi.Run(() =>
     {
         // 2026-08-24 소유자 — "저장했습니다, 로드했습니다 이런 문구의 크기를 줄여줘."
