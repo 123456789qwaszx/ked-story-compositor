@@ -1,0 +1,138 @@
+title: Demo_Presentation
+---
+<<shot_reset 0fr>>
+<<screen_vignette_clear 0fr>>
+<<screen_noise_clear 0fr>>
+<<bg_spawn bg_main class_day>>
+<<slot s1 stage00 front>>
+<<cast s1 harin a 1>>
+<<slot s2 stage00 mid>>
+<<cast s2 sigure a 1>>
+<<slot s3 stage00 mid>>
+<<cast s3 kasmi a 1>>
+<<surface_reset>>
+<<screen_blur_reset>>
+
+<<bg_sprite bg_main class_day>>
+<<bg_fade_in bg_main 24fr>>
+<<bgm audio/bgm_idoberg-relaxing-guitar-loop-v5-245859 2s>>
+<<12fr>>
+<<place_center s1 bust 0fr>>
+<<size s1 mid bust 0fr>>
+<<fade_in s1 18fr>>
+하린: 배경이 들어오고, 음악이 깔리고, 내가 걸어 들어왔어. #line:ln_7u3jtu6n
+
+<<screen_blur far 1>>
+하린: 지금부터 보이는 건 전부 이 대본 한 장에 적힌 명령이야. #line:ln_2jfcj5dr
+
+<<screen_blur front 0.5>>
+<<char_visual_dim s1 2 6fr>>
+<<shot_to 12 24u 0u 0.45s>>
+<<show sigure e1 14fr>>
+<<size sigure 12 bust 10fr>>
+<<place_left sigure bust 0fr>>
+하린: 지금부터 보이는 건 전부 이 대본 한 장에 적힌 명령이야. #line:ln_cydaj9ym
+
+<<screen_blur_reset>>
+하린: 지금부터 보이는 건 전부 이 대본 한 장에 적힌 명령이야. #line:ln_80fvnx4u
+
+그녀의 편지에는 이렇게 적혀 있었다. #letterbox #line:ln_a7r9k13x
+
+<<place_left s1 bust 33fr>>
+<<24fr>>
+<<place_right s1 bust 33fr>>
+<<24fr>>
+<<place_center s1 bust 33fr>>
+<<24fr>>
+(하린 이리저리) #boxhide #auto #line:ln_nf0ieq41
+
+연출 컷신 앞뒤로 대사창 치우기. #line:ln_k2xwcsb9
+
+<<place_left s2 bust 0fr>>
+<<size s2 mid bust 0fr>>
+<<slide_in s2 left 2u 14fr>>
+<<fade_in s2 14fr>>
+<<place_right s1 bust 16fr>>
+시구레: 옆으로 미끄러져 들어오면, 먼저 있던 사람은 자리를 비켜 줘요. #line:ln_4m8a87j3
+
+<<size s2 front bust 16fr>>
+시구레: 한 걸음 앞으로. 크기는 거리를 말해요. #line:ln_prgac1qy
+
+<<size s2 mid bust 16fr>>
+<<sibling_front s1>>
+하린: 겹칠 때 누가 앞에 설지도 정할 수 있어. #line:ln_hdksazhc
+
+<<face s1 3>>
+하린: 표정은 이렇게 바꾸고, #line:ln_n44jexpj
+
+<<face_swap s1 05 10fr>>
+하린: 이렇게 겹쳐 가며 바꿀 수도 있어. #line:ln_anizmf84
+
+<<pose s2 b>>
+<<gesture s2 0u 0.3u 12fr>>
+시구레: 자세를 바꾸고, 가볍게 몸짓도. #line:ln_xd9t914r
+
+<<motion s1 nod>>
+하린: 만들어 둔 모션(motions.json의 nod)은 이름만 불러. #line:ln_f5fsqpgu
+
+<<motion s1 bow absolute>>
+하린: 이건 숙인 채로 남는 모션(bow). 끝나도 자세가 그대로야. 셋째 인자가 relative(기본)·absolute를 정해. #line:ln_nrmvr5n2
+
+<<place_center s1 bust 16fr>>
+하린: 자리를 옮겨도 숙인 채로 가. 장부가 기울기를 알아서 얼굴 자리가 맞아. #line:ln_cjzch0sn
+
+<<char_rotate_to s1 0 10fr>>
+<<place_right s1 bust 16fr>>
+하린: 같은 축을 다른 명령이 잡으면 그게 이어받아. 이제 똑바로. #line:ln_x8r45cck
+
+<<char_visual_focus s1 1 14fr>>
+<<char_visual_dim s2 0.5 20fr>>
+하린: 말하는 사람에게 빛을 모으고, 듣는 사람은 한 톤 낮춰. #line:ln_5ag43erq
+
+<<screen_blur far 1>>
+<<shot_focus_to s1 face center 1.25 30fr>>
+하린: 배경을 흐리고, 카메라를 얼굴 쪽으로 당기면… #line:ln_01mhdu3v
+
+<<shot_reset 20fr>>
+<<screen_blur_reset>>
+<<char_visual_clear s1 10fr>>
+<<char_visual_clear s2 10fr>>
+시구레: 다시 넓게. 원래 무대로 돌아왔어요. #line:ln_9nyveem8
+
+<<screen_vignette dream 0.6 20fr>>
+<<screen_noise memory 0.4 20fr>>
+시구레: 가장자리를 어둡게, 화면을 조금 거칠게 — 회상 같은 분위기. #line:ln_jam87iua
+
+<<screen_noise_clear 0.35s>>
+<<screen_vignette_clear 12fr>>
+<<sfx audio/sfx_dragon-studio-notification-sound-effect-372475>>
+<<screen_flash soft 0.45>>
+하린: 그리고 번쩍! 효과음과 함께. #line:ln_8bpnwdqw
+
+<<tx daze_close stage00 14fr>>
+<<bg_sprite bg_main studio_evening>>
+<<place_center s3 bust 0fr>>
+<<size s3 mid bust 0fr>>
+<<fade_in s3 0fr>>
+<<tx daze_open stage00 16fr>>
+카스미: …장면이 넘어갔네. 해 질 녘 작업실이야. #line:ln_z94y5hi1
+
+카스미: 무대는 그대로라서, 둘 다 아까 그 자리에 있어. #line:ln_nkr0mbcc
+
+시구레: 마지막으로, 하나 골라 볼래요? #line:ln_6mq0fm7a
+
+-> 조금 더 보고 갈래 #line:ln_nrhqqani
+    <<face s1 2>>
+    하린: 좋아. 되감기(R)로 돌아가서 다른 쪽도 골라 봐. #line:ln_yy4tnzdq
+-> 이제 됐어 #line:ln_awcnxgku
+    <<face s2 3>>
+    시구레: 그럼 여기까지. 타이틀에서 ‘이어하기’로 다시 올 수 있어요. #line:ln_tzwkezwd
+<<fade_out s3 12fr>>
+<<fade_out s2 12fr>>
+<<fade_out s1 12fr>>
+<<stop_bgm 2s>>
+<<bg_fade_out bg_main 20fr>>
+<<24fr>>
+캐릭터 퇴장 #boxhide #auto #line:ln_bvxtdk3u
+
+===
