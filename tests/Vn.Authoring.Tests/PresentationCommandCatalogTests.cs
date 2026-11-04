@@ -32,7 +32,9 @@ public class PresentationCommandCatalogTests
         // screen_blur_sN · place_* 10 · size_<라벨> 5 · tx_<프리셋> 18)와 ui_patch · debug_log를 걷고(-46),
         // 정본 tx와 빠져 있던 motion을 더했다(+2) → 80. 프레임 대기 <N>fr과 char_visual_<효과> 일곱은
         // 소유자 결정으로 남았다. 카테고리는 15 그대로.
-        Assert.Equal(80, catalog.Definitions.Count);
+        // 2026-11-03: 대사창 box_hide · box_show · box_close를 걷었다(숨김은 줄 태그 #boxhide) → 77.
+        // 카테고리는 15 그대로 — dialogue_box에 surface_layout · surface_reset이 남았다.
+        Assert.Equal(77, catalog.Definitions.Count);
         Assert.Equal(15, catalog.Categories.Count);
         Assert.Same(catalog, PresentationCommandCatalog.For(definition: null));
     }

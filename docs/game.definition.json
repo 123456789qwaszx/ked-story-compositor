@@ -67,31 +67,6 @@
   ],
   "presentationCommands": [
     {
-      "id": "dialogue_box.box_hide",
-      "name": "대사창 숨김",
-      "category": "dialogue_box",
-      "outputCommand": "box_hide",
-      "execution": "immediate",
-      "parameters": []
-    },
-    {
-      "id": "dialogue_box.box_show",
-      "name": "대사창 표시",
-      "category": "dialogue_box",
-      "outputCommand": "box_show",
-      "execution": "immediate",
-      "parameters": []
-    },
-    {
-      "id": "dialogue_box.box_close",
-      "name": "대사창 닫기",
-      "category": "dialogue_box",
-      "outputCommand": "box_close",
-      "execution": "immediate",
-      "parameters": [],
-      "notes": "현재 박스 상태 자체를 폐기한다. 이후 box_show는 무시되고 다음 대사에서 새로 FadeIn된다."
-    },
-    {
       "id": "dialogue_box.surface_layout",
       "name": "서피스 레이아웃 프리셋",
       "category": "dialogue_box",

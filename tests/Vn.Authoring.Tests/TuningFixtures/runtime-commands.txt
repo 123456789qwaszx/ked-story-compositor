@@ -15,8 +15,10 @@
 # screen_blur_sN · place_* · size_<라벨> · tx_<프리셋>)과 ui_patch · debug_log를 걷었다.
 # 예외(소유자 결정): place_left · center · right, 프레임 대기 <<Nfr>>, char_visual_<효과> 일곱.
 #
-# 스냅샷 시점: 2026-11-03 (무대 ked-stage-runtime refactor/canonical-commands @ 316602e의 파서 표 74개 +
-#   재생 저장소 브리지의 대사창 5개 — box_hide · box_show · box_close · surface_layout · surface_reset)
+# 2026-11-03 box_hide · box_show · box_close도 걷었다 — 대사창 숨김은 줄 태그(#boxhide)로 한다.
+#
+# 스냅샷 시점: 2026-11-04 (무대 ked-stage-runtime refactor/canonical-commands @ 316602e의 파서 표 74개 +
+#   재생 저장소 브리지의 대사창 2개 — surface_layout · surface_reset)
 actor
 bg_fade_in
 bg_fade_out
@@ -25,9 +27,6 @@ bg_scale
 bg_spawn
 bg_sprite
 bgm
-box_close
-box_hide
-box_show
 cast
 char_move_to
 char_rotate_to
