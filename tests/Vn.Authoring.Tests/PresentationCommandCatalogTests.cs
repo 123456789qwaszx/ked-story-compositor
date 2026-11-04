@@ -271,4 +271,57 @@ public class PresentationCommandCatalogTests
 
         Assert.Equal(new[] { "b", "a" }, catalog.Categories.Select(item => item.Id));
     }
+
+    [Fact]
+    public void 카탈로그_기본값은_런타임_파서의_생략값과_같다()
+    {
+        // 툴은 내보낼 때 빈 인자를 카탈로그 기본으로 채운다 — 손 대본의 <<size sigure 12>>가 툴에서는
+        // <<size sigure 12 bust 0fr>>로 나갔는데, 런타임은 생략된 길이를 10fr로 읽어 둘이 다르게 움직였다(2026-11-04).
+        // 스냅샷 TuningFixtures/runtime-defaults.txt는 런타임 파서 표의 c.Arg(i, 기본) · Float(c, i, 기본)이다.
+        string path = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "TuningFixtures", "runtime-defaults.txt"));
+        PresentationCommandCatalog catalog = PresentationCommandCatalog.Default;
+        var mismatches = new List<string>();
+        int compared = 0;
+
+        foreach (string raw in File.ReadLines(path))
+        {
+            string line = raw.Trim();
+
+            if (line.Length == 0 || line.StartsWith('#'))
+            {
+                continue;
+            }
+
+            string[] parts = line.Split(' ', 3);
+            string command = parts[0];
+            int index = int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+            string runtimeDefault = parts[2];
+
+            if (catalog.FindByOutputCommand(command) is not { } definition ||
+                index >= definition.Parameters.Count ||
+                string.IsNullOrEmpty(definition.Parameters[index].Default))
+            {
+                // 카탈로그에 기본이 없으면 툴은 그 인자를 비워 내보내고, 런타임이 제 기본을 쓴다 — 갈릴 것이 없다.
+                continue;
+            }
+
+            compared++;
+            string toolDefault = definition.Parameters[index].Default!;
+
+            if (!SameValue(toolDefault, runtimeDefault))
+            {
+                mismatches.Add($"{command}[{index}] {definition.Parameters[index].Name}: 툴 {toolDefault} · 런타임 {runtimeDefault}");
+            }
+        }
+
+        Assert.True(compared > 40, $"대조한 기본값이 너무 적습니다({compared}) — 픽스처를 읽지 못했을 수 있습니다.");
+        Assert.True(mismatches.Count == 0, string.Join("\n", mismatches));
+
+        static bool SameValue(string tool, string runtime) =>
+            string.Equals(tool, runtime, StringComparison.Ordinal) ||
+            (double.TryParse(tool, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double a) &&
+             double.TryParse(runtime, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double b) &&
+             a == b);
+    }
 }

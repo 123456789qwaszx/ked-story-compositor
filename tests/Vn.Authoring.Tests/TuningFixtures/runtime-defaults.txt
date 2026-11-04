@@ -1,0 +1,120 @@
+# 런타임 파서 표가 생략된 인자에 쓰는 값 — 실측 스냅샷 (2026-11-04).
+#
+# 정본: ked-presentation-runtime/Assets/Ked.Presentation/Runtime/Commands/StageCommandParser/StageCommandParser.Table.cs
+#   의 c.Arg(i, "기본") · Float(c, i, 기본) · Int(c, i, 기본). 상수는 값으로 푼다(그 폴더의 const ·
+#   ScreenNoisePresetDBSO.DefaultPresetKey = "default" · MotionModeToken.Relative = "relative").
+#   pause는 표에 기본이 없고 StageCommandParser.Control.cs의 DefaultPauseSeconds(0.18)가 쓰인다.
+#   빈 기본("")은 "생략"이라 싣지 않는다.
+#
+# 한 줄 = 커맨드 이름 · 인자 자리(0부터) · 기본값. 카탈로그(docs/game.definition.json)의 같은 자리 기본이
+# 이 값과 갈리면 PresentationCommandCatalogTests가 운다. 툴은 내보낼 때 빈 인자를 카탈로그 기본으로 채우므로,
+# 둘이 다르면 인자를 생략한 손 대본과 툴이 낸 대본이 다르게 움직인다(2026-11-04: size의 duration 0fr ↔ 10fr).
+#
+# 갱신: 런타임 표가 바뀌면 같은 규칙으로 다시 뽑는다.
+#
+slot 1 stage00
+slot 2 mid
+cast 2 a
+cast 3 1
+face_swap 2 10fr
+move_by 1 0u
+move_by 2 0u
+move_by 3 0.4s
+rotate_by 1 0
+rotate_by 2 0.4s
+scale_by 1 0
+scale_by 2 0.4s
+move_reset 1 0.4s
+rotate_reset 1 0.4s
+scale_reset 1 0.4s
+gesture 1 0u
+gesture 2 0u
+gesture 3 12fr
+motion 2 relative
+char_to 1 stage00
+char_to 2 mid
+shot_focus_to 1 body
+shot_focus_to 2 center
+shot_focus_to 3 2.5
+shot_focus_to 4 1.2s
+shot_to 0 1
+shot_to 1 2.5u
+shot_to 2 0u
+shot_to 3 0.45s
+shot_zoom 0 1
+shot_zoom 1 0.45s
+shot_track 0 2.5u
+shot_track 1 0u
+shot_track 2 0.35s
+shot_reset 0 0.3s
+show 1 e1
+show 2 14fr
+left 2 8fr
+right 2 8fr
+up 2 8fr
+down 2 8fr
+place 1 bust
+place 2 center
+place 3 0fr
+place_left 1 face
+place_left 2 0fr
+place_center 1 face
+place_center 2 0fr
+place_right 1 face
+place_right 2 0fr
+size 2 bust
+size 3 10fr
+size_reset 1 0
+fade_in 1 14fr
+fade_out 1 14fr
+slide_in 1 left
+slide_in 2 12u
+slide_in 3 10fr
+slide_out 1 right
+slide_out 2 12u
+slide_out 3 10fr
+char_move_to 3 10fr
+char_scale_to 1 0
+char_scale_to 2 10fr
+char_rotate_to 1 0
+char_rotate_to 2 10fr
+char_visual 2 1
+char_visual 3 6fr
+char_visual_focus 1 1
+char_visual_focus 2 10fr
+char_visual_defocus 1 1
+char_visual_defocus 2 17fr
+char_visual_dim 1 1
+char_visual_dim 2 6fr
+char_visual_silhouette 1 1
+char_visual_silhouette 2 6fr
+char_visual_inner_rim 1 1
+char_visual_inner_rim 2 6fr
+char_visual_outer_rim 1 1
+char_visual_outer_rim 2 6fr
+char_visual_clear 1 6fr
+bg_spawn 2 stage00
+bg_spawn 3 far
+bg_fade_in 1 10fr
+bg_fade_out 1 10fr
+bg_move 3 10fr
+bg_scale 1 0
+bg_scale 2 10fr
+tx 1 stage01
+bgm 1 1s
+stop_bgm 0 1s
+screen_flash 1 1
+screen_vignette 1 1
+screen_vignette 2 0.35s
+screen_vignette_clear 0 0.35s
+screen_noise 0 default
+screen_noise 1 1
+screen_noise 2 0.35s
+screen_noise_clear 0 0.35s
+focus_on 1 1
+focus_on 2 0.4s
+focus_clear 0 0.4s
+screen_blur 0 mid
+screen_blur 1 1
+screen_blur 2 stage00
+pause 0 0.18

@@ -1033,7 +1033,7 @@
           "name": "duration",
           "type": "duration",
           "required": false,
-          "default": "0fr"
+          "default": "10fr"
         },
         {
           "name": "ease",
