@@ -275,8 +275,22 @@ public partial class MainWindow : Window
     }
 
     /// <summary>지도 기둥을 접고 편다 — 접으면 세로 단추 하나만 남는다.</summary>
+    private double _mapWidthBeforeCollapse = 320;
+
     private void SetMapCollapsed(bool collapsed)
     {
+        ColumnDefinition column = MapGrid.ColumnDefinitions[0];
+
+        if (collapsed)
+        {
+            _mapWidthBeforeCollapse = column.ActualWidth > 40 ? column.ActualWidth : _mapWidthBeforeCollapse;
+            column.Width = GridLength.Auto;   // 접으면 열이 펴는 단추 너비만 남는다
+        }
+        else
+        {
+            column.Width = new GridLength(_mapWidthBeforeCollapse);
+        }
+
         MapPane.IsVisible = !collapsed;
         MapSplitter.IsVisible = !collapsed;
         MapExpandButton.IsVisible = collapsed;
