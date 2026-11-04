@@ -4315,7 +4315,10 @@ internal sealed class StageSceneView : UserControl
     private static string QuickStepTip(
         PresentationCommandDefinition definition,
         IReadOnlyDictionary<string, string> arguments) =>
-        $"<<{definition.OutputCommandName} {QuickStepArguments(definition, arguments)}>>".Replace(" >>", ">>");
+        // 자리표 이름(<N>fr)은 Yarn에 나가는 모양 그대로 — 이름 규칙은 CommandText 한 벌이다.
+        CommandText.IsNameTemplate(definition)
+            ? CommandText.Format(definition, definition.Id, arguments)
+            : $"<<{definition.OutputCommandName} {QuickStepArguments(definition, arguments)}>>".Replace(" >>", ">>");
 
     /// <summary>
     /// 표의 [인자] 칸 — 담긴 값만 <b>정의 순서대로</b> 늘어놓는다(이름은 빼고 값만).
