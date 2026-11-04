@@ -68,6 +68,17 @@ public sealed record PresentationCommandDefinition(
     public const string ImmediateExecution = "immediate";
     public const string QueuedExecution = "queued";
 
+    /// <summary>
+    /// <b>줄 태그</b> (2026-11-04) — 커맨드가 아니라 대사 줄 끝에 붙는 Yarn 태그다(<c>#boxhide</c> · <c>#auto</c> · <c>#letterbox</c> …).
+    /// 런타임은 2026-11-03에 대사창 커맨드(<c>box_*</c>)를 걷고 "대사창 표시는 줄 태그 하나로 정한다"고 했다 — 그 태그를 연출 층이 든다(K3:
+    /// 원고는 읽기만). 카탈로그의 한 항목으로 두어 커맨드와 같은 자리에서 고르고 지우지만, 내보내기는 <c>&lt;&lt;…&gt;&gt;</c> 줄이 아니라
+    /// 그 줄의 태그로 낸다. 출력 이름이 곧 태그 글자다(<c>#</c> 포함). 무대 폴드는 건너뛴다 — 무대를 바꾸지 않는다.
+    /// </summary>
+    public const string LineTagExecution = "lineTag";
+
+    /// <summary>줄 태그 항목인가 (<see cref="LineTagExecution"/>).</summary>
+    public bool IsLineTag => string.Equals(Execution, LineTagExecution, StringComparison.Ordinal);
+
     public PresentationCommandParameter? FindParameter(string name) =>
         Parameters.FirstOrDefault(parameter =>
             string.Equals(parameter.Name, name, StringComparison.Ordinal));

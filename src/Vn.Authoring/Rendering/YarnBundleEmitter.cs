@@ -863,6 +863,12 @@ public static class YarnBundleEmitter
             story.Append(text);
         }
 
+        // 줄 태그(연출 층 — #boxhide · #auto · #letterbox …)는 본문 뒤, #line: 앞에. 런타임이 읽는 메타데이터다.
+        foreach (string tag in segment.Tags ?? Array.Empty<string>())
+        {
+            story.Append(' ').Append(tag);
+        }
+
         if (segment.Source.LineId is { Length: > 0 } lineId)
         {
             story.Append(" #line:").Append(lineId);

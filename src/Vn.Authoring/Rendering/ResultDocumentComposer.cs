@@ -126,6 +126,22 @@ public static class ResultDocumentComposer
             // Preview에서도 첫 줄보다 앞에 놓는다.
             foreach (PresentationResultCommand command in presentation.SetupCommands)
             {
+                // 줄 태그는 줄에 붙는다 — 장면 준비(Setup)에는 붙일 줄이 없다. 조용히 버리지 않고 알린다.
+                if (catalog.Find(command.DefinitionId) is { IsLineTag: true } setupTag)
+                {
+                    if (options.IncludeDiagnostics)
+                    {
+                        segments.Add(new RenderedSegment(
+                            Id: $"warning:{presentation.Identity.ResultId}:{command.CommandId}:setup-tag",
+                            Kind: RenderedSegmentKind.Warning,
+                            Layer: DocumentLayer.Diagnostics,
+                            Source: nodeSource,
+                            Text: $"줄 태그 '{setupTag.OutputCommandName}'는 장면 준비(Setup)에 붙일 줄이 없어 출력에서 빠집니다 — 대사 줄에 붙이세요."));
+                    }
+
+                    continue;
+                }
+
                 AddCommandSegment(
                     segments,
                     dialogue,
@@ -425,7 +441,10 @@ public static class ResultDocumentComposer
                     LocalizedText: options.IncludeLocalizedDialogue
                         ? localization?.GetLocalizedText(line.LineId)
                         : null,
-                    Speaker: options.IncludeSpeaker ? line.CharacterName : null));
+                    Speaker: options.IncludeSpeaker ? line.CharacterName : null,
+                    Tags: options.IncludePresentation && presentation is not null
+                        ? LineTagsOf(presentation, line.LineId, catalog, options)
+                        : null));
             }
 
             if (line.BranchExitTargetNodeId is { } branchTarget)
@@ -620,6 +639,40 @@ public static class ResultDocumentComposer
         }
     }
 
+    /// <summary>
+    /// 이 줄에 붙은 줄 태그(<see cref="PresentationCommandDefinition.IsLineTag"/>)의 글자 — 붙인 차례, 같은 태그는 한 번.
+    /// 없으면 null(태그를 쓰지 않는 문서와 모양이 같다).
+    /// </summary>
+    private static IReadOnlyList<string>? LineTagsOf(
+        PresentationResult presentation,
+        string lineId,
+        PresentationCommandCatalog catalog,
+        DocumentOutputOptions options)
+    {
+        if (presentation.FindBinding(lineId) is not { IsOrphan: false } binding)
+        {
+            return null;
+        }
+
+        List<string>? tags = null;
+
+        foreach (PresentationResultCommand command in binding.Commands)
+        {
+            if (catalog.Find(command.DefinitionId) is { IsLineTag: true } tag &&
+                options.IncludesPresentation(tag.CategoryId))
+            {
+                tags ??= new List<string>();
+
+                if (!tags.Contains(tag.OutputCommandName, StringComparer.Ordinal))
+                {
+                    tags.Add(tag.OutputCommandName);
+                }
+            }
+        }
+
+        return tags;
+    }
+
     private static void AddCommandSegment(
         List<RenderedSegment> segments,
         DialogueResult dialogue,
@@ -633,6 +686,12 @@ public static class ResultDocumentComposer
         PresentationCommandDefinition? definition = catalog.Find(command.DefinitionId);
 
         if (!options.IncludesPresentation(definition?.CategoryId))
+        {
+            return;
+        }
+
+        // 줄 태그는 커맨드 줄이 아니라 대사 줄의 태그로 나간다(LineTagsOf).
+        if (definition is { IsLineTag: true })
         {
             return;
         }

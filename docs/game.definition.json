@@ -9,6 +9,10 @@
       "name": "대사창"
     },
     {
+      "id": "line_tag",
+      "name": "줄 태그"
+    },
+    {
       "id": "common_control",
       "name": "공통 제어"
     },
@@ -80,6 +84,114 @@
         }
       ],
       "notes": "다음 라인의 ShowLineAsync 시점에 적용된다. 현재 표시 중인 박스에는 즉시 반영되지 않는다."
+    },
+    {
+      "id": "line_tag.auto",
+      "name": "입력 없이 넘기기",
+      "category": "line_tag",
+      "outputCommand": "#auto",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "다 보이면 입력 없이 다음 줄로 넘긴다. 대사 없이 연출만 보이는 줄(#boxhide)과 함께 쓴다. 되감기로 닿은 줄에서는 넘기지 않는다(런타임 LineAdvancePolicy)."
+    },
+    {
+      "id": "line_tag.box_hide",
+      "name": "대사창 숨김",
+      "category": "line_tag",
+      "outputCommand": "#boxhide",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "이 줄에서 대사창을 숨긴다 — 연출만 보이는 줄. 런타임이 2026-11-03에 걷은 box_hide 명령의 자리다."
+    },
+    {
+      "id": "line_tag.box_fade_in",
+      "name": "대사창 페이드인",
+      "category": "line_tag",
+      "outputCommand": "#boxfadein",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "이 줄에서 대사창을 페이드인으로 연다."
+    },
+    {
+      "id": "line_tag.box_fade",
+      "name": "대사창 바꿔 열기",
+      "category": "line_tag",
+      "outputCommand": "#boxfade",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "닫았다가 다시 연다(FadeOutIn)."
+    },
+    {
+      "id": "line_tag.box_cut",
+      "name": "대사창 컷",
+      "category": "line_tag",
+      "outputCommand": "#boxcut",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "전환 없이 바로 바꾼다."
+    },
+    {
+      "id": "line_tag.box_keep",
+      "name": "대사창 유지",
+      "category": "line_tag",
+      "outputCommand": "#boxkeep",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창을 그대로 두고 글만 바꾼다."
+    },
+    {
+      "id": "line_tag.box_surface",
+      "name": "대사창 — 기본",
+      "category": "line_tag",
+      "outputCommand": "#surface",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 기본(Surface)."
+    },
+    {
+      "id": "line_tag.box_portrait",
+      "name": "대사창 — 초상",
+      "category": "line_tag",
+      "outputCommand": "#portrait",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 초상(Portrait)."
+    },
+    {
+      "id": "line_tag.box_speaker",
+      "name": "대사창 — 화자",
+      "category": "line_tag",
+      "outputCommand": "#speaker",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 화자(Speaker)."
+    },
+    {
+      "id": "line_tag.box_letterbox",
+      "name": "대사창 — 편지지",
+      "category": "line_tag",
+      "outputCommand": "#letterbox",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 편지지(LetterBox)."
+    },
+    {
+      "id": "line_tag.box_only_text",
+      "name": "대사창 — 글만",
+      "category": "line_tag",
+      "outputCommand": "#onlytext",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 글만(OnlyText)."
+    },
+    {
+      "id": "line_tag.box_black_book",
+      "name": "대사창 — 검은 책",
+      "category": "line_tag",
+      "outputCommand": "#blackbook",
+      "execution": "lineTag",
+      "parameters": [],
+      "notes": "대사창 종류: 검은 책(BlackBook)."
     },
     {
       "id": "dialogue_box.surface_reset",

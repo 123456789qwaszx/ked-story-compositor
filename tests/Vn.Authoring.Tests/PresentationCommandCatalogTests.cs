@@ -34,8 +34,11 @@ public class PresentationCommandCatalogTests
         // 소유자 결정으로 남았다. 카테고리는 15 그대로.
         // 2026-11-03: 대사창 box_hide · box_show · box_close를 걷었다(숨김은 줄 태그 #boxhide) → 77.
         // 카테고리는 15 그대로 — dialogue_box에 surface_layout · surface_reset이 남았다.
-        Assert.Equal(77, catalog.Definitions.Count);
-        Assert.Equal(15, catalog.Categories.Count);
+        // 2026-11-04: 줄 태그 열두 개(범주 line_tag — #auto · #box 전환 다섯 · 대사창 종류 여섯)를 더했다 → 89 · 16.
+        // 커맨드가 아니라 대사 줄의 태그다(execution "lineTag") — 그 걷힌 box_*의 자리를 연출 층이 든다.
+        Assert.Equal(89, catalog.Definitions.Count);
+        Assert.Equal(77, catalog.Definitions.Count(item => !item.IsLineTag));
+        Assert.Equal(16, catalog.Categories.Count);
         Assert.Same(catalog, PresentationCommandCatalog.For(definition: null));
     }
 
@@ -49,7 +52,10 @@ public class PresentationCommandCatalogTests
     {
         HashSet<string> runtime = RuntimeCommandFixture.Load();
 
+        // 줄 태그(execution "lineTag")는 커맨드가 아니라 대사 줄의 태그다 — 런타임 등록 목록이 아니라
+        // 줄 태그 표와 대조한다(아래 카탈로그의_줄_태그는_런타임이_읽는_태그다).
         HashSet<string> catalog = PresentationCommandCatalog.Default.Definitions
+            .Where(item => !item.IsLineTag)
             .Select(item => item.OutputCommandName)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -65,6 +71,37 @@ public class PresentationCommandCatalogTests
         Assert.Equal(
             Array.Empty<string>(),
             runtime.Except(catalog).OrderBy(name => name, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void 카탈로그의_줄_태그는_런타임이_읽는_태그다()
+    {
+        string path = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "TuningFixtures", "runtime-line-tags.txt"));
+
+        HashSet<string> runtime = File.ReadLines(path)
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0 && !line.StartsWith('#'))
+            .ToHashSet(StringComparer.Ordinal);
+
+        PresentationCommandDefinition[] tags = PresentationCommandCatalog.Default.Definitions
+            .Where(item => item.IsLineTag)
+            .ToArray();
+
+        Assert.NotEmpty(tags);
+
+        Assert.All(tags, tag =>
+        {
+            Assert.Equal("line_tag", tag.CategoryId);
+            Assert.StartsWith("#", tag.OutputCommandName);
+            Assert.Empty(tag.Parameters);
+            Assert.Contains(tag.OutputCommandName[1..], runtime);
+        });
+
+        // 런타임 예제가 쓰는 셋은 반드시 있다.
+        Assert.Contains(tags, tag => tag.OutputCommandName == "#boxhide");
+        Assert.Contains(tags, tag => tag.OutputCommandName == "#auto");
+        Assert.Contains(tags, tag => tag.OutputCommandName == "#letterbox");
     }
 
     [Fact]

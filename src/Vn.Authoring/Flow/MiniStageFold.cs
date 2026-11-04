@@ -214,6 +214,11 @@ public static class MiniStageFold
             return; // ♪ 칩·실재생이 알린다 — 조용히 버리는 것이 아니다 (규칙 14)
         }
 
+        if (definition.IsLineTag)
+        {
+            return; // 줄 태그는 무대가 아니라 대사창 · 넘김의 것이다 — 연출 목록이 칩으로 보인다
+        }
+
         // 인자는 카탈로그 기본값 위에 발행 값이 덮인다 — 이미터의 생략 규칙과 같은 방향.
         string? Arg(string name)
         {
