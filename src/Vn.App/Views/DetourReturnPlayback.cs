@@ -46,8 +46,14 @@ internal static class DetourReturnPlayback
 
         if (path.ExitTargetNodeId is null)
         {
-            if (TryReturn(session, preview))
+            if (TryReturn(session, preview, out StagePlayback.DetourReturn returned))
             {
+                // 지도의 길 (2026-11-04) — 분기 카드에서 돌아왔다. 줄을 하나도 재생하지 않았으면 첫머리 조건에 막힌 것.
+                if (nodeId is not null)
+                {
+                    preview!.NoteDetourReturn(returned.NodeId, nodeId, played: path.LineIds.Count > 0);
+                }
+
                 return true;
             }
 
@@ -85,8 +91,14 @@ internal static class DetourReturnPlayback
     /// 경로는 <c>PlaybackPath.Trace</c>가 다시 계산한다(<c>PopDetour</c>가 그 출구를
     /// "다녀왔음"으로 표시했다). 경로 계산이 두 벌이 되지 않는다.
     /// </summary>
-    public static bool TryReturn(AuthoringSession? session, MiniStagePreview? preview)
+    public static bool TryReturn(AuthoringSession? session, MiniStagePreview? preview) =>
+        TryReturn(session, preview, out _);
+
+    public static bool TryReturn(
+        AuthoringSession? session, MiniStagePreview? preview, out StagePlayback.DetourReturn returned)
     {
+        returned = default;
+
         if (session is null || preview is null)
         {
             return false;
@@ -98,6 +110,7 @@ internal static class DetourReturnPlayback
             return false;
         }
 
+        returned = ret;
         preview.Playback.OnNodeSwitch();
         session.Select(ret.NodeId);
         preview.RequestDetourResume(ret.ResumeAfterLineId);

@@ -402,6 +402,40 @@ public partial class MiniStagePreview : UserControl
 
     private ChapterRunState? _chapterRun;
 
+    /// <summary>전체 재생이 지나온 길 — 지도의 덧칠. 런과 같은 수명이다(RunReset이 비운다).</summary>
+    private readonly ChapterRunTrail _trail = new();
+
+    /// <summary>
+    /// 지금 활성 판의 챕터 지도를 다시 그린다 — 자리는 director의 것(편집 없음), 덧칠은 길.
+    /// 그릴 챕터가 없으면(챕터 판이 아니다) 비운다.
+    /// </summary>
+    private void RefreshMinimap()
+    {
+        ChapterGraphModel? model = _session?.ActiveFile?.Name is { } chapterId
+            ? _chapters.FirstOrDefault(entry => string.Equals(entry.ChapterId, chapterId, StringComparison.Ordinal))?.Model
+            : null;
+
+        Minimap.Show(
+            model is null || _session is null ? null : ChapterMinimap.Build(model, _session.Project),
+            _trail,
+            CurrentComboSceneId());
+    }
+
+    /// <summary>
+    /// 분기 카드에서 돌아왔다 — 길에 적는다. 줄을 하나도 재생하지 않았으면 첫머리 조건에 막힌 것이다(빈 네모로 보인다).
+    /// </summary>
+    internal void NoteDetourReturn(string callerNodeId, string branchNodeId, bool played)
+    {
+        if (_session?.Project.FindDialogue(callerNodeId) is not { } caller ||
+            _session.Project.FindDialogue(branchNodeId) is not { } branch)
+        {
+            return;
+        }
+
+        _trail.Detoured(EpisodeNaming.EpisodeIdOf(caller), EpisodeNaming.EpisodeIdOf(branch), played);
+        RefreshMinimap();
+    }
+
     /// <summary>이 챕터의 런 하나 — 챕터가 바뀌면 새로 선다(챕터를 넘는 스탯은 없다).</summary>
     private ChapterRunState EnsureChapterRunFor(ChapterGraphModel chapter)
     {
@@ -562,6 +596,7 @@ public partial class MiniStagePreview : UserControl
         // 런을 되돌렸을 수 있다(그 사이 화면의 선택지는 옛 판의 것이지만, 커밋만은
         // 지금 서 있는 판의 것이어야 잃어버린 스탯이 생기지 않는다).
         EnsureChapterRunFor(chapter).Commit(edge);
+        _trail.Follow(edge);
 
         RequestSceneChange(target.Id);
     }
@@ -588,6 +623,7 @@ public partial class MiniStagePreview : UserControl
     {
         _chapters = entries;
         RefreshChapterCombo();
+        RefreshMinimap();
     }
 
     /// <summary>
@@ -684,7 +720,18 @@ public partial class MiniStagePreview : UserControl
                 SceneCombo.SelectedIndex >= 0 &&
                 SceneCombo.SelectedIndex < scenes.Count)
             {
+                StartTrailAt(scenes[SceneCombo.SelectedIndex]);
                 SceneChosen?.Invoke(scenes[SceneCombo.SelectedIndex].Id);
+            }
+        };
+        // 지도의 점 = 드롭다운의 항목 — 같은 길(SceneChosen)로 간다. 고른 자리에서 길이 새로 시작한다.
+        Minimap.NodeClicked += dialogueNodeId =>
+        {
+            if (_session?.Project.FindDialogue(dialogueNodeId) is { } node)
+            {
+                StartTrailAt(node);
+                RebuildScenePicker(dialogueNodeId);
+                SceneChosen?.Invoke(dialogueNodeId);
             }
         };
         _script.LineClicked += lineId =>
@@ -732,7 +779,12 @@ public partial class MiniStagePreview : UserControl
         Playback.MoveRequested += delta => LineMoveRequested?.Invoke(delta);
         Playback.NodeExitRequested = () => NodeExitRequested?.Invoke() == true;
         // 챕터 런 스탯은 detour 이력과 같은 수명이다 — 새 전체 재생이 처음값으로 되돌린다.
-        Playback.RunReset += () => _chapterRun = null;
+        Playback.RunReset += () =>
+        {
+            _chapterRun = null;
+            _trail.Clear();
+            RefreshMinimap();
+        };
         _scene.PlaybackAdvance = Playback.TryAdvanceByInput;
         // 재생 컨트롤은 타임라인을 사이에 두고 양 끝으로 갈린다 (2026-08-21 소유자) —
         // 왼쪽은 지금 다듬는 라인의 것, 오른쪽 끝은 가끔 쓰는 것(노드 전체 재생·배속).
@@ -875,6 +927,15 @@ public partial class MiniStagePreview : UserControl
     /// 커스텀 씬(✎)이 뒤고, 무리 안에서는 <b>이름 순</b>이다 (같은 날 소유자: "이름 순으로
     /// 정렬 해달라" — 파일 순서는 판의 생성 순서라, 찾는 사람의 눈에는 무작위였다).
     /// </summary>
+    /// <summary>씬 선택기(드롭다운 · 지도)로 들어갔다 — 이어진 길이 아니므로 거기서 길이 새로 선다.</summary>
+    private void StartTrailAt(DialogueNode node)
+    {
+        if (node.MarkedEpisodeId is not null)
+        {
+            _trail.Start(EpisodeNaming.EpisodeIdOf(node));
+        }
+    }
+
     private void RebuildScenePicker(string? selectedDialogueId)
     {
         if (_session is null)
@@ -905,6 +966,8 @@ public partial class MiniStagePreview : UserControl
         {
             _updatingSceneCombo = false;
         }
+
+        RefreshMinimap();
     }
 
     /// <summary>점 클릭 = 켜고 끄기 (2026-08-21) — 꺼진 커맨드도 행으로 남아 다시 켤 수 있다.</summary>
