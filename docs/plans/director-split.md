@@ -48,5 +48,5 @@
 
 ## 4. 열린 것
 
-- 반입 `Ked.Presentation.Core`는 옛 재생 저장소 판(2026-08-20)이다. 정본은 이제 `ked-stage-runtime`이다 — 언제 갈아탈지.
+- 반입 `Ked.Presentation.Core`는 옛 판(2026-08-20)이다. 정본은 `ked-presentation-runtime`이다(`ked-stage-runtime`은 포트폴리오용 분리본) — 언제 갈아탈지.
 - `<<motion>>`: 런타임에 있고 카탈로그에 없다. 연출 툴의 일이므로 여기서 다룬다(모션 이름은 `ked-motion-tool`이 내는 `motions.json`에서).
