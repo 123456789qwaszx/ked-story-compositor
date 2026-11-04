@@ -138,7 +138,8 @@
           "name": "n",
           "type": "int",
           "required": true,
-          "description": "대기 프레임 수(1~48, 24fps 기준). <<24fr>> = 1초 대기"
+          "description": "대기 프레임 수(1~48, 24fps 기준). <<24fr>> = 1초 대기",
+          "slider": { "min": 1, "max": 48, "step": 1 }
         }
       ],
       "notes": "1fr~48fr 프레임 대기 별칭군을 하나로 묶은 합성 엔트리. 실제 출력은 <<Nfr>> 형태(예: <<24fr>>)로 렌더링된다. 49프레임 이상의 별칭은 존재하지 않으므로 pause를 사용할 것."

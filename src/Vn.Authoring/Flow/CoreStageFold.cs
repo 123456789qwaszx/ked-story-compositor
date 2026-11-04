@@ -139,10 +139,10 @@ public static class CoreStageFold
             return core;
         }
 
-        string outputCommand = definition.OutputCommandName;
-        string[] args = CommandText.ResolveOrdered(definition, command.Arguments)
-            .Select(argument => argument.Value)
-            .ToArray();
+        // 이름 · 인자는 Yarn 텍스트와 같은 규칙(자리표 이름 <N>fr → 24fr)으로 짓는다 — 코어가 받는 것이 게임이 읽는 것이다.
+        (string outputCommand, IReadOnlyList<OrderedCommandArgument> ordered) =
+            CommandText.ResolveInvocation(definition, command.DefinitionId, command.Arguments);
+        string[] args = ordered.Select(argument => argument.Value).ToArray();
 
         int unhandledBefore = core.Unhandled.Count;
         StageState next = StageReducer.Apply(

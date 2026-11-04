@@ -475,6 +475,12 @@ public static class YarnBundleEmitter
                 return;
             }
 
+            // 자리표 이름(<N>fr)이 런타임에 있는 이름이 되는가 — 아니면 런타임이 모르는 커맨드로 오류를 낸다.
+            if (CommandText.ValidateNameTemplate(commandDefinition, command.Arguments) is { } templateError)
+            {
+                problems.Add(new YarnBundleProblem(templateError, IsBlocking: true, lineId));
+            }
+
             foreach (PresentationCommandParameter parameter in commandDefinition.Parameters)
             {
                 if (KindFor(parameter.Type) is not { } wanted ||

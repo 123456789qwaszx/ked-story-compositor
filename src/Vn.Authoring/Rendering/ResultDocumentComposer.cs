@@ -637,6 +637,9 @@ public static class ResultDocumentComposer
             return;
         }
 
+        // 이름 · 인자 규칙은 CommandText.ResolveInvocation 하나다(자리표 이름 <N>fr 포함).
+        var invocation = CommandText.ResolveInvocation(definition, command.DefinitionId, command.Arguments);
+
         segments.Add(new RenderedSegment(
             Id: $"presentation:{presentation.Identity.ResultId}:{command.CommandId}",
             Kind: RenderedSegmentKind.PresentationCommand,
@@ -654,21 +657,13 @@ public static class ResultDocumentComposer
             IndentLevel: indentLevel,
             Text: definition?.DisplayName,
             DefinitionId: command.DefinitionId,
-            CommandName: definition?.OutputCommandName ?? command.DefinitionId,
+            CommandName: invocation.Name,
             PresentationCategoryId: definition?.CategoryId,
             PresentationCategoryName: catalog.FindCategory(definition?.CategoryId)?.DisplayName,
-            Arguments: ResolveArguments(definition, command),
+            Arguments: invocation.Arguments
+                .Select(argument => new RenderedArgument(argument.Name, argument.Value))
+                .ToArray(),
             Note: command.Note));
-    }
-
-    /// <summary>인자 순서·트레일링 생략 규칙은 <see cref="CommandText.ResolveOrdered"/> 하나다.</summary>
-    private static IReadOnlyList<RenderedArgument> ResolveArguments(
-        PresentationCommandDefinition? definition,
-        PresentationResultCommand command)
-    {
-        return CommandText.ResolveOrdered(definition, command.Arguments)
-            .Select(argument => new RenderedArgument(argument.Name, argument.Value))
-            .ToArray();
     }
 
     private static void AddOrphanWarnings(

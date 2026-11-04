@@ -36,6 +36,84 @@ public static class CommandText
     public const string EmptyArgumentPlaceholder = "\"\"";
 
     /// <summary>
+    /// 출력 이름의 자리표 — <b>첫 인자가 이름 안으로 들어간다</b> (프레임 대기 <c>&lt;N&gt;fr</c> → <c>&lt;&lt;24fr&gt;&gt;</c>).
+    ///
+    /// 런타임에는 <c>1fr</c>~<c>48fr</c>이 각각 인자 없는 이름으로 등록돼 있다(2026-11-03 되살림 — "엄청 유용하고 자주 쓴다").
+    /// 카탈로그는 그 마흔여덟 개를 정의 하나로 묶었으므로, 이름을 짓는 자리(<see cref="ResolveInvocation"/>)와
+    /// 이름을 읽는 자리(<see cref="Parse"/>)가 이 규칙을 한 벌로 든다.
+    /// </summary>
+    public const string NameTemplateToken = "<N>";
+
+    /// <summary>
+    /// 자리표 이름이 런타임에 실제로 있는 이름이 되는가. 값은 첫 인자의 슬라이더 범위 안의 정수여야 한다
+    /// (<c>&lt;N&gt;fr</c>은 1~48 — 런타임 등록이 거기까지다). 아니면 이유, 맞으면 null.
+    /// 자리표 이름이 아닌 정의에는 언제나 null이다.
+    /// </summary>
+    public static string? ValidateNameTemplate(
+        PresentationCommandDefinition? definition,
+        IReadOnlyDictionary<string, string> arguments)
+    {
+        if (!IsNameTemplate(definition))
+        {
+            return null;
+        }
+
+        PresentationCommandParameter head = definition!.Parameters[0];
+
+        if (!arguments.TryGetValue(head.Name, out string? raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return $"'{definition.OutputCommandName}'의 '{head.Name}'이 비어 있습니다 — 이름을 지을 수 없습니다.";
+        }
+
+        if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
+        {
+            return $"'{definition.OutputCommandName}'의 '{head.Name}'은 정수여야 하는데 '{raw}'가 왔습니다.";
+        }
+
+        if (head.Slider is { } range && (value < range.Minimum || value > range.Maximum))
+        {
+            return $"'{definition.OutputCommandName.Replace(NameTemplateToken, raw.Trim(), StringComparison.Ordinal)}'은 " +
+                   $"런타임에 없는 이름입니다 — {range.Minimum}~{range.Maximum}만 됩니다. 더 길게 기다리려면 pause를 쓰세요.";
+        }
+
+        return null;
+    }
+
+    /// <summary>자리표가 든 출력 이름인가.</summary>
+    public static bool IsNameTemplate(PresentationCommandDefinition? definition) =>
+        definition is { Parameters.Count: > 0 } &&
+        definition.OutputCommandName.Contains(NameTemplateToken, StringComparison.Ordinal);
+
+    /// <summary>
+    /// 런타임에 나가는 <b>이름과 인자</b>. 보통은 출력 이름 그대로 + <see cref="ResolveOrdered"/>이고,
+    /// 자리표 이름이면 첫 인자를 이름에 넣고 인자 목록에서 뺀다. Yarn 텍스트 · 무대 폴드 · 문서가 모두 이것을 쓴다 —
+    /// 셋이 갈리면 툴이 접은 무대와 게임이 읽는 대본이 다른 커맨드가 된다.
+    /// </summary>
+    public static (string Name, IReadOnlyList<OrderedCommandArgument> Arguments) ResolveInvocation(
+        PresentationCommandDefinition? definition,
+        string fallbackName,
+        IReadOnlyDictionary<string, string> arguments)
+    {
+        IReadOnlyList<OrderedCommandArgument> ordered = ResolveOrdered(definition, arguments);
+
+        if (!IsNameTemplate(definition))
+        {
+            return (definition?.OutputCommandName ?? fallbackName, ordered);
+        }
+
+        string head = definition!.Parameters[0].Name;
+        OrderedCommandArgument? filled = ordered.FirstOrDefault(argument =>
+            string.Equals(argument.Name, head, StringComparison.Ordinal));
+
+        // 값이 없으면 자리표를 그대로 둔다 — 내보내기 검증이 막고(필수 인자), 무대는 모르는 이름으로 남긴다.
+        string value = filled is null || filled.Value == EmptyArgumentPlaceholder ? NameTemplateToken : filled.Value;
+
+        return (
+            definition.OutputCommandName.Replace(NameTemplateToken, value, StringComparison.Ordinal),
+            ordered.Where(argument => !ReferenceEquals(argument, filled)).ToArray());
+    }
+
+    /// <summary>
     /// 카탈로그의 파라미터 순서대로 인자 값을 해석한다. 작성 값이 없으면 정의의 기본값을 쓰고,
     /// <b>값이 있는 마지막 파라미터 뒤부터</b> 트레일링 생략으로 자른다.
     /// 정의를 모르는 명령이나 파라미터 밖의 인자는 버리지 않고 이름순으로 뒤에 붙인다.
@@ -94,10 +172,13 @@ public static class CommandText
         string fallbackName,
         IReadOnlyDictionary<string, string> arguments)
     {
-        var builder = new StringBuilder("<<");
-        builder.Append(definition?.OutputCommandName ?? fallbackName);
+        (string name, IReadOnlyList<OrderedCommandArgument> ordered) =
+            ResolveInvocation(definition, fallbackName, arguments);
 
-        foreach (OrderedCommandArgument argument in ResolveOrdered(definition, arguments))
+        var builder = new StringBuilder("<<");
+        builder.Append(name);
+
+        foreach (OrderedCommandArgument argument in ordered)
         {
             builder.Append(' ').Append(argument.Value);
         }
@@ -138,6 +219,13 @@ public static class CommandText
         string name = tokens[0];
         PresentationCommandDefinition? definition =
             catalog.FindByOutputCommand(name) ?? catalog.Find(name);
+
+        // 자리표 이름(<N>fr)은 이름 안의 값을 첫 인자로 돌린다 — 24fr → (frame_wait, n=24).
+        if (definition is null && TryMatchNameTemplate(name, catalog, out PresentationCommandDefinition? template, out string? headValue))
+        {
+            definition = template;
+            tokens = [name, headValue!, .. tokens[1..]];
+        }
 
         if (definition is null)
         {
@@ -180,7 +268,48 @@ public static class CommandText
             }
         }
 
+        if (ValidateNameTemplate(definition, arguments) is { } templateError)
+        {
+            return new CommandTextParseResult(definition, null, templateError);
+        }
+
         return new CommandTextParseResult(definition, arguments, null);
+    }
+
+    /// <summary>
+    /// 이름이 어느 자리표 정의의 모양(<c>앞 · 값 · 뒤</c>)에 맞는가. 값 자리는 비어 있지 않아야 하고 공백이 없다 —
+    /// 값의 타입은 <see cref="ValidateType"/>이 첫 인자의 타입으로 본다.
+    /// </summary>
+    private static bool TryMatchNameTemplate(
+        string name,
+        PresentationCommandCatalog catalog,
+        out PresentationCommandDefinition? definition,
+        out string? value)
+    {
+        foreach (PresentationCommandDefinition candidate in catalog.Definitions)
+        {
+            if (!IsNameTemplate(candidate))
+            {
+                continue;
+            }
+
+            int at = candidate.OutputCommandName.IndexOf(NameTemplateToken, StringComparison.Ordinal);
+            string prefix = candidate.OutputCommandName[..at];
+            string suffix = candidate.OutputCommandName[(at + NameTemplateToken.Length)..];
+
+            if (name.Length > prefix.Length + suffix.Length &&
+                name.StartsWith(prefix, StringComparison.Ordinal) &&
+                name.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                definition = candidate;
+                value = name[prefix.Length..^suffix.Length];
+                return true;
+            }
+        }
+
+        definition = null;
+        value = null;
+        return false;
     }
 
     /// <summary>
