@@ -23,7 +23,7 @@ namespace Vn.App.Views;
 /// </summary>
 public sealed class ChapterMinimapView : UserControl
 {
-    private const double NodeSize = 20;          // 애님스쿨 피커처럼 누를 수 있는 크기
+    private const double NodeSize = 24;          // 애님스쿨 피커처럼 누를 수 있는 크기 — 안에 차례 숫자가 든다
     private const double MapPadding = 28;
     private const double MinSpacing = 34;        // 점 사이 최소 간격 — director 자리를 축소해도 겹치지 않게
     /// <summary>폭 맞춤의 기준은 상수가 아니라 <b>지금 보이는 폭</b>이다 (2026-11-04 소유자: "좌우로 흰 공간만 넓히지 말고 실제 미니맵이 보이는 영역을 늘려").</summary>
@@ -165,6 +165,7 @@ public sealed class ChapterMinimapView : UserControl
     private bool _routeOnly;
 
     private PreviewRouteWalker.Result? _plan;
+    private readonly List<TextBlock> _numberOverlays = [];
 
     /// <param name="plan">미리 정한 루트로 걸은 예정 길 — 파란 점선으로, 멈춘 자리는 ⚠. null이면 안 그린다.</param>
     public void Show(ChapterMinimap? map, ChapterRunTrail? trail, string? currentDialogueId, PreviewRouteWalker.Result? plan = null)
@@ -216,6 +217,30 @@ public sealed class ChapterMinimapView : UserControl
         }
         bool routeOnly = _routeOnly && _plan is not null;
         bool hasTrail = _trail is { Steps.Count: > 0 };
+
+        // 지나는 차례 (2026-11-04 소유자: "각 에피소드를 지나치는 순서를 정확히 숫자로 — 노드 안에") — 에피소드에 들어선 뒤
+        // 그 줄 앞에서 다녀오는 분기(조건이 성립하는 것만)가 다음 번호다. 막히는 분기는 번호가 없다(가지 않는다).
+        var order = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (_plan is not null)
+        {
+            int step = 0;
+            foreach (string episodeId in _plan.EpisodeIds)
+            {
+                order[episodeId] = ++step;
+                foreach (PreviewRouteWalker.Detour detour in _plan.Detours.Where(detour => detour.FromEpisodeId == episodeId && detour.Passes == true))
+                {
+                    order.TryAdd(detour.BranchEpisodeId, ++step);
+                }
+            }
+        }
+        else if (hasTrail)
+        {
+            int step = 0;
+            foreach (ChapterTrailStep trailStep in _trail!.Steps.Where(item => item.Played))
+            {
+                order.TryAdd(trailStep.EpisodeId, ++step);
+            }
+        }
         string? currentEpisode = _map.FindByDialogue(_currentDialogueId)?.EpisodeId;
 
         // 장면 띠 — 점들의 경계 상자. 띠 경계가 "장면이 바뀌면 무대가 비워진다"를 말한다.
@@ -264,30 +289,47 @@ public sealed class ChapterMinimapView : UserControl
             }
 
             bool wasTaken = taken.Contains((edge.FromEpisodeId, edge.ToEpisodeId));
-            bool isPlanned = planned.Contains((edge.FromEpisodeId, edge.ToEpisodeId, edge.Label)) ||
-                (edge.Kind == ChapterMinimapEdgeKind.Detour && onRoute.Contains(edge.FromEpisodeId) && plannedDetours.ContainsKey(edge.ToEpisodeId));
+            bool isDetour = edge.Kind == ChapterMinimapEdgeKind.Detour;
+            // 분기 선: 예정 길 위의 에피소드가 다녀오는 것 — 조건이 성립하면 "간다"(파랑 실선), 막히면 "안 간다"(빨강 점선), 모르면 회색 점선.
+            bool? detourPass = isDetour && _plan is not null && onRoute.Contains(edge.FromEpisodeId)
+                ? _plan.Detours.FirstOrDefault(detour => detour.FromEpisodeId == edge.FromEpisodeId && detour.BranchEpisodeId == edge.ToEpisodeId)?.Passes
+                : null;
+            bool detourConsidered = isDetour && _plan is not null && onRoute.Contains(edge.FromEpisodeId) &&
+                _plan.Detours.Any(detour => detour.FromEpisodeId == edge.FromEpisodeId && detour.BranchEpisodeId == edge.ToEpisodeId);
+            bool isPlanned = planned.Contains((edge.FromEpisodeId, edge.ToEpisodeId, edge.Label)) || detourPass == true;
 
             if (routeOnly && !isPlanned && !wasTaken)
             {
-                continue;   // 루트만 보기 — 안 가는 길은 그리지 않는다
+                continue;   // 루트만 보기 — 안 가는 길(막히는 분기 포함)은 그리지 않는다
             }
 
+            IBrush stroke = wasTaken ? TakenStroke
+                : isPlanned ? PlanStroke
+                : detourConsidered && detourPass == false ? WarnBrush
+                : EdgeStroke;
             var line = new Line
             {
                 StartPoint = from,
                 EndPoint = to,
-                Stroke = wasTaken ? TakenStroke : isPlanned ? PlanStroke : EdgeStroke,
-                StrokeThickness = wasTaken ? 3 : isPlanned ? 2.4 : edge.Kind == ChapterMinimapEdgeKind.Choice ? 1.6 : 1,
+                Stroke = stroke,
+                StrokeThickness = wasTaken ? 3 : isPlanned ? 2.4 : detourConsidered ? 1.6 : edge.Kind == ChapterMinimapEdgeKind.Choice ? 1.6 : 1,
                 Opacity = hasTrail && !wasTaken && !isPlanned ? 0.35 : 0.9,
                 StrokeDashArray = edge.Kind switch
                 {
-                    _ when isPlanned && !wasTaken => new AvaloniaList<double> { 6, 3 },
+                    _ when isPlanned && !wasTaken && !isDetour => new AvaloniaList<double> { 6, 3 },
+                    _ when isPlanned && isDetour => null,
                     ChapterMinimapEdgeKind.Auto => new AvaloniaList<double> { 4, 3 },
                     ChapterMinimapEdgeKind.Detour => new AvaloniaList<double> { 1.5, 3 },
                     _ => null
                 },
                 IsHitTestVisible = false
             };
+
+            if (detourConsidered)
+            {
+                ToolTip.SetTip(line, detourPass == true ? "분기 — 간다 (첫머리 조건 성립)" : detourPass == false ? "분기 — 안 간다 (첫머리 조건에 막힘)" : "분기 — 조건 평가 불가");
+                line.IsHitTestVisible = true;
+            }
 
             if (edge.Label is not null)
             {
@@ -308,9 +350,12 @@ public sealed class ChapterMinimapView : UserControl
             bool isOnPlan = onRoute.Contains(node.EpisodeId);
             bool? plannedPass = plannedDetours.TryGetValue(node.EpisodeId, out bool? verdict) ? verdict : null;
 
-            if (routeOnly && !isOnPlan && !isVisited && !isCurrent)
+            bool isPlannedBranch = node.Shape == ChapterMinimapShape.Branch && plannedDetours.ContainsKey(node.EpisodeId);
+            bool goes = !isPlannedBranch || plannedPass == true;
+
+            if (routeOnly && (!isOnPlan || !goes) && !isVisited && !isCurrent)
             {
-                continue;
+                continue;   // 루트만 보기 — 가는 분기만
             }
 
             // 채움: 실제로 지나왔으면 주황, 예정이면 파랑(분기는 조건이 성립할 때만 — 막히면 빈 네모, 모르면 반투명), 아니면 회색.
@@ -323,11 +368,33 @@ public sealed class ChapterMinimapView : UserControl
             Shape shape = ShapeFor(node, fill);
             if (isOnPlan && !isVisited)
             {
-                shape.Stroke = PlanStroke;
+                shape.Stroke = isPlannedBranch && plannedPass == false ? WarnBrush : PlanStroke;
             }
             shape.Opacity = hasTrail && !isVisited && !isBlocked && !isCurrent && !isOnPlan ? 0.55 : 1;
             Canvas.SetLeft(shape, at.X - shape.Width / 2);
             Canvas.SetTop(shape, at.Y - shape.Height / 2);
+
+            // 차례 숫자 — 점 안에. 막히는 분기는 ✖, 평가 불가는 ?.
+            string? glyph = order.TryGetValue(node.EpisodeId, out int number) ? number.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : isPlannedBranch ? (plannedPass == false ? "✖" : "?")
+                : null;
+
+            if (glyph is not null)
+            {
+                var text = new TextBlock
+                {
+                    Text = glyph,
+                    FontSize = glyph.Length > 2 ? 8 : glyph.Length == 2 ? 10 : 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = isPlannedBranch && plannedPass != true ? WarnBrush : Brushes.White,
+                    IsHitTestVisible = false,
+                    Width = NodeSize + 8,
+                    TextAlignment = TextAlignment.Center
+                };
+                Canvas.SetLeft(text, at.X - text.Width / 2);
+                Canvas.SetTop(text, at.Y - 8);
+                _numberOverlays.Add(text);
+            }
 
             if (isCurrent)
             {
@@ -381,6 +448,12 @@ public sealed class ChapterMinimapView : UserControl
             _canvas.Children.Add(shape);
         }
 
+        foreach (TextBlock overlay in _numberOverlays)
+        {
+            _canvas.Children.Add(overlay);
+        }
+        _numberOverlays.Clear();
+
         _caption.Text = currentEpisode is null
             ? $"{_map.ChapterId} — 점을 누르면 그 씬이 무대에 오릅니다."
             : $"▶ {_map.Find(currentEpisode)!.Title}" +
@@ -431,7 +504,7 @@ public sealed class ChapterMinimapView : UserControl
             case ChapterMinimapShape.Branch:
                 return new Rectangle
                 {
-                    Width = NodeSize * 0.7, Height = NodeSize * 0.7, Fill = fill, Stroke = NodeStroke, StrokeThickness = 1.5, RadiusX = 2, RadiusY = 2
+                    Width = NodeSize * 0.85, Height = NodeSize * 0.85, Fill = fill, Stroke = NodeStroke, StrokeThickness = 1.5, RadiusX = 3, RadiusY = 3
                 };
 
             case ChapterMinimapShape.Fork:
