@@ -26,7 +26,8 @@ public sealed class ChapterMinimapView : UserControl
     private const double NodeSize = 20;          // 애님스쿨 피커처럼 누를 수 있는 크기
     private const double MapPadding = 28;
     private const double MinSpacing = 34;        // 점 사이 최소 간격 — director 자리를 축소해도 겹치지 않게
-    private const double MapMaxWidth = 460;
+    /// <summary>폭 맞춤의 기준은 상수가 아니라 <b>지금 보이는 폭</b>이다 (2026-11-04 소유자: "좌우로 흰 공간만 넓히지 말고 실제 미니맵이 보이는 영역을 늘려").</summary>
+    private double _lastViewportWidth;
 
     private static readonly IBrush NodeFill = new SolidColorBrush(Color.FromRgb(0x4a, 0x4f, 0x58));
     private static readonly IBrush NodeStroke = new SolidColorBrush(Color.FromRgb(0xc8, 0xcc, 0xd2));
@@ -85,6 +86,17 @@ public sealed class ChapterMinimapView : UserControl
         DockPanel.SetDock(zoomBar, Dock.Right);
         bottom.Children.Add(zoomBar);
         bottom.Children.Add(_caption);
+
+        _scroll.SizeChanged += (_, args) =>
+        {
+            if (Math.Abs(args.NewSize.Width - _lastViewportWidth) < 1)
+            {
+                return;
+            }
+
+            _lastViewportWidth = args.NewSize.Width;
+            Redraw();
+        };
 
         _scroll.PointerWheelChanged += (_, args) =>
         {
@@ -178,8 +190,8 @@ public sealed class ChapterMinimapView : UserControl
 
         (double minX, double minY, double maxX, double maxY) = _map.Bounds;
         double scale = ScaleFor(_map, minX, maxX) * _zoom;
-        double width = (maxX - minX) * scale + MapPadding * 2;
-        double height = (maxY - minY) * scale + MapPadding * 2;
+        double width = (maxX - minX) * scale + MapPadding * 2 + NodeSize;
+        double height = (maxY - minY) * scale + MapPadding * 2 + NodeSize;
         _canvas.Width = Math.Max(width, 80);
         _canvas.Height = Math.Max(height, 80);
 
@@ -385,10 +397,13 @@ public sealed class ChapterMinimapView : UserControl
     }
 
     /// <summary>director 자리를 폭에 맞춰 축소하되, 가장 가까운 두 점이 겹치지 않을 만큼은 지킨다.</summary>
-    private static double ScaleFor(ChapterMinimap map, double minX, double maxX)
+    private double ScaleFor(ChapterMinimap map, double minX, double maxX)
     {
         double span = Math.Max(maxX - minX, 1);
-        double fit = Math.Min(1, (MapMaxWidth - MapPadding * 2) / span);
+        // 보이는 폭에 맞춘다 — 기둥을 넓히면 지도가 커진다. 1배 상한은 없다: director 자리는 큰 화면의 것이라 좁은 기둥에서는 늘 축소이고,
+        // 넓게 펴면 그만큼 크게 본다(점 크기는 그대로, 간격만 는다).
+        double available = Math.Max(_lastViewportWidth > 0 ? _lastViewportWidth : 320, 120) - MapPadding * 2 - NodeSize;
+        double fit = available / span;
 
         double nearest = double.MaxValue;
         for (int i = 0; i < map.Nodes.Count; i++)
@@ -406,7 +421,7 @@ public sealed class ChapterMinimapView : UserControl
             return fit;
         }
 
-        return Math.Max(fit, Math.Min(1, MinSpacing / nearest));
+        return Math.Max(fit, MinSpacing / nearest);
     }
 
     private static Shape ShapeFor(ChapterMinimapNode node, IBrush fill)
