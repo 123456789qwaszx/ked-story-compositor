@@ -5,6 +5,7 @@ using Vn.Authoring.Definition;
 using Vn.Authoring.Editing;
 using Vn.Authoring.Flow;
 using Vn.Authoring.Model;
+using Vn.Authoring.Results;
 using Vn.Authoring.Script;
 using Vn.Authoring.Serialization;
 
@@ -547,15 +548,26 @@ internal sealed class AuthoringSession
         ManuscriptPath = loaded.ManuscriptPath;
         ProjectPath = loaded.ComposePath;
         Definition = GameDefinition.LoadBeside(loaded.ManuscriptPath);
+        ReloadRuntimeTarget();
         BranchSelection.Clear();
         SimulationValues.Clear();
-        _savedSnapshot = ProjectSnapshotCodec.Encode(project);
         _tuningLibrary = null;
+
+        // 열 때 저절로 다시 묶는다 (2026-11-04) — director가 대사를 고쳤으면 연출 채널을 갱신하고 결과만 말한다.
+        // 스냅샷은 그 뒤에 뜬다: 다시 묶은 것은 저장할 거리다(저장하면 남는다).
+        var refresher = new ProjectEditor(project);
+        CompositionRefresh.Report refresh = CompositionRefresh.Apply(refresher, Definition);
+        project = refresher.Project;
+        _savedSnapshot = refresh.ChangedAnything ? string.Empty : ProjectSnapshotCodec.Encode(project);
+
         StatusMessage =
-            $"{Path.GetFileName(ManuscriptPath)} · 노드 {project.EnumerateNodes().Count()}개 · " +
-            $"발행 결과 {project.Results.DialogueResults.Count + project.Results.PresentationResults.Count}개" +
+            $"{Path.GetFileName(Path.GetDirectoryName(ManuscriptPath))}/ · 카드 {project.EnumerateNodes().OfType<DialogueNode>().Count()}개" +
+            (refresh.WithoutChannel > 0 ? $" · 연출 없는 카드 {refresh.WithoutChannel}" : string.Empty) +
+            (refresh.Summary is { } summary ? $" · {summary}" : string.Empty) +
             (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty) +
-            SourceNote(loaded);
+            SourceNote(loaded) +
+            (loaded.Source == CompositionSource.None ? " · 이 원고에는 연출이 없습니다 — 여기서 시작하거나 [연출 가져오기…]" : string.Empty) +
+            (RuntimeTarget is null ? " · 게임 폴더 미지정" : $" · 게임 폴더 {RuntimeTarget.GameFolder}");
 
         AppSettingsService.SaveRecentProject(loaded.ManuscriptPath);
 
@@ -592,6 +604,18 @@ internal sealed class AuthoringSession
     /// 연출 층을 이 툴의 파일에 쓴다(<see cref="CompositionStore.Save"/>) — <b>원고 파일은 쓰지 않는다</b>.
     /// 원고를 아직 안 열었으면 쓸 자리가 없다: 이 툴의 파일은 원고 옆에 산다.
     /// </summary>
+    /// <summary>
+    /// 게임 폴더 설정 (2026-11-04) — 프로젝트 폴더의 <c>runtime.target.json</c>, director와 같은 파일. 풀린 폴더가 실제로
+    /// 있을 때만 <see cref="GameFolder"/>가 있다.
+    /// </summary>
+    public RuntimeTarget? RuntimeTarget { get; private set; }
+
+    public string? GameFolder =>
+        ManuscriptPath is { } path && RuntimeTarget is { } target ? target.ResolveExisting(path) : null;
+
+    public void ReloadRuntimeTarget() =>
+        RuntimeTarget = ManuscriptPath is { } path ? RuntimeTarget.LoadBeside(path) : null;
+
     public void Save()
     {
         if (ManuscriptPath is null || ProjectPath is null)
@@ -617,7 +641,8 @@ internal sealed class AuthoringSession
         bool provisioned = EnsureProjectFolders();
 
         StatusMessage = $"{Path.GetFileName(ProjectPath)}에 저장했습니다." +
-            (provisioned ? " 없던 에셋 폴더·기본 튜닝을 준비했습니다." : string.Empty);
+            (provisioned ? " 없던 에셋 폴더·기본 튜닝을 준비했습니다." : string.Empty) +
+            (RuntimeTarget is null ? " 게임 폴더가 없습니다 — [🎮 게임 폴더…]로 정하면 Yarn이 런타임으로도 나갑니다." : string.Empty);
         Changed?.Invoke(this, new ProjectChangedEventArgs(ProjectChangeKind.Content));
     }
 

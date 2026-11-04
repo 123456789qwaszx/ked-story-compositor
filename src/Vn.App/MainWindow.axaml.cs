@@ -156,6 +156,8 @@ public partial class MainWindow : Window
 
         OpenButton.Click += OnOpenClick;
         SaveButton.Click += OnSaveClick;
+        ImportLayerButton.Click += OnImportLayerClick;
+        GameFolderButton.Click += OnGameFolderClick;
         UndoButton.Click += (_, _) => _session.Editor.Undo();
         RedoButton.Click += (_, _) => _session.Editor.Redo();
         ExportButton.Click += OnExportClick;
@@ -390,10 +392,46 @@ public partial class MainWindow : Window
 
     // ── 파일 ────────────────────────────────────────────────────────────────
 
+    /// <summary>열기 = 폴더 고르기 (2026-11-04) — director와 같은 폴더. 폴더 안의 유일한 원고를 찾아 열고, 연출 파일은 그 옆이다.</summary>
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
         try
         {
+            if (await PickExportFolderAsync("프로젝트 폴더 열기 — ked-story-director가 쓴 원고 폴더") is not { } folder)
+            {
+                return;
+            }
+
+            ProjectFolder.Found found = ProjectFolder.Find(folder);
+
+            if (!found.IsFound)
+            {
+                _session.SetStatus(found.Problem!);
+                return;
+            }
+
+            _session.Open(found.ManifestPath!);
+        }
+        catch (Exception exception)
+        {
+            Report("프로젝트 열기", exception);
+        }
+    }
+
+    /// <summary>
+    /// 다른 폴더의 연출을 이 원고 옆으로 (2026-11-04) — 원고만 복사해 온 폴더에 연출이 없을 때. 복사이지 공유가 아니고,
+    /// 원고는 건드리지 않는다(K3). 가져온 뒤 다시 연다.
+    /// </summary>
+    private async void OnImportLayerClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_session.ManuscriptPath is not { } manuscript)
+            {
+                _session.SetStatus("원고를 먼저 여세요 — 연출은 원고 옆에 섭니다.");
+                return;
+            }
+
             IStorageProvider? storage = GetTopLevel(this)?.StorageProvider;
 
             if (storage is null || !storage.CanOpen)
@@ -405,26 +443,59 @@ public partial class MainWindow : Window
             IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(
                 new FilePickerOpenOptions
                 {
-                    Title = "연출할 프로젝트 열기 — ked-story-director의 .vnproject.json (또는 이 툴의 .vncompose.json)",
+                    Title = "가져올 연출 파일 — 다른 폴더의 .vncompose.json",
                     AllowMultiple = false,
-                    FileTypeFilter = new[] { ProjectFileType() }
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("연출 파일") { Patterns = new[] { "*" + CompositionStore.FileExtension } }
+                    }
                 });
 
-            if (files.Count > 0)
+            if (files.Count == 0)
             {
-                _session.Open(files[0].Path.LocalPath);
+                return;
             }
+
+            int dropped = CompositionStore.ImportLayerFrom(files[0].Path.LocalPath, manuscript);
+            _session.Open(manuscript);
+            _session.SetStatus(
+                $"연출을 가져왔습니다: {Path.GetFileName(files[0].Path.LocalPath)} → {Path.GetFileName(_session.ProjectPath)}" +
+                (dropped > 0 ? $" · 원고에 없는 노드를 가리키던 배선 {dropped}개는 버렸습니다" : string.Empty));
         }
         catch (Exception exception)
         {
-            Report("프로젝트 열기", exception);
+            Report("연출 가져오기", exception);
         }
     }
 
-    /// <summary>
-    /// 연출 층을 이 툴의 파일에 쓴다. ⛔ [새 프로젝트] · [다른 이름으로…]는 2026-10-29에 걷혔다 — 이 툴은 원고를
-    /// 만들지 않고, 이 툴의 파일은 원고 옆 한 자리에 산다(<c>docs/plans/compositor-split.md</c> C2).
-    /// </summary>
+    /// <summary>게임 폴더 (2026-11-04) — director와 같은 <c>runtime.target.json</c>. 저장할 때마다 Yarn이 거기로도 나간다.</summary>
+    private async void OnGameFolderClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_session.ManuscriptPath is not { } manuscript)
+            {
+                _session.SetStatus("원고를 먼저 여세요 — 게임 폴더 설정은 프로젝트 폴더에 삽니다.");
+                return;
+            }
+
+            if (await PickExportFolderAsync("게임 폴더 — 런타임의 ChapterProgression") is not { } folder)
+            {
+                return;
+            }
+
+            RuntimeTarget target = RuntimeTarget.FromAbsolute(manuscript, folder);
+            RuntimeTarget.SaveBeside(manuscript, target);
+            _session.ReloadRuntimeTarget();
+            _session.SetStatus($"게임 폴더: {target.GameFolder} — 저장할 때마다 Yarn을 여기로도 씁니다.");
+            _liveOutput?.WriteNow();
+        }
+        catch (Exception exception)
+        {
+            Report("게임 폴더", exception);
+        }
+    }
+
     private void OnSaveClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -488,7 +559,7 @@ public partial class MainWindow : Window
         // 라이브 출력 폴더 (X12c, D-1) — 지정하면 편집마다 자동 재합성·재저장된다.
         panel.Children.Add(new TextBlock
         {
-            Text = $"라이브 출력: {_session.Project.OutputPath ?? "(미지정 — 자동 산출 없음)"}",
+            Text = $"라이브 출력: {_session.Project.OutputPath ?? LiveOutputService.DefaultOutputFolder + "/ (기본)"}",
             FontSize = 10,
             Opacity = 0.7,
             Margin = new Avalonia.Thickness(0, 8, 0, 0),
@@ -878,14 +949,6 @@ public partial class MainWindow : Window
         control.Margin = new Thickness(0, 10, 0, 0);
         DockPanel.SetDock(control, dock);
         return control;
-    }
-
-    private static FilePickerFileType ProjectFileType()
-    {
-        return new FilePickerFileType("연출할 프로젝트")
-        {
-            Patterns = new[] { "*" + ProjectManifestJson.FileExtension, "*" + CompositionStore.FileExtension }
-        };
     }
 
     // ── 화면 ────────────────────────────────────────────────────────────────

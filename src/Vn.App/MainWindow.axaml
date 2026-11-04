@@ -14,21 +14,28 @@
                 BorderThickness="0,0,0,1">
             <!-- ⛔ [새 프로젝트] · [다른 이름으로…]는 2026-10-29에 걷혔다 — 이 툴은 원고를 만들지 않고(director의 일),
                  연출 층 파일은 원고 옆 한 자리에 산다. [열기…]는 원고(.vnproject.json)를 연다. -->
-            <Grid ColumnDefinitions="Auto,Auto,16,Auto,Auto,16,Auto,Auto,Auto,16,*,Auto">
-                <Button Grid.Column="0" x:Name="OpenButton" Content="열기…" />
+            <!-- 프로젝트는 폴더다 (2026-11-04 소유자) — director와 같은 폴더를 연다. 연출이 없으면 [연출 가져오기…]로 다른
+                 폴더의 연출을 복사해 오고, [🎮 게임 폴더…]는 director와 같은 runtime.target.json이다. -->
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,16,Auto,Auto,16,Auto,Auto,Auto,16,*,Auto">
+                <Button Grid.Column="0" x:Name="OpenButton" Content="열기…"
+                        ToolTip.Tip="프로젝트 폴더(ked-story-director가 쓴 원고)를 고릅니다. 연출 파일은 그 옆에 섭니다." />
                 <Button Grid.Column="1" x:Name="SaveButton" Content="저장" Margin="6,0,0,0" />
+                <Button Grid.Column="2" x:Name="ImportLayerButton" Content="연출 가져오기…" Margin="6,0,0,0"
+                        ToolTip.Tip="다른 폴더의 연출(.vncompose.json)을 이 원고 옆으로 복사해 옵니다. 원고는 건드리지 않습니다." />
+                <Button Grid.Column="3" x:Name="GameFolderButton" Content="🎮 게임 폴더…" Margin="6,0,0,0"
+                        ToolTip.Tip="런타임의 ChapterProgression 폴더를 고릅니다. 저장할 때마다 Yarn을 여기로도 씁니다(runtime.target.json — director도 같은 설정을 읽어 진행 JSON을 씁니다)." />
 
-                <Button Grid.Column="3" x:Name="UndoButton" Content="실행 취소" />
-                <Button Grid.Column="4" x:Name="RedoButton" Content="다시 실행" Margin="6,0,0,0" />
+                <Button Grid.Column="5" x:Name="UndoButton" Content="실행 취소" />
+                <Button Grid.Column="6" x:Name="RedoButton" Content="다시 실행" Margin="6,0,0,0" />
 
                 <!-- ⛔ [📂 챕터진행](진행 JSON 폴더 열기)은 2026-10-29에 걷혔다 — 진행 JSON은 ked-story-director가 낸다.
                      ⚠ 셋(내보내기·CSV·양식)은 <b>한 가족</b>이라 붙여 둔다. 지금 CSV·양식은 접혀 있지만(ApplyExportChrome),
                      되살아날 때 이 무리 안에서 서야 한다. -->
-                <Button Grid.Column="6" x:Name="ExportButton" Content="내보내기…" />
-                <Button Grid.Column="7" x:Name="CsvExportButton" Content="CSV 내보내기…" Margin="6,0,0,0" />
-                <Button Grid.Column="8" x:Name="ExportFormatsButton" Content="양식…" Margin="6,0,0,0" />
+                <Button Grid.Column="8" x:Name="ExportButton" Content="내보내기…" />
+                <Button Grid.Column="9" x:Name="CsvExportButton" Content="CSV 내보내기…" Margin="6,0,0,0" />
+                <Button Grid.Column="10" x:Name="ExportFormatsButton" Content="양식…" Margin="6,0,0,0" />
 
-                <StackPanel Grid.Column="10" VerticalAlignment="Center" Margin="8,0">
+                <StackPanel Grid.Column="12" VerticalAlignment="Center" Margin="8,0">
                     <TextBlock x:Name="ProjectNameText" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="ProjectPathText" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -38,7 +45,7 @@
                      밀려야 한다. `📂 챕터진행`을 더할 때 이름 칸만 12→13으로 옮기고 이쪽을
                      안 옮겨서, 이 글이 <b>이름 위에 겹쳐</b> 섰다(2026-08-26 소유자 보고:
                      "원래 우측상단 끝이였는데"). 열 번호는 둘이 한 쌍이다. -->
-                <TextBlock Grid.Column="11"
+                <TextBlock Grid.Column="13"
                            x:Name="DirtyText"
                            VerticalAlignment="Center"
                            FontWeight="SemiBold" />

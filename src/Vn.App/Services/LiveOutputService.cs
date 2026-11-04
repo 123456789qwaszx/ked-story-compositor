@@ -19,6 +19,9 @@ internal sealed class LiveOutputService
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(600);
 
+    /// <summary>출력 폴더를 지정하지 않았을 때 — 프로젝트 폴더의 <c>yarn/</c> (2026-11-04).</summary>
+    public const string DefaultOutputFolder = "yarn";
+
     private readonly AuthoringSession _session;
     private readonly DispatcherTimer _timer;
     private string? _lastReport;
@@ -70,14 +73,16 @@ internal sealed class LiveOutputService
     {
         try
         {
-            if (AssetRootSettings.ResolveFrom(
-                    _session.ProjectPath ?? Path.Combine(Environment.CurrentDirectory, "unsaved.vnproject.json"),
-                    _session.Project.OutputPath) is not { } directory)
+            if (_session.ProjectPath is null)
             {
-                // 출력 폴더 미지정 — 라이브 출력 없음. 볼 폴더가 없으니 고아 목록도 없다.
+                // 원고를 아직 안 열었다 — 쓸 자리가 없다.
                 Orphans = OrphanOutputScan.Empty;
                 return;
             }
+
+            // 출력 폴더의 기본은 프로젝트 폴더의 yarn/ (2026-11-04) — 지정하지 않아도 저장이 곧 내보내기다.
+            string directory = AssetRootSettings.ResolveFrom(
+                _session.ProjectPath, _session.Project.OutputPath ?? DefaultOutputFolder)!;
 
             var bundles = new List<YarnBundle>();
             var blocked = new List<string>();
@@ -128,6 +133,27 @@ internal sealed class LiveOutputService
             LastVerdict = YarnOutputVerification.Verify(written);
 
             var parts = new List<string>();
+
+            // 게임 폴더 (2026-11-04) — director와 같은 runtime.target.json. 같은 번들을 거기에도 쓴다.
+            // 검증은 <b>그 폴더의 .yarn 전부</b>로 한다 — 손 대본이 남아 노드 이름이 겹치면 여기서 잡힌다.
+            if (_session.GameFolder is { } gameFolder && bundles.Count > 0)
+            {
+                IReadOnlyList<string> gameWritten = YarnBundleEmitter.WriteBundles(bundles, gameFolder);
+                YarnOutputVerification.WriteCurvesTo(_session.Project.EaseCurves, gameFolder);
+                YarnOutputVerdict gameVerdict = YarnOutputVerification.Verify(
+                    Directory.GetFiles(gameFolder, "*.yarn", SearchOption.TopDirectoryOnly));
+
+                parts.Add($"게임 폴더 → {gameFolder} ({gameWritten.Count}개)");
+
+                if (YarnOutputVerification.ReportOf(gameVerdict) is { } gameReport)
+                {
+                    parts.Add("게임 폴더 " + gameReport);
+                }
+            }
+            else if (_session.RuntimeTarget is { } target && _session.GameFolder is null)
+            {
+                parts.Add($"게임 폴더가 없습니다: {target.GameFolder} — 폴더를 만들거나 [🎮 게임 폴더…]로 다시 고르세요");
+            }
 
             if (blocked.Count > 0)
             {

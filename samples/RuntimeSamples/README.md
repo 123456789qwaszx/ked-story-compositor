@@ -18,13 +18,15 @@
 
 진행 JSON(`exported/{챕터}.progression.json`)은 director가 낸다 — director `samples/RuntimeSamples/*/exported/`.
 
-## 런타임에 넣기
+## 런타임에 넣기 — 저장이 곧 내보내기다 (2026-11-04)
 
-`ked-presentation-runtime/Assets/Samples/Dialogue/ChapterProgression/`에
+폴더의 `runtime.target.json`이 게임 폴더(`ked-presentation-runtime/Assets/Samples/Dialogue/ChapterProgression`)를 상대 경로로 가리킨다 —
+저장소가 `GitHub/` 아래 나란히 있으면 그대로 통한다. 이 툴은 저장할 때마다 Yarn을 `yarn/`과 **그 폴더에** 쓰고, director는 진행 JSON을 쓴다.
+게임 폴더의 `.yarn` 전부를 컴파일해 보므로 손 대본이 남아 노드 이름이 겹치면 상태줄이 말한다.
+폴더가 없으면 아무것도 안 쓴다 — [🎮 게임 폴더…]로 다시 고른다.
 
-- `yarn/*.yarn`을 그대로 넣고 손 대본(`FestivalEve.yarn` · `Demo_Presentation.yarn`)을 걷는다 — 둘이 함께 있으면 노드 이름이 겹쳐 Yarn 컴파일이 깨진다.
-- director의 진행 JSON 내용을 `FestivalEve.progression.json` · `Demo_Presentation.progression.json`에 덮는다(파일 이름 · `.meta`를 지켜야 장면의 참조가 산다).
-- 줄 신원(`#line:`)과 에피소드 Id가 바뀌었으니 `SampleBootstrap`의 `saveContentVersion`을 올린다 — 옛 저장은 맞지 않는다.
+손으로 옮길 때는 `yarn/*.yarn`과 director `exported/*.progression.json`을 그 폴더에 넣는다. 줄 신원(`#line:`)이나 에피소드 Id가 바뀌었으면
+`SampleBootstrap`의 `saveContentVersion`을 올린다 — 옛 저장은 맞지 않는다.
 
 ## 손 대본과 다른 점 (뜻은 같다)
 
@@ -44,6 +46,9 @@
 
 ## 다시 내기
 
-앱에서 `*.vnproject.json`을 열면 이 폴더의 연출이 함께 열린다. 내보내기 폴더는 `yarn`이다.
+앱에서 [열기…]로 **이 폴더**를 고르면 원고와 연출이 함께 열린다(두 툴이 같은 폴더를 연다). director가 대사를 고쳤으면 열 때 저절로 다시 묶고
+결과("따라온 명령 · 사라진 줄의 명령 · 연출 없는 줄")를 상태줄에 적는다. 출력 폴더는 `yarn/`(기본)이다.
+⚠ 이 폴더의 원고는 director `samples/RuntimeSamples`의 **사본**이고, director 쪽은 2026-11-04 소유자가 왕복 시험으로 에피소드 셋을 더했다 —
+director 폴더를 이 툴로 열면 그 변화가 위 규칙대로 다시 묶인다.
 `tests/Vn.Authoring.Tests/RuntimeSampleTests.cs`가 다시 낸 Yarn이 `yarn/`과 같은지 본다 — 연출을 고치면 다시 내서 함께 싣는다.
 무대 프리뷰의 초상 · 배경은 에셋 뿌리를 런타임 저장소의 `Assets/Samples/Portraits` · `Assets/Samples/Resources/Backgrounds`로 잡아야 보인다(저장소 사이 경로라 이 파일에는 적지 않았다).

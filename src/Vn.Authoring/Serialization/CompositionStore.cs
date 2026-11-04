@@ -116,6 +116,38 @@ public static class CompositionStore
         JsonSupport.WriteAtomic(fullCompose, WriteLayer(layer, directory, manuscriptPath));
     }
 
+    /// <summary>
+    /// <b>다른 폴더의 연출을 가져온다</b> (2026-11-04) — 원고만 새 폴더에 있고 연출이 없을 때. 저쪽 `.vncompose.json`
+    /// (과 그 옆 `results.vnresults.json`)을 읽어 <b>이 원고 옆</b>에 이 원고의 이름으로 쓴다. 원고는 읽기만(K3).
+    /// 원고에 없는 노드를 가리키던 배선은 버린다(열 때와 같은 규칙) — 돌려주는 수가 그것이다.
+    /// 사람이 파일 두 개를 복사하고 이름까지 맞추던 일(`analysis-2026-11-04-tool-workflow.md` W5)을 없앤다.
+    /// </summary>
+    /// <returns>버린 배선 수.</returns>
+    public static int ImportLayerFrom(string sourceComposePath, string manuscriptPath)
+    {
+        string source = Path.GetFullPath(sourceComposePath);
+        string manuscript = Path.GetFullPath(manuscriptPath);
+
+        if (!source.EndsWith(FileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException($"연출 파일({FileExtension})이 아닙니다: {Path.GetFileName(source)}");
+        }
+
+        if (string.Equals(Path.GetDirectoryName(source), Path.GetDirectoryName(manuscript), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("이미 이 원고 옆에 있는 연출입니다 — 그냥 여세요.");
+        }
+
+        StoryProject loaded = ProjectStore.Load(manuscript).Project;
+        PresentationLayer layer = ReadLayer(source);
+        StoryProject merged = PresentationLayer.Merge(loaded, layer, out int droppedLinks);
+        JsonSupport.ValidateProject(merged);
+
+        Save(PathFor(manuscript), manuscript, merged);
+
+        return droppedLinks;
+    }
+
     private static string ManuscriptOf(string composePath)
     {
         JsonObject root = JsonSupport.ParseObject(
