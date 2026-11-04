@@ -15,12 +15,12 @@ public class CsvBundleExporterTests
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Golden"));
 
     [Theory]
-    [InlineData("Script_choices_ep.csv")]
-    [InlineData("Review_choices_ep.csv")]
-    [InlineData("Direction_choices_ep.csv")]
+    [InlineData("Script_condition_ep.csv")]
+    [InlineData("Review_condition_ep.csv")]
+    [InlineData("Direction_condition_ep.csv")]
     public void 열_스키마와_내용이_골든과_같다(string fileName)
     {
-        CsvBundle bundle = ExportChoices();
+        CsvBundle bundle = ExportConditions();
         string actual = bundle.Files.Single(file => file.FileName == fileName).Text;
         string goldenPath = Path.Combine(GoldenDirectory, fileName);
 
@@ -31,55 +31,58 @@ public class CsvBundleExporterTests
             Assert.Fail($"골든 파일이 없어 새로 기록했습니다. 내용을 검토하고 커밋하세요: {goldenPath}");
         }
 
-        Assert.Equal(File.ReadAllText(goldenPath, Encoding.UTF8), actual);
+        // 골든은 LF로 저장될 수 있다(git) — 비교는 줄 끝을 맞춘 뒤 한다.
+        Assert.Equal(
+            File.ReadAllText(goldenPath, Encoding.UTF8).ReplaceLineEndings("\r\n"),
+            actual.ReplaceLineEndings("\r\n"));
     }
 
     [Fact]
     public void 헤더_열_스키마는_작업지시서_그대로다()
     {
-        CsvBundle bundle = ExportChoices();
+        CsvBundle bundle = ExportConditions();
 
         Assert.StartsWith("LineId,화자,대사,노드,인덱스\r\n", bundle.ScriptCsv, StringComparison.Ordinal);
-        Assert.StartsWith("노드,인덱스,LineId,화자,대사,조건,선택,Set,출구\r\n", bundle.ReviewCsv, StringComparison.Ordinal);
+        // ⛔ "선택" 열은 대사 안 선택지와 함께 2026-11-04에 걷혔다.
+        Assert.StartsWith("노드,인덱스,LineId,화자,대사,조건,Set,출구\r\n", bundle.ReviewCsv, StringComparison.Ordinal);
         Assert.StartsWith("LineId,대사,순서,커맨드,인자,메모\r\n", bundle.DirectionCsv, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void 검수_CSV는_조건_선택_set_출구를_줄마다_담는다()
+    public void 검수_CSV는_조건_set_출구를_줄마다_담는다()
     {
-        ChoiceTests.ChoiceWorld world = ChoiceTests.BuildChoiceWorld();
+        ConditionWorld.World world = ConditionWorld.Build();
         CsvBundle bundle = CsvBundleExporter.Export(
             world.Dialogue,
             world.Presentation,
             world.Sample.Project,
             Sample.Definition,
-            bundleName: "choices_ep");
+            bundleName: "condition_ep");
 
         string[] rows = bundle.ReviewCsv.Split("\r\n");
 
-        // 라벨 줄: 선택 열에 블록·옵션·라벨이 적힌다.
+        // 갈래를 여는 줄: 조건 열에 조건 이름이 적힌다.
         //
         // ⛔ <b>Set 열은 이제 빈다</b> (2026-09-17 — 작가 변수 폐지). 검수 CSV가 줄마다
         //    담던 효과는 줄의 `<<set>>`이었고, 값이 변하는 자리가 챕터 간선으로 옮겨졌다.
-        string labelRow = rows.Single(row => row.Contains(world.Label1, StringComparison.Ordinal));
-        Assert.Contains("블록1 옵션1 라벨", labelRow, StringComparison.Ordinal);
-        Assert.DoesNotContain("fatigue +=", labelRow, StringComparison.Ordinal);
+        string openerRow = rows.Single(row => row.Contains(world.Opener, StringComparison.Ordinal));
+        Assert.Contains("호감 높음", openerRow, StringComparison.Ordinal);
+        Assert.DoesNotContain("fatigue +=", openerRow, StringComparison.Ordinal);
 
-        // 옵션 출구는 대상 노드 이름으로 적힌다.
-        string exitRow = rows.Single(row => row.Contains("바로 돌아간다", StringComparison.Ordinal));
-        Assert.Contains("A로 간다", exitRow, StringComparison.Ordinal);
+        // 갈래 출구는 대상 노드 이름으로 적힌다 — 여는 줄이 출구를 든다.
+        Assert.Contains("A로 간다", openerRow, StringComparison.Ordinal);
     }
 
     [Fact]
     public void 연출_테이블은_커맨드_하나가_한_줄이고_인자를_해석해_담는다()
     {
-        ChoiceTests.ChoiceWorld world = ChoiceTests.BuildChoiceWorld();
+        ConditionWorld.World world = ConditionWorld.Build();
         CsvBundle bundle = CsvBundleExporter.Export(
             world.Dialogue,
             world.Presentation,
             world.Sample.Project,
             Sample.Definition,
-            bundleName: "choices_ep");
+            bundleName: "condition_ep");
 
         string[] rows = bundle.DirectionCsv.Split("\r\n");
         string commandRow = Assert.Single(rows, row => row.Contains("camera", StringComparison.Ordinal));
@@ -104,7 +107,7 @@ public class CsvBundleExporterTests
     [Fact]
     public void 파일은_UTF8_BOM과_CRLF로_쓴다()
     {
-        CsvBundle bundle = ExportChoices();
+        CsvBundle bundle = ExportConditions();
         string directory = Path.Combine(Path.GetTempPath(), $"VnTool.Csv.{Guid.NewGuid():N}");
 
         try
@@ -131,15 +134,15 @@ public class CsvBundleExporterTests
         }
     }
 
-    private static CsvBundle ExportChoices()
+    private static CsvBundle ExportConditions()
     {
-        ChoiceTests.ChoiceWorld world = ChoiceTests.BuildChoiceWorld();
+        ConditionWorld.World world = ConditionWorld.Build();
 
         return CsvBundleExporter.Export(
             world.Dialogue,
             world.Presentation,
             world.Sample.Project,
             Sample.Definition,
-            bundleName: "choices_ep");
+            bundleName: "condition_ep");
     }
 }

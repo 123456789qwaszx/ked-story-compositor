@@ -1,8 +1,12 @@
 namespace Vn.Authoring.Model;
 
 /// <summary>
-/// 조건·선택 흐름을 바꾸는 지점의 종류. 두 체인은 같은 기계로 계산되지만 섞이지 않는다
-/// (중첩은 발행 검증에서 거부 — 계약서 D7의 가용 배열 인덱스 문제를 아예 만들지 않는다).
+/// 조건 흐름을 바꾸는 지점의 종류.
+///
+/// ⛔ <b>대사 안 선택지(<c>BeginChoice/BeginNextOption/EndChoice</c>)는 2026-11-04에 걷혔다</b> (소유자: *"선택지는
+/// 에피소드 끝에서만 있는 것으로 규칙을 정했는데 … 앞으로 이런 착각을 못 하게 기능 자체도 완전히 제거"*).
+/// 선택지는 챕터 <b>간선</b>(에피소드 끝)에서만 선다 — 무대는 <c>MiniStagePreview.TryPresentEpisodeChoices</c>가 세운다.
+/// director 원고(K3)에 그 전환이 남아 있으면 리더가 알아보고 버린다(<see cref="Serialization.StoryNodeJson"/>).
 /// </summary>
 public enum ConditionTransitionKind
 {
@@ -13,42 +17,24 @@ public enum ConditionTransitionKind
     BeginElseIf,
 
     /// <summary>조건 체인을 닫는다. 이 줄부터 다시 일반 흐름이다.</summary>
-    EndIf,
-
-    /// <summary>이 줄이 선택 블록의 첫 옵션 라벨이다. 줄 본문이 곧 버튼 텍스트다.</summary>
-    BeginChoice,
-
-    /// <summary>같은 선택 블록의 다음 옵션 라벨. elseif와 동형이라 깊이는 늘지 않는다.</summary>
-    BeginNextOption,
-
-    /// <summary>선택 블록을 닫는다. 이 줄부터 다시 일반 흐름이다.</summary>
-    EndChoice
+    EndIf
 }
 
 /// <summary>
-/// 이 줄에서 조건·선택 흐름이 어떻게 바뀌는지.
+/// 이 줄에서 조건 흐름이 어떻게 바뀌는지.
 ///
 /// 줄마다 "지금 어떤 갈래 안에 있는지"를 반복 저장하지 않는다.
 /// 반복 저장하면 같은 사실이 여러 줄에 흩어져 한 줄만 고쳤을 때 서로 어긋난다.
 /// 대신 <b>바뀌는 지점만</b> 기록하고, 나머지는 앞에서부터 계산한다.
 /// 계산하는 쪽은 <see cref="Flow.ConditionFlowResolver"/>다.
-///
-/// 전환 슬롯이 하나뿐이므로 "옵션 라벨 라인에 조건 전환이 겹치는" 상태는
-/// 구조적으로 존재할 수 없다 (계약서 D7의 Phase 1 결정).
 /// </summary>
 public sealed class LineConditionTransition
 {
-    public LineConditionTransition(
-        ConditionTransitionKind kind,
-        string? conditionId = null,
-        string? optionId = null)
+    public LineConditionTransition(ConditionTransitionKind kind, string? conditionId = null)
     {
         Kind = kind;
         ConditionId = kind is ConditionTransitionKind.BeginIf or ConditionTransitionKind.BeginElseIf
             ? conditionId
-            : null;
-        OptionId = kind is ConditionTransitionKind.BeginChoice or ConditionTransitionKind.BeginNextOption
-            ? optionId
             : null;
     }
 
@@ -56,12 +42,6 @@ public sealed class LineConditionTransition
 
     /// <summary>조건을 여는 전환에만 있다. 그 외에는 언제나 null이다.</summary>
     public string? ConditionId { get; }
-
-    /// <summary>
-    /// 옵션 라벨 전환에만 있는 안정 식별자(<c>op_</c>). 라벨 문구를 고쳐도 변하지 않는다.
-    /// 선택지 리플레이는 위치 기반이므로(계약서 C3) 이 Id로 순서 변경을 감지해 경고한다.
-    /// </summary>
-    public string? OptionId { get; }
 
     public static LineConditionTransition BeginIf(string conditionId) =>
         new(ConditionTransitionKind.BeginIf, conditionId);
@@ -72,33 +52,11 @@ public sealed class LineConditionTransition
     public static LineConditionTransition EndIf() =>
         new(ConditionTransitionKind.EndIf);
 
-    public static LineConditionTransition BeginChoice(string? optionId = null) =>
-        new(ConditionTransitionKind.BeginChoice, optionId: optionId);
-
-    public static LineConditionTransition BeginNextOption(string? optionId = null) =>
-        new(ConditionTransitionKind.BeginNextOption, optionId: optionId);
-
-    public static LineConditionTransition EndChoice() =>
-        new(ConditionTransitionKind.EndChoice);
-
     /// <summary>갈래를 여는 전환인지. 여는 전환만 갈래 출구를 가질 수 있다.</summary>
     public bool OpensBranch =>
-        Kind is ConditionTransitionKind.BeginIf
-            or ConditionTransitionKind.BeginElseIf
-            or ConditionTransitionKind.BeginChoice
-            or ConditionTransitionKind.BeginNextOption;
+        Kind is ConditionTransitionKind.BeginIf or ConditionTransitionKind.BeginElseIf;
 
-    /// <summary>선택 체인에 속한 전환인지.</summary>
-    public bool IsChoiceKind =>
-        Kind is ConditionTransitionKind.BeginChoice
-            or ConditionTransitionKind.BeginNextOption
-            or ConditionTransitionKind.EndChoice;
-
-    /// <summary>옵션 라벨 전환인지. 라벨 라인의 본문이 버튼 텍스트가 된다.</summary>
-    public bool OpensOption =>
-        Kind is ConditionTransitionKind.BeginChoice or ConditionTransitionKind.BeginNextOption;
-
-    public LineConditionTransition Clone() => new(Kind, ConditionId, OptionId);
+    public LineConditionTransition Clone() => new(Kind, ConditionId);
 }
 
 /// <summary>변수를 어떻게 바꾸는지. Yarn의 <c>&lt;&lt;set&gt;&gt;</c> 연산자에 대응한다.</summary>

@@ -207,22 +207,11 @@ public static class YarnBundleEmitter
 
                     break;
 
-                case RenderedSegmentKind.ChoiceOption:
-                    CloseStoryHeader();
-                    AppendChoiceOption(segment, story, problems);
-                    break;
-
-                case RenderedSegmentKind.ChoiceEnd:
-                    // 선택 블록은 마지막 옵션 본문이 끝나면 저절로 닫힌다 — 낼 것이 없다.
-                    CloseStoryHeader();
-                    break;
-
                 case RenderedSegmentKind.DialogueLine:
                     CloseStoryHeader();
                     AppendDialogue(segment, story, indent, problems);
                     break;
 
-                case RenderedSegmentKind.BranchJump:
                 case RenderedSegmentKind.DefaultJump:
                     CloseStoryHeader();
                     story.Append(indent);
@@ -755,49 +744,6 @@ public static class YarnBundleEmitter
 
         YarnSyntax.AppendCommand(story, segment);
         story.Append('\n');
-    }
-
-    /// <summary>
-    /// 옵션 라벨 하나를 낸다. 선택은 변수가 아니라 플레이어 입력이므로 Pres 사본이
-    /// <c>&lt;&lt;if&gt;&gt;</c>로 그대로 재현할 수 없다 — 그래서 Story가 각 옵션 본문의 첫 문장으로
-    /// 합성 추적 변수 <c>$__ch_N</c>을 기록하고, Pres는 그 변수로 같은 갈래를 탄다.
-    /// 저장소는 공유이고(D1) 서브 레인은 메인이 본문 첫 라인에 진입한 뒤에만 평가하므로
-    /// 그 시점에 set은 이미 실행되어 있다. 시킹 리플레이도 저장된 선택 기록으로 같은 옵션을
-    /// 다시 고르므로 결정적이다(C5).
-    /// </summary>
-    private static void AppendChoiceOption(
-        RenderedSegment segment,
-        StringBuilder story,
-        List<YarnBundleProblem> problems)
-    {
-
-        // 라벨은 접두 없이 순수 텍스트로 낸다 (계약서 D6 결정 — 런타임은 라벨을 원문 그대로 렌더한다).
-        // 미리보기 태그(D5)는 표시 전용이고, 실제 효과는 뒤따르는 본문의 <<set>>이다.
-        // 조건 갈래 안 선택지(W54)는 라벨부터 감싼 깊이만큼 들여쓴다 — 옵션 소속은
-        // 들여쓰기가 문법이다.
-        string labelIndent = YarnSyntax.IndentOf(segment.IndentLevel);
-        story.Append(labelIndent).Append("-> ").Append(segment.Text ?? string.Empty);
-
-        foreach (string tag in segment.Tags ?? Array.Empty<string>())
-        {
-            story.Append(' ').Append(tag);
-        }
-
-        if (segment.Source.LineId is { Length: > 0 } lineId)
-        {
-            story.Append(" #line:").Append(lineId);
-        }
-        else
-        {
-            problems.Add(new YarnBundleProblem(
-                $"옵션 라벨 '{segment.Text}'에 LineId가 없어 #line: 태그를 만들 수 없습니다.",
-                IsBlocking: true));
-        }
-
-        story.Append('\n');
-
-        // 합성 추적 변수(`$__ch_N`)는 2026-08-18에 사라졌다 — 서브 레인 사본이 같은
-        // 갈래를 타게 하려고 두었던 것이라, 레인이 없어지자 쓸 곳이 없다.
     }
 
     private static void AppendCondition(StringBuilder builder, RenderedSegment segment, string indent)

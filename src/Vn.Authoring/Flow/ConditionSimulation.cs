@@ -44,7 +44,7 @@ public static class ConditionSimulation
         ArgumentNullException.ThrowIfNull(initialValues);
         ArgumentNullException.ThrowIfNull(manual);
 
-        (List<(string BlockId, bool IsChoice, List<BranchFlow.Branch> Branches)> blockStarts,
+        (List<(string BlockId, List<BranchFlow.Branch> Branches)> blockStarts,
             IReadOnlyList<(int BlockIndex, int BranchIndex)>[] framesOfLine) =
             BranchFlow.BuildStructure(lines, kindOf, lineIdOf, lineIdOf);
 
@@ -82,19 +82,19 @@ public static class ConditionSimulation
                 continue;
             }
 
-            // 감싼 블록 전부가 이 라인의 갈래를 골라야 탄다 (W54 — 조건 안 선택지 포함).
+            // 감싼 블록이 이 라인의 갈래를 골라야 탄다.
             bool taken = true;
 
             foreach ((int blockIndex, int branchIndex) in frames)
             {
-                (string blockId, bool isChoice, List<BranchFlow.Branch> branches) = blockStarts[blockIndex];
+                (string blockId, List<BranchFlow.Branch> branches) = blockStarts[blockIndex];
 
                 // 블록에 처음 닿는 순간 — 그 시점 값으로 판정한다.
                 if (!decided[blockIndex])
                 {
                     decided[blockIndex] = true;
                     decisions[blockIndex] = DecideBlock(
-                        blockId, isChoice, branches, lineByLineId, expressionOf,
+                        blockId, branches, lineByLineId, expressionOf,
                         values, manual, effective, autoBlocks, undecidable);
                 }
 
@@ -117,7 +117,6 @@ public static class ConditionSimulation
 
     private static int? DecideBlock<TLine>(
         string blockId,
-        bool isChoice,
         List<BranchFlow.Branch> branches,
         IReadOnlyDictionary<string, TLine> lineByLineId,
         Func<TLine, string?> expressionOf,
@@ -128,18 +127,6 @@ public static class ConditionSimulation
         HashSet<string> undecidable)
     {
         // 수동이 이긴다.
-        if (isChoice)
-        {
-            if (manual.TryGetChoice(blockId, out string optionLineId))
-            {
-                int manualIndex = branches.FindIndex(branch =>
-                    string.Equals(branch.LineId, optionLineId, StringComparison.Ordinal));
-                return manualIndex >= 0 ? manualIndex : null;
-            }
-
-            return null; // 선택지는 자동 판정이 없다 — 플레이어의 몫
-        }
-
         if (manual.TryGetCondition(blockId, out int manualBranch))
         {
             return manualBranch;

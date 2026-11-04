@@ -82,8 +82,7 @@ public class OutputPresetTests
         Assert.DoesNotContain(document.Segments, segment => segment.Kind == RenderedSegmentKind.SetAssignment);
         Assert.DoesNotContain(document.Segments, segment => segment.Kind == RenderedSegmentKind.PresentationCommand);
         Assert.DoesNotContain(document.Segments, segment =>
-            segment.Kind is RenderedSegmentKind.BranchJump
-                or RenderedSegmentKind.BranchDetour
+            segment.Kind is RenderedSegmentKind.BranchDetour
                 or RenderedSegmentKind.DefaultJump);
     }
 

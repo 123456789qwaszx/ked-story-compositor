@@ -199,11 +199,6 @@ internal static class StoryNodeJson
                     transitionJson["condition"] = transition.ConditionId;
                 }
 
-                if (transition.OptionId is not null)
-                {
-                    transitionJson["option"] = transition.OptionId;
-                }
-
                 // ⚠ 앵커를 <b>글자로 적어 둔다</b> — 규칙(몇 번째인가)이 나중에 바뀌어도
                 // 이미 매달린 출구가 제 갈래를 계속 찾는다. 읽는 쪽도 이 글자를 쓴다.
                 if (transition.OpensBranch)
@@ -527,10 +522,12 @@ internal static class StoryNodeJson
 
             foreach (JsonObject transitionJson in Transitions(lineJson))
             {
-                var transition = new LineConditionTransition(
-                    DialogueResultJson.ParseKind((string?)transitionJson["kind"]),
-                    (string?)transitionJson["condition"],
-                    (string?)transitionJson["option"]);
+                if (DialogueResultJson.ParseKind((string?)transitionJson["kind"]) is not { } kind)
+                {
+                    continue;   // 걷힌 종류(대사 안 선택지) — 알아보고 버린다. 출구도 함께 버린다.
+                }
+
+                var transition = new LineConditionTransition(kind, (string?)transitionJson["condition"]);
 
                 extension.Transitions.Add(transition);
 
@@ -554,10 +551,12 @@ internal static class StoryNodeJson
                 continue;
             }
 
-            var transition = new LineConditionTransition(
-                DialogueResultJson.ParseKind((string?)transitionJson["kind"]),
-                (string?)transitionJson["condition"],
-                (string?)transitionJson["option"]);
+            if (DialogueResultJson.ParseKind((string?)transitionJson["kind"]) is not { } kind)
+            {
+                continue;   // 걷힌 종류 — 버린다.
+            }
+
+            var transition = new LineConditionTransition(kind, (string?)transitionJson["condition"]);
 
             node.TrailingTransitions.Add(transition);
 
@@ -694,11 +693,6 @@ internal static class StoryNodeJson
         if (transition.ConditionId is not null)
         {
             json["condition"] = transition.ConditionId;
-        }
-
-        if (transition.OptionId is not null)
-        {
-            json["option"] = transition.OptionId;
         }
 
         if (hasExit && transition.OpensBranch)

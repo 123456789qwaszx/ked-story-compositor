@@ -1767,10 +1767,7 @@ internal sealed class StageSceneView : UserControl
             {
                 Width = optionWidth,
                 Height = optionHeight,
-                // 현재 접히는 갈래(W35)는 배경 틴트, 커서 라벨은 노란 테두리 — 두 표시는 별개다.
-                Background = option.IsTakenBranch
-                    ? new SolidColorBrush(Color.FromArgb(205, 20, 55, 35))
-                    : BoxBackground,
+                Background = BoxBackground,
                 CornerRadius = new CornerRadius(optionHeight / 2),
                 BorderThickness = new Thickness(em * 0.09),
                 BorderBrush = option.IsSelected
@@ -1778,8 +1775,7 @@ internal sealed class StageSceneView : UserControl
                     : new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
                 Child = new TextBlock
                 {
-                    Text = (option.IsTakenBranch ? "▶ " : string.Empty) +
-                        (option.Text.Length == 0 ? "(빈 라벨)" : option.Text),
+                    Text = option.Text.Length == 0 ? "(빈 라벨)" : option.Text,
                     FontSize = em * 0.85,
                     Foreground = Brushes.White,
                     TextTrimming = TextTrimming.CharacterEllipsis,
@@ -1813,26 +1809,7 @@ internal sealed class StageSceneView : UserControl
                     args.Handled = true;
                 };
             }
-            // 옵션 클릭 = 그 갈래 선택 (W35). 재생 중이면 선택 후 곧장 진행이기도 하다(W35-5).
-            else if (option is { LineId: { } optionLineId, BlockLineId: { } blockLineId } && _session is not null)
-            {
-                optionBox.Cursor = new Cursor(StandardCursorType.Hand);
-                optionBox.PointerPressed += (_, args) =>
-                {
-                    if (!args.GetCurrentPoint(optionBox).Properties.IsLeftButtonPressed)
-                    {
-                        return;
-                    }
-
-                    UiGuard.Run(_session, "갈래 선택", () =>
-                    {
-                        _session.BranchSelection.SelectChoice(blockLineId, optionLineId);
-                        PlaybackAdvance?.Invoke(); // 재생 중이면 선택지에서 멈춘 진행을 잇는다
-                        BranchSelectionChanged?.Invoke();
-                    });
-                    args.Handled = true;
-                };
-            }
+            // ⛔ 대사 안 선택지의 갈래 고르기 클릭(W35)은 2026-11-04에 걷혔다 — 선택지는 간선뿐이라 Choose가 늘 있다.
 
             Add(optionBox, new StageRect((width - optionWidth) / 2, y, optionWidth, optionHeight));
 

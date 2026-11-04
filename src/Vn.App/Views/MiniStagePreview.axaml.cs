@@ -24,62 +24,18 @@ internal sealed record StageEditContext(
 }
 
 /// <summary>
-/// 선택지 제시 화면의 옵션 버튼 하나.
-/// <see cref="LineId"/>·<see cref="BlockLineId"/>가 있으면 클릭이 그 갈래 선택이 된다 (W35).
-/// <see cref="IsTakenBranch"/>는 현재 프리뷰가 접고 있는 갈래 표시다(커서 강조와 별개).
-/// <see cref="Choose"/>가 있으면 클릭의 뜻이 그것 하나다 — 에피소드 끝의 챕터 간선 선택지
-/// (2026-08-27)가 이 길로 도착 에피소드로 넘어간다. 버튼 그리기는 갈래 선택과 한 벌이다.
+/// 선택지 제시 화면의 옵션 버튼 하나 — 에피소드 끝의 챕터 간선 선택지(2026-08-27)다.
+/// <see cref="Choose"/>가 클릭의 뜻이고 도착 에피소드로 넘어간다.
 /// <see cref="IsDisabled"/>는 지금 스탯으로 못 지나는 길이다(숨김·잠김·깨진 조건) —
 /// 게임에서와 같이 못 고르되, 저작 도구라 지우는 대신 흐리게 보이고 사유를 문구가 든다.
+/// <see cref="IsSelected"/>는 루트가 고르기로 한 것(테두리를 밝힌다).
+/// ⛔ 대사 안 선택지의 갈래 고르기(LineId · BlockLineId · IsTakenBranch, W35)는 2026-11-04에 걷혔다.
 /// </summary>
 internal sealed record StageChoiceOption(
     string Text,
     bool IsSelected,
-    string? LineId = null,
-    string? BlockLineId = null,
-    bool IsTakenBranch = false,
     Action? Choose = null,
     bool IsDisabled = false);
-
-/// <summary>
-/// 선택지 버튼 목록 조립의 단일 구현 (W35) — 대사·연출 편집기가 같은 규칙 하나를 쓴다.
-/// 블록 키 = 첫 라벨의 LineId, 현재 접히는 갈래(IsTakenBranch)는 갈래 분석 블록에서 온다.
-/// </summary>
-internal static class StageChoiceOptions
-{
-    public static IReadOnlyList<StageChoiceOption>? Build(
-        IReadOnlyList<ChoiceOptionBundle.Option>? bundle,
-        Func<int, string> lineIdOf,
-        IReadOnlyList<BranchFlow.Block>? branchBlocks)
-    {
-        if (bundle is null || bundle.Count == 0)
-        {
-            return null;
-        }
-
-        string blockLineId = lineIdOf(bundle[0].LineIndex);
-        BranchFlow.Block? block = branchBlocks?.FirstOrDefault(item =>
-            string.Equals(item.BlockLineId, blockLineId, StringComparison.Ordinal));
-
-        string? takenLineId = block is { SelectedBranch: { } selected } &&
-            selected >= 0 && selected < block.Branches.Count
-                ? block.Branches[selected].LineId
-                : null;
-
-        return bundle
-            .Select(option =>
-            {
-                string lineId = lineIdOf(option.LineIndex);
-                return new StageChoiceOption(
-                    option.Text,
-                    option.IsSelected,
-                    lineId,
-                    blockLineId,
-                    IsTakenBranch: string.Equals(lineId, takenLineId, StringComparison.Ordinal));
-            })
-            .ToArray();
-    }
-}
 
 /// <summary>
 /// 이 라인의 소리 커맨드 표시 문자열 (W34-b) — 정지 프레임에 그릴 것이 없는 오디오를
@@ -217,8 +173,8 @@ internal static class StageMotionCues
 /// <param name="LineIndex">문서에서 선택 라인의 0기준 위치. 없으면 -1 — 창 하단 표시용.</param>
 /// <param name="Notice">선택 라인이 발행본에 없다는 등 호출자가 덧붙이는 알림.</param>
 /// <param name="ChoiceOptions">
-/// 선택 라인이 옵션 라벨이면 그 블록의 옵션 전부. 라벨은 대사가 아니므로 대사창 대신
-/// 화면 중앙에 버튼 묶음으로 제시된다 — 런타임의 선택지 제시 근사.
+/// 에피소드 끝의 챕터 간선 선택지(<see cref="MiniStagePreview.TryPresentEpisodeChoices"/>가 채운다). 대사창 대신
+/// 화면 중앙에 버튼 묶음으로 제시된다 — 런타임의 선택지 제시 근사. 줄 요청에서는 비어 있다.
 /// </param>
 /// <param name="CoreState">
 /// 코어 리듀서가 접은 확정 무대 상태 (W25). 있으면 배치가 실제 좌표(리그 트리 + 샷)로

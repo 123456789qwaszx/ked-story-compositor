@@ -128,7 +128,7 @@ internal static class StageIndicators
         }
 
         // 갈래 칩 (W35): 지나온 블록마다 하나 — 클릭이 갈래를 순환시킨다
-        // (갈래 0 → 1 → … → (조건만) 건너뜀 → 미선택(근사)). 지금 무엇을 보고 있는지 항상 보인다.
+        // (갈래 0 → 1 → … → 건너뜀 → 미선택(근사)). 지금 무엇을 보고 있는지 항상 보인다.
         if (request.BranchBlocks is { Count: > 0 } blocks && branchSelection is not null)
         {
             foreach (BranchFlow.Block block in blocks)
@@ -147,7 +147,7 @@ internal static class StageIndicators
 
                 var chip = new Button
                 {
-                    Content = $"{(block.IsChoice ? "선택지" : "조건")}: {current}" + (auto ? " (자동)" : string.Empty),
+                    Content = $"조건: {current}" + (auto ? " (자동)" : string.Empty),
                     FontSize = 10,
                     Padding = new Thickness(6, 2),
                     Margin = BadgeMargin,
@@ -162,7 +162,7 @@ internal static class StageIndicators
                     "\n",
                     block.Branches.Select((branch, index) =>
                         $"{(block.SelectedBranch == index ? "▶ " : "· ")}{Shorten(branch.Label, 40)}")) +
-                    (block.IsChoice ? string.Empty : "\n· (전부 거짓 = 건너뜀)") +
+                    "\n· (전부 거짓 = 건너뜀)" +
                     (auto ? "\n스탯 시뮬 값으로 자동 판정됨 — 클릭하면 수동 선택이 덮습니다." : "\n클릭하면 다음 갈래로 순환합니다."));
 
                 BranchFlow.Block captured = block;

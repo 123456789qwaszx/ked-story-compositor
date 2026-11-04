@@ -56,12 +56,12 @@ public sealed record DialogueResultSetOperation(
     string Value);
 
 /// <summary>
-/// 발행 시점의 조건·선택 전환. 조건의 이름과 식까지 함께 얼린다.
+/// 발행 시점의 조건 전환. 조건의 이름과 식까지 함께 얼린다.
 /// 나중에 SetNode에서 조건을 지워도 이미 발행한 결과는 그대로 재현되어야 한다.
+/// (⛔ 선택 전환과 OptionId는 2026-11-04에 걷혔다 — 옛 결과의 그 전환은 리더가 버린다.)
 /// </summary>
-/// <param name="OptionId">옵션 라벨 전환에만 있다. 순서 안정성 경고(계약서 C3)의 기준이다.</param>
 /// <param name="ExitTargetNodeId">
-/// 이 전환이 <b>여는</b> 갈래의 출구 (v4, 2026-08-24) — 조건 갈래면 detour, 옵션이면 jump.
+/// 이 전환이 <b>여는</b> 갈래의 출구 (v4, 2026-08-24) — detour로 나간다.
 ///
 /// ⚠ 줄에도 <see cref="DialogueResultLine.BranchExitTargetNodeId"/>가 있지만 그것은
 /// <b>줄당 하나</b>다. 줄 없는 갈래(대본 끝의 빈 블록)에는 실을 줄 자체가 없어서, 출구가
@@ -73,7 +73,6 @@ public sealed record DialogueResultTransition(
     string? ConditionId,
     string? ConditionName,
     string? Expression,
-    string? OptionId = null,
     string? ExitTargetNodeId = null);
 
 /// <summary>발행 시점에 연결되어 있던 SetNode의 변수 값.</summary>
@@ -93,7 +92,7 @@ public sealed class DialogueResult
 {
     /// <summary>결과 본문의 구조가 바뀌면 올린다. 해시와 함께 호환성 판정에 쓰인다.</summary>
     /// <remarks>
-    /// v2: 줄에 SetOperations가 실린다. v3: 선택 전환(OptionId)이 실린다.
+    /// v2: 줄에 SetOperations가 실린다. v3: 선택 전환(OptionId)이 실린다(2026-11-04에 걷혀 읽을 때 버린다).
     /// v4: <see cref="TrailingTransitions"/> — 마지막 줄 뒤의 전환(대사 없는 조건 블록).
     /// </remarks>
     public const int CurrentSchemaVersion = 4;

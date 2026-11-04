@@ -261,12 +261,16 @@ internal static class DialogueResultJson
             return null;
         }
 
+        if (ParseKind((string?)json["kind"]) is not { } kind)
+        {
+            return null;   // 걷힌 종류(대사 안 선택지) — 알아보고 버린다.
+        }
+
         return new DialogueResultTransition(
-            ParseKind((string?)json["kind"]),
+            kind,
             (string?)json["condition"],
             (string?)json["name"],
             (string?)json["expression"],
-            (string?)json["option"],
             (string?)json["exit"]);
     }
 
@@ -290,11 +294,6 @@ internal static class DialogueResultJson
             json["expression"] = transition.Expression;
         }
 
-        if (transition.OptionId is not null)
-        {
-            json["option"] = transition.OptionId;
-        }
-
         // 줄 없는 갈래의 출구 (v4) — 실을 줄이 없어 전환에 붙는다.
         if (transition.ExitTargetNodeId is not null)
         {
@@ -308,19 +307,22 @@ internal static class DialogueResultJson
     {
         ConditionTransitionKind.BeginIf => "beginIf",
         ConditionTransitionKind.BeginElseIf => "beginElseIf",
-        ConditionTransitionKind.BeginChoice => "beginChoice",
-        ConditionTransitionKind.BeginNextOption => "beginNextOption",
-        ConditionTransitionKind.EndChoice => "endChoice",
         _ => "endIf"
     };
 
-    internal static ConditionTransitionKind ParseKind(string? kind) => kind switch
+    /// <summary>
+    /// 걷힌 대사 안 선택지의 종류 이름 (2026-11-04). 리더는 이것을 <b>알아보고 버린다</b> — 모르는 이름처럼
+    /// <c>endIf</c>로 돌리면 옛 원고의 선택 블록이 "if 없는 endif"가 되어 발행이 막힌다.
+    /// director가 아직 걷지 않은 원고(K3)를 열 때 <see cref="CompositionStore"/>가 이 이름이 보이면 알린다.
+    /// </summary>
+    public static readonly IReadOnlyList<string> RetiredChoiceKindNames = ["beginChoice", "beginNextOption", "endChoice"];
+
+    /// <summary>종류 이름 → 종류. 걷힌 선택지 종류는 null(버린다). 그 밖의 모르는 이름은 종전대로 <c>endIf</c>.</summary>
+    internal static ConditionTransitionKind? ParseKind(string? kind) => kind switch
     {
         "beginIf" => ConditionTransitionKind.BeginIf,
         "beginElseIf" => ConditionTransitionKind.BeginElseIf,
-        "beginChoice" => ConditionTransitionKind.BeginChoice,
-        "beginNextOption" => ConditionTransitionKind.BeginNextOption,
-        "endChoice" => ConditionTransitionKind.EndChoice,
+        _ when kind is not null && RetiredChoiceKindNames.Contains(kind, StringComparer.Ordinal) => null,
         _ => ConditionTransitionKind.EndIf
     };
 

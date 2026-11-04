@@ -9,6 +9,7 @@ namespace Vn.Authoring.Tests;
 /// 확정 선택된 갈래의 출구는 갈래가 닫히는 순간 경로를 끊으며(합성기와 같은 규칙),
 /// 출구를 탄 갈래가 없으면 기본 출구가 다음 노드다. 미선택(근사) 블록의 출구는
 /// 태우지 않는다 — 추측하지 않는다.
+/// (⛔ 선택 블록 사례는 대사 안 선택지와 함께 2026-11-04에 걷혔다 — 같은 규칙을 조건 블록으로 건다.)
 /// </summary>
 public class PlaybackPathTests
 {
@@ -42,15 +43,15 @@ public class PlaybackPathTests
             spent);
     }
 
-    /// <summary>선택 블록: 일반 → [라벨A(출구 nd_a), 대사A] [라벨B, 대사B] → EndChoice → 일반.</summary>
-    private static DialogueResultLine[] ChoiceDocument(string? exitA = null, string? exitB = null) =>
+    /// <summary>조건 블록: 일반 → [if A(출구 nd_a), 대사A] [elseif B, 대사B] → EndIf → 일반.</summary>
+    private static DialogueResultLine[] ConditionDocument(string? exitA = null, string? exitB = null) =>
     [
         Line(0, "ln_0"),
-        Line(1, "ln_labelA", "사과를 고른다", ConditionTransitionKind.BeginChoice, exitA),
+        Line(1, "ln_ifA", "사과가 있다", ConditionTransitionKind.BeginIf, exitA),
         Line(2, "ln_a1", "사과 갈래 대사"),
-        Line(3, "ln_labelB", "포도를 고른다", ConditionTransitionKind.BeginNextOption, exitB),
+        Line(3, "ln_elifB", "포도가 있다", ConditionTransitionKind.BeginElseIf, exitB),
         Line(4, "ln_b1", "포도 갈래 대사"),
-        Line(5, "ln_end", "합류 대사", ConditionTransitionKind.EndChoice),
+        Line(5, "ln_end", "합류 대사", ConditionTransitionKind.EndIf),
     ];
 
     [Fact]
@@ -69,11 +70,11 @@ public class PlaybackPathTests
     public void 선택된_갈래의_라인만_경로에_남는다()
     {
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelB"); // 포도 갈래
+        selection.SelectCondition("ln_ifA", 1); // 포도 갈래
 
-        PlaybackPath.Result path = Trace(ChoiceDocument(), selection);
+        PlaybackPath.Result path = Trace(ConditionDocument(), selection);
 
-        Assert.Equal(["ln_0", "ln_labelB", "ln_b1", "ln_end"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_elifB", "ln_b1", "ln_end"], path.LineIds);
         Assert.Equal("nd_default", path.ExitTargetNodeId);
     }
 
@@ -81,17 +82,17 @@ public class PlaybackPathTests
     public void 선택된_갈래의_출구는_갈래가_닫히는_순간_경로를_끊는다()
     {
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelA"); // 사과 갈래 (출구 nd_a)
+        selection.SelectCondition("ln_ifA", 0); // 사과 갈래 (출구 nd_a)
 
-        PlaybackPath.Result path = Trace(ChoiceDocument(exitA: "nd_a"), selection);
+        PlaybackPath.Result path = Trace(ConditionDocument(exitA: "nd_a"), selection);
 
         // 사과 갈래의 마지막 라인까지가 경로 — 합류 대사(ln_end)는 아직 실행되지 않는다.
-        Assert.Equal(["ln_0", "ln_labelA", "ln_a1"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_ifA", "ln_a1"], path.LineIds);
         Assert.Equal("nd_a", path.ExitTargetNodeId);
         Assert.True(path.ExitViaBranch);
 
         // 그 출구를 소유한 줄을 함께 말한다 — 돌아온 뒤 "다녀왔음"으로 표시할 열쇠다.
-        Assert.Equal("ln_labelA", path.ExitOwnerLineId);
+        Assert.Equal("ln_ifA", path.ExitOwnerLineId);
     }
 
     /// <summary>
@@ -103,15 +104,15 @@ public class PlaybackPathTests
     public void 다녀온_detour는_없는_출구여서_경로가_나머지로_이어진다()
     {
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelA");
+        selection.SelectCondition("ln_ifA", 0);
 
         PlaybackPath.Result path = Trace(
-            ChoiceDocument(exitA: "nd_a"),
+            ConditionDocument(exitA: "nd_a"),
             selection,
-            spent: new HashSet<string>(StringComparer.Ordinal) { "ln_labelA" });
+            spent: new HashSet<string>(StringComparer.Ordinal) { "ln_ifA" });
 
         // 합류 대사까지 이어지고, 나가는 곳은 이제 기본 출구다.
-        Assert.Equal(["ln_0", "ln_labelA", "ln_a1", "ln_end"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_ifA", "ln_a1", "ln_end"], path.LineIds);
         Assert.Equal("nd_default", path.ExitTargetNodeId);
         Assert.False(path.ExitViaBranch);
     }
@@ -120,11 +121,11 @@ public class PlaybackPathTests
     public void 안_탄_갈래의_출구는_경로에_영향이_없다()
     {
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelB"); // 포도 갈래 — 사과 출구는 안 탄다
+        selection.SelectCondition("ln_ifA", 1); // 포도 갈래 — 사과 출구는 안 탄다
 
-        PlaybackPath.Result path = Trace(ChoiceDocument(exitA: "nd_a"), selection);
+        PlaybackPath.Result path = Trace(ConditionDocument(exitA: "nd_a"), selection);
 
-        Assert.Equal(["ln_0", "ln_labelB", "ln_b1", "ln_end"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_elifB", "ln_b1", "ln_end"], path.LineIds);
         Assert.Equal("nd_default", path.ExitTargetNodeId);
         Assert.False(path.ExitViaBranch);
     }
@@ -132,10 +133,10 @@ public class PlaybackPathTests
     [Fact]
     public void 미선택_블록은_근사대로_전부_타되_출구는_태우지_않는다()
     {
-        PlaybackPath.Result path = Trace(ChoiceDocument(exitA: "nd_a"), new StageBranchSelection());
+        PlaybackPath.Result path = Trace(ConditionDocument(exitA: "nd_a"), new StageBranchSelection());
 
         Assert.Equal(
-            ["ln_0", "ln_labelA", "ln_a1", "ln_labelB", "ln_b1", "ln_end"],
+            ["ln_0", "ln_ifA", "ln_a1", "ln_elifB", "ln_b1", "ln_end"],
             path.LineIds);
         Assert.Equal("nd_default", path.ExitTargetNodeId); // 추측하지 않는다
         Assert.False(path.ExitViaBranch);
@@ -191,41 +192,13 @@ public class PlaybackPathTests
     public void 커서가_있는_갈래는_선택을_덮고_그_출구를_탄다()
     {
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelB"); // 포도 선택 상태에서
+        selection.SelectCondition("ln_ifA", 1); // 포도 선택 상태에서
 
         PlaybackPath.Result path = Trace(
-            ChoiceDocument(exitA: "nd_a"), selection, cursor: "ln_a1"); // 사과 라인을 본다
+            ConditionDocument(exitA: "nd_a"), selection, cursor: "ln_a1"); // 사과 라인을 본다
 
-        Assert.Equal(["ln_0", "ln_labelA", "ln_a1"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_ifA", "ln_a1"], path.LineIds);
         Assert.Equal("nd_a", path.ExitTargetNodeId);
-    }
-
-    [Fact]
-    public void 조건_갈래_출구는_안의_선택지를_다_지나고_나서_끊는다()
-    {
-        // W54 — 조건 안 선택지 줄도 바깥 조건 갈래에 속하므로, 조건 출구는
-        // 선택지를 다 지난 뒤(EndIf 라인 앞)에 실행된다.
-        DialogueResultLine[] document =
-        [
-            Line(0, "ln_0"),
-            Line(1, "ln_if", "조건", ConditionTransitionKind.BeginIf, branchExit: "nd_high"),
-            Line(2, "ln_labelA", "사과", ConditionTransitionKind.BeginChoice),
-            Line(3, "ln_a1", "사과 본문"),
-            Line(4, "ln_join", "합류", ConditionTransitionKind.EndChoice),
-            Line(5, "ln_endif", "끝", ConditionTransitionKind.EndIf),
-            Line(6, "ln_tail", "뒷 대사"),
-        ];
-
-        var selection = new StageBranchSelection();
-        selection.SelectCondition("ln_if", 0);
-        selection.SelectChoice("ln_labelA", "ln_labelA");
-
-        PlaybackPath.Result path = Trace(document, selection);
-
-        // 선택지 본문·합류까지 전부 탄 뒤에야 조건 출구가 경로를 끊는다.
-        Assert.Equal(["ln_0", "ln_if", "ln_labelA", "ln_a1", "ln_join"], path.LineIds);
-        Assert.Equal("nd_high", path.ExitTargetNodeId);
-        Assert.True(path.ExitViaBranch);
     }
 
     [Fact]
@@ -234,16 +207,16 @@ public class PlaybackPathTests
         DialogueResultLine[] document =
         [
             Line(0, "ln_0"),
-            Line(1, "ln_labelA", "사과", ConditionTransitionKind.BeginChoice, branchExit: "nd_a"),
-            Line(2, "ln_a1", "사과 대사"), // EndChoice 없이 문서 끝
+            Line(1, "ln_ifA", "사과", ConditionTransitionKind.BeginIf, branchExit: "nd_a"),
+            Line(2, "ln_a1", "사과 대사"), // EndIf 없이 문서 끝
         ];
 
         var selection = new StageBranchSelection();
-        selection.SelectChoice("ln_labelA", "ln_labelA");
+        selection.SelectCondition("ln_ifA", 0);
 
         PlaybackPath.Result path = Trace(document, selection);
 
-        Assert.Equal(["ln_0", "ln_labelA", "ln_a1"], path.LineIds);
+        Assert.Equal(["ln_0", "ln_ifA", "ln_a1"], path.LineIds);
         Assert.Equal("nd_a", path.ExitTargetNodeId);
         Assert.True(path.ExitViaBranch);
     }

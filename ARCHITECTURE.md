@@ -129,8 +129,9 @@ PresentationResult              ← 어느 대사 결과 위에서 만들었는�
 ### 더 이상 지원하지 않는 것
 
 - Yarn 원문 직접 편집, 원문 서식·주석 보존
-- 중첩 조건, 조건 체인과 선택 체인의 중첩 — 발행 검증이 거부한다
-  (선택지 자체는 선택 전환 체인 `BeginChoice/BeginNextOption/EndChoice`로 지원한다)
+- 중첩 조건 — 발행 검증이 거부한다
+- **대사 안 선택지** (`->` · `BeginChoice/BeginNextOption/EndChoice` · 조건 안 선택지 W54) — 2026-11-04에 걷혔다. 선택지는
+  챕터 간선(에피소드 끝)에서만 서고 무대가 `TryPresentEpisodeChoices`로 세운다. director 원고에 남은 옛 전환은 리더가 알아보고 버린다
 - `.yarnproject` 열기 — 열려고 하면 **거부하고 알린다** (관대하게 읽으면 저장 시 원본이 덮어써진다)
 - 형식 버전 1·2 프로젝트 열기 — **거부하고 이유를 알린다** (§8)
 
@@ -227,7 +228,7 @@ tests/Vn.Core.Tests             Yarn 분석과 골든 픽스처 (60)
 | `StoryNode` (추상) | Id, 이름, 그래프 좌표, **기본 출구**. 종류를 가리지 않는 공통부 |
 | `SetNode` | 조건 정의와 변수 값. **조건이 태어나는 유일한 자리.** 실행 출구가 없다 — 공급자이지 실행 노드가 아니다(공급 노드들도 동일) |
 | `DialogueNode` | 제 대본(`Script`) + `DialogueLineExtension` 목록 + `BranchExits`. 화자 · 대사는 대본에만 있다 |
-| `DialogueLineExtension` | LineId 하나에 얹는 대사 논리. 조건·선택 전환과 변수 변경(`SetOperation`). 옵션 라벨 전환은 안정 `OptionId`(`op_`)를 가진다 — 선택지 리플레이가 위치 기반이라(계약서 C3) 순서 변경을 이 Id로 감지해 경고한다 |
+| `DialogueLineExtension` | LineId 하나에 얹는 대사 논리 — 조건 전환과 분기 표식. (⛔ 선택 전환 · `OptionId`는 2026-11-04에 걷혔다) |
 | `PresentationNode` | `Source`(대사 결과 참조) + Setup 커맨드(노드 수준, Set_ 노드 본문이 된다) + `LineId`별 binding. binding은 인라인 동기화 마커(`[adv/]` 위치 + 커맨드 그룹 경계)도 가진다. **대사를 복사하지 않는다** |
 | `PresentationCommandInstance` | 명령 하나. 정의 Id, 인자, 사용 여부, 메모. 순서를 보존한다 |
 | `LineConditionTransition` | `BeginIf` / `BeginElseIf` / `EndIf` |
@@ -789,7 +790,7 @@ Presentation.Source.ContentHash == Dialogue.Identity.ContentHash
    - `StoryLine` → `ScriptLine` + `LocalizedLine`
    - 기존 `#line:` 태그가 있으면 그것을 LineId로 삼는다 — **Yarn이 이미 하던 일이다**
    - `Condition` 블록 → 전환. **중첩이면 변환 불가로 보고한다**
-   - 선택지(`->`)는 대응물이 없다. 손실로 보고한다
+   - 선택지(`->`)는 대응물이 없다. 손실로 보고한다 (2026-11-04부터 툴도 `->`를 만들지 않는다)
 3. 무엇이 변환되고 무엇이 사라졌는지 목록으로 돌려준다
 
 ---

@@ -123,7 +123,6 @@ public sealed class YarnOutputVerificationTests : IDisposable
 
     [Theory]
     [InlineData("golden_ep.yarn")]
-    [InlineData("choices_ep.yarn")]
     public void 실제_이미터_골든_산출물이_컴파일된다(string storyFile)
     {
         // 합성 픽스처만 통과시키는 검증기는 아무것도 지키지 않는다. 이미터가 실제로 내는

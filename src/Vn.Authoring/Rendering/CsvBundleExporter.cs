@@ -23,7 +23,7 @@ public sealed class CsvBundle
     /// <summary>(2) 번역·녹음 — LineId, 화자, 대사와 녹음용 노드·인덱스.</summary>
     public string ScriptCsv { get; }
 
-    /// <summary>(3) 기획 검수 — 한 줄 = 대본 한 줄. 조건·선택·set·출구까지.</summary>
+    /// <summary>(3) 기획 검수 — 한 줄 = 대본 한 줄. 조건·set·출구까지.</summary>
     public string ReviewCsv { get; }
 
     /// <summary>(4) 연출 테이블 — 한 줄 = 커맨드 하나. 대사는 참조용이다.</summary>
@@ -153,17 +153,13 @@ public static class CsvBundleExporter
     private static string BuildReviewCsv(DialogueResult dialogue, StoryProject? project)
     {
         var rows = new StringBuilder();
-        AppendRow(rows, "노드", "인덱스", "LineId", "화자", "대사", "조건", "선택", "Set", "출구");
+        // ⛔ "선택" 열(블록N 옵션M 라벨)은 대사 안 선택지와 함께 2026-11-04에 걷혔다 — 선택지는 간선에서만.
+        AppendRow(rows, "노드", "인덱스", "LineId", "화자", "대사", "조건", "Set", "출구");
 
         string condition = string.Empty;
-        int choiceBlock = -1;
-        int choiceOption = -1;
-        bool inChoice = false;
 
         foreach (DialogueResultLine line in dialogue.Lines)
         {
-            bool isLabel = false;
-
             switch (line.Transition?.Kind)
             {
                 case ConditionTransitionKind.BeginIf:
@@ -177,27 +173,7 @@ public static class CsvBundleExporter
                 case ConditionTransitionKind.EndIf:
                     condition = string.Empty;
                     break;
-
-                case ConditionTransitionKind.BeginChoice:
-                    choiceBlock++;
-                    choiceOption = 0;
-                    inChoice = true;
-                    isLabel = true;
-                    break;
-
-                case ConditionTransitionKind.BeginNextOption:
-                    choiceOption++;
-                    isLabel = true;
-                    break;
-
-                case ConditionTransitionKind.EndChoice:
-                    inChoice = false;
-                    break;
             }
-
-            string choice = inChoice
-                ? $"블록{choiceBlock + 1} 옵션{choiceOption + 1}" + (isLabel ? " 라벨" : string.Empty)
-                : string.Empty;
 
             string sets = string.Join(
                 " ; ",
@@ -216,7 +192,6 @@ public static class CsvBundleExporter
                 line.CharacterName,
                 line.Text,
                 condition,
-                choice,
                 sets,
                 exit);
         }

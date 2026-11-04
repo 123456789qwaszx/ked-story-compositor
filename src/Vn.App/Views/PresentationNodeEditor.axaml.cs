@@ -268,17 +268,8 @@ public partial class PresentationNodeEditor : UserControl
             _session.TuningLibrary.Tuning,
             _session.Project.EaseCurves);
 
-        // 선택 라인이 옵션 라벨이면 그 블록의 버튼 묶음이 대사창을 대신한다 —
-        // 작업 대본 쪽 프리뷰와 같은 판정 하나(ChoiceOptionBundle)를 지난다.
-        IReadOnlyList<StageChoiceOption>? choices = StageChoiceOptions.Build(
-            ChoiceOptionBundle.At(
-                dialogue.Lines,
-                index,
-                resultLine => resultLine.Transition?.Kind,
-                resultLine => resultLine.Text),
-            optionIndex => dialogue.Lines[optionIndex].LineId,
-            branch.Blocks);
-
+        // ⛔ 대사 안 선택지 버튼 묶음(ChoiceOptionBundle)은 2026-11-04에 걷혔다 — 선택지는 에피소드 끝에서
+        //    무대(TryPresentEpisodeChoices)가 간선으로 세운다. 줄 요청의 ChoiceOptions는 언제나 비어 있다.
         StagePreview.Show(new MiniStagePreviewRequest(
             $"연출: {presentation.Name}",
             state,
@@ -291,7 +282,6 @@ public partial class PresentationNodeEditor : UserControl
             // 작업 중 바인딩이므로 직접 조작이 열려 있다 — 조작은 이 라인의 편집이 된다.
             EditContext: new StageEditContext(presentation.Id, line?.LineId),
             Stats: stats,
-            ChoiceOptions: choices,
             CoreState: fold.CoreState,
             BranchBlocks: branch.Blocks,
             // 전이(W33): 이 라인으로 넘어가는 시간 = 라인 커맨드 duration의 최댓값.
