@@ -165,7 +165,7 @@ public sealed class ProjectFolderWorkflowTests
             Assert.True(composition.CanWrite);
             Assert.DoesNotContain(composition.Warnings, warning => warning.Contains("발행본"));
             Assert.Contains("셋째 줄", composition.Bundle!.StoryText);
-            Assert.True(reopened.Project.FindDialogue(nodeId)!.Script.ActiveLines.Any(line => line.Id == third));
+            Assert.Contains(reopened.Project.FindDialogue(nodeId)!.Script.ActiveLines, line => line.Id == third);
         }
         finally
         {
