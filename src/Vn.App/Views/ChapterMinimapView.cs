@@ -59,14 +59,62 @@ public sealed class ChapterMinimapView : UserControl
             Background = new SolidColorBrush(Color.FromRgb(0x2b, 0x2e, 0x33))
         };
 
+        // 확대 · 축소 (2026-11-04 소유자) — Ctrl+휠, 또는 아래 줄의 − · ＋ · 맞춤. 배율은 director 자리에 곱하는 하나의 수다.
+        var zoomOut = new Button { Content = "−", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
+        var zoomIn = new Button { Content = "＋", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
+        var zoomFit = new Button { Content = "맞춤", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
+        ToolTip.SetTip(zoomOut, "축소 (Ctrl+휠 아래)");
+        ToolTip.SetTip(zoomIn, "확대 (Ctrl+휠 위)");
+        ToolTip.SetTip(zoomFit, "폭에 맞춤");
+        zoomOut.Click += (_, _) => SetZoom(_zoom / ZoomStep);
+        zoomIn.Click += (_, _) => SetZoom(_zoom * ZoomStep);
+        zoomFit.Click += (_, _) => SetZoom(1);
+
+        var bottom = new DockPanel { Margin = new Thickness(0, 2, 0, 0) };
+        var zoomBar = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 2, Children = { zoomOut, zoomIn, zoomFit } };
+        DockPanel.SetDock(zoomBar, Dock.Right);
+        bottom.Children.Add(zoomBar);
+        bottom.Children.Add(_caption);
+
+        _scroll.PointerWheelChanged += (_, args) =>
+        {
+            if (!args.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                return;
+            }
+
+            args.Handled = true;
+            SetZoom(args.Delta.Y > 0 ? _zoom * ZoomStep : _zoom / ZoomStep);
+        };
+
         Content = new DockPanel
         {
             Children =
             {
-                Docked(_caption, Dock.Bottom),
+                Docked(bottom, Dock.Bottom),
                 _scroll
             }
         };
+    }
+
+    private const double ZoomStep = 1.25;
+    private const double ZoomMin = 0.4;
+    private const double ZoomMax = 4;
+
+    /// <summary>폭 맞춤 배율에 곱하는 수. 1이 "폭에 맞춤"이다.</summary>
+    private double _zoom = 1;
+
+    private void SetZoom(double zoom)
+    {
+        double clamped = Math.Clamp(zoom, ZoomMin, ZoomMax);
+
+        if (Math.Abs(clamped - _zoom) < 0.0001)
+        {
+            return;
+        }
+
+        _zoom = clamped;
+        Redraw();
     }
 
     private static Control Docked(Control control, Dock dock)
@@ -97,7 +145,7 @@ public sealed class ChapterMinimapView : UserControl
         }
 
         (double minX, double minY, double maxX, double maxY) = _map.Bounds;
-        double scale = ScaleFor(_map, minX, maxX);
+        double scale = ScaleFor(_map, minX, maxX) * _zoom;
         double width = (maxX - minX) * scale + MapPadding * 2;
         double height = (maxY - minY) * scale + MapPadding * 2;
         _canvas.Width = Math.Max(width, 80);
@@ -238,7 +286,8 @@ public sealed class ChapterMinimapView : UserControl
         _caption.Text = currentEpisode is null
             ? $"{_map.ChapterId} — 점을 누르면 그 씬이 무대에 오릅니다."
             : $"▶ {_map.Find(currentEpisode)!.Title}" +
-              (hasTrail ? $" · 지나온 에피소드 {visited.Count}" + (blocked.Count > 0 ? $" · 막힌 분기 {blocked.Count}" : string.Empty) : string.Empty);
+              (hasTrail ? $" · 지나온 에피소드 {visited.Count}" + (blocked.Count > 0 ? $" · 막힌 분기 {blocked.Count}" : string.Empty) : string.Empty) +
+              (Math.Abs(_zoom - 1) > 0.0001 ? $" · {_zoom:P0}" : string.Empty);
 
         if (currentEpisode is not null && positions.TryGetValue(currentEpisode, out Point focus))
         {
