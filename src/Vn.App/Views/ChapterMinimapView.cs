@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -25,7 +26,7 @@ public sealed class ChapterMinimapView : UserControl
     private const double NodeSize = 20;          // 애님스쿨 피커처럼 누를 수 있는 크기
     private const double MapPadding = 28;
     private const double MinSpacing = 34;        // 점 사이 최소 간격 — director 자리를 축소해도 겹치지 않게
-    private const double MaxWidth = 460;
+    private const double MapMaxWidth = 460;
 
     private static readonly IBrush NodeFill = new SolidColorBrush(Color.FromRgb(0x4a, 0x4f, 0x58));
     private static readonly IBrush NodeStroke = new SolidColorBrush(Color.FromRgb(0xc8, 0xcc, 0xd2));
@@ -252,7 +253,7 @@ public sealed class ChapterMinimapView : UserControl
     private static double ScaleFor(ChapterMinimap map, double minX, double maxX)
     {
         double span = Math.Max(maxX - minX, 1);
-        double fit = Math.Min(1, (MaxWidth - MapPadding * 2) / span);
+        double fit = Math.Min(1, (MapMaxWidth - MapPadding * 2) / span);
 
         double nearest = double.MaxValue;
         for (int i = 0; i < map.Nodes.Count; i++)
