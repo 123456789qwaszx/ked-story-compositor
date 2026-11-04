@@ -403,9 +403,9 @@ public partial class MiniStagePreview : UserControl
             ? null
             : advance.Options.FirstOrDefault(option =>
                 string.Equals(option.Edge.OptionLabel, wanted, StringComparison.Ordinal));
-        bool automatic = planned is { IsSelectable: true };
+        bool autoPick = planned is { IsSelectable: true };
 
-        if (pick is not null && !automatic)
+        if (pick is not null && !autoPick)
         {
             _session.SetStatus(planned is null
                 ? $"루트 '{route!.Name}'의 '{pick.OptionLabel}'이 {episodeId}에 없습니다(숨김 조건?) — 직접 고르세요."
@@ -413,14 +413,14 @@ public partial class MiniStagePreview : UserControl
         }
 
         StageChoiceOption[] options = advance.Options
-            .Select(option => BuildEpisodeOption(chapter, file!, source, option, highlight: automatic && ReferenceEquals(option, planned)))
+            .Select(option => BuildEpisodeOption(chapter, file!, source, option, highlight: autoPick && ReferenceEquals(option, planned)))
             .ToArray();
 
         _current = _current with { ChoiceOptions = options };
         Render();
         Playback.WaitForChoiceInput();
 
-        if (automatic)
+        if (autoPick)
         {
             _session.SetStatus($"루트 '{route!.Name}'대로 — {episodeId}에서 '{pick!.OptionLabel}'을 고릅니다.");
             ArmAutoChoice(options, () => ChooseEpisodeEdge(chapter, file!, source, planned!.Edge));
