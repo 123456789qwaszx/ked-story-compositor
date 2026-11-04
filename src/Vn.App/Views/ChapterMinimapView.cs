@@ -518,13 +518,8 @@ public sealed class ChapterMinimapView : UserControl
               (hasTrail ? $" · 지나온 에피소드 {visited.Count}" + (blocked.Count > 0 ? $" · 막힌 분기 {blocked.Count}" : string.Empty) : string.Empty) +
               (Math.Abs(_zoom - 1) > 0.0001 ? $" · {_zoom:P0}" : string.Empty);
 
-        if (currentEpisode is not null && positions.TryGetValue(currentEpisode, out Point focus))
-        {
-            // 지금 자리가 보이게 스크롤을 맞춘다 — 사람이 찾아 내려가지 않게.
-            _scroll.Offset = new Vector(
-                Math.Max(0, focus.X - _scroll.Viewport.Width / 2),
-                Math.Max(0, focus.Y - _scroll.Viewport.Height / 2));
-        }
+        // 스크롤 위치는 손대지 않는다 (2026-11-04 소유자: "특정 노드를 클릭하면 자꾸 미니맵이 움직이는 게 거슬립니다").
+        // 지도는 사람이 휠 · 가운데 버튼으로 둔 자리에 그대로 있고, 현재 점은 고리와 캡션으로만 알린다.
     }
 
     /// <summary>
