@@ -119,14 +119,8 @@ title: Demo_Presentation
 
 카스미: 무대는 그대로라서, 둘 다 아까 그 자리에 있어. #line:ln_nkr0mbcc
 
-시구레: 마지막으로, 하나 골라 볼래요? #line:ln_6mq0fm7a
+시구레: 여기까지예요. 되감기(R)로 아무 줄이나 돌아갈 수 있고, 타이틀의 ‘이어하기’로 다시 올 수 있어요. #line:ln_6mq0fm7a
 
--> 조금 더 보고 갈래 #line:ln_nrhqqani
-    <<face s1 2>>
-    하린: 좋아. 되감기(R)로 돌아가서 다른 쪽도 골라 봐. #line:ln_yy4tnzdq
--> 이제 됐어 #line:ln_awcnxgku
-    <<face s2 3>>
-    시구레: 그럼 여기까지. 타이틀에서 ‘이어하기’로 다시 올 수 있어요. #line:ln_tzwkezwd
 <<fade_out s3 12fr>>
 <<fade_out s2 12fr>>
 <<fade_out s1 12fr>>

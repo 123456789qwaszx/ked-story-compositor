@@ -433,6 +433,47 @@
       "schemaVersion": 4,
       "contentHash": "sha256:716ddf1d0d843a6414fafad3694e936932ce20a5375ade6209a548c6da5c71ee",
       "publishedAt": "2026-11-04T08:02:43.7618201+00:00"
+    },
+    {
+      "sourceNode": "nd_ushhar34",
+      "sourceNodeName": "Festival_Classroom",
+      "locale": "ko-KR",
+      "sourceScriptRevision": 1,
+      "lines": [
+        {
+          "index": 0,
+          "lineId": "ln_b76q68hg",
+          "revision": 2,
+          "speaker": "하린",
+          "text": "축제가 내일인데, 우리 반 간판이 아직 반쯤 비어 있어."
+        },
+        {
+          "index": 1,
+          "lineId": "ln_rxvmhx0i",
+          "revision": 1,
+          "speaker": "시구레",
+          "text": "칠도 반쯤 말랐네요. 이대로 걸기엔 좀 애매해요."
+        },
+        {
+          "index": 2,
+          "lineId": "ln_q1me6jy8",
+          "revision": 1,
+          "speaker": "하린",
+          "text": "문제는 시간이야. 처음부터 다시 그릴지, 있는 걸로 마무리할지."
+        },
+        {
+          "index": 3,
+          "lineId": "ln_4i38h8b3",
+          "revision": 2,
+          "speaker": "하린",
+          "text": "선택은 대사 안에 없어. 에피소드가 끝나면 진행 쪽이 묻고, 고른 쪽 스탯이 올라."
+        }
+      ],
+      "resultId": "rs_v83rt8ht",
+      "version": 2,
+      "schemaVersion": 4,
+      "contentHash": "sha256:3fee2b85cdd9745c10b56b59a44fa3e177fc62c1794a7b47b2ec4b39fe4f8eb5",
+      "publishedAt": "2026-11-04T13:40:35.9292278+00:00"
     }
   ],
   "presentationResults": [
@@ -1295,6 +1336,208 @@
       "schemaVersion": 3,
       "contentHash": "sha256:f3181ac0dc3328c9369653a1323def72b7e2fdeddc3f00e06c8797d75731e668",
       "publishedAt": "2026-11-04T08:02:43.8039923+00:00"
+    },
+    {
+      "sourceNode": "nd_5pkyaert",
+      "sourceNodeName": "Festival_Classroom 연출",
+      "source": {
+        "resultId": "rs_v83rt8ht",
+        "version": 2,
+        "contentHash": "sha256:3fee2b85cdd9745c10b56b59a44fa3e177fc62c1794a7b47b2ec4b39fe4f8eb5"
+      },
+      "setup": [
+        {
+          "id": "pc_z4cd6x8s",
+          "definitionId": "shot.shot_reset",
+          "arguments": {
+            "duration": "0fr"
+          }
+        },
+        {
+          "id": "pc_16k8imhz",
+          "definitionId": "background.bg_spawn",
+          "arguments": {
+            "rigKey": "bg_main",
+            "spriteKey": "class_lunch"
+          }
+        },
+        {
+          "id": "pc_ue0ka622",
+          "definitionId": "char_rig_cast.slot",
+          "arguments": {
+            "layer": "mid",
+            "slotKey": "s1",
+            "stage": "stage00"
+          }
+        },
+        {
+          "id": "pc_15cmm4af",
+          "definitionId": "char_rig_cast.cast",
+          "arguments": {
+            "characterKey": "harin",
+            "emotionKey": "1",
+            "slot": "s1",
+            "variantKey": "a"
+          }
+        },
+        {
+          "id": "pc_70nvm64y",
+          "definitionId": "char_rig_cast.slot",
+          "arguments": {
+            "layer": "mid",
+            "slotKey": "s2",
+            "stage": "stage00"
+          }
+        },
+        {
+          "id": "pc_gfgjmart",
+          "definitionId": "char_rig_cast.cast",
+          "arguments": {
+            "characterKey": "sigure",
+            "emotionKey": "1",
+            "slot": "s2",
+            "variantKey": "a"
+          }
+        }
+      ],
+      "bindings": [
+        {
+          "lineId": "ln_b76q68hg",
+          "commands": [
+            {
+              "id": "pc_t6m21g3p",
+              "definitionId": "background.bg_fade_in",
+              "arguments": {
+                "duration": "24fr",
+                "rigKey": "bg_main"
+              }
+            },
+            {
+              "id": "pc_7zza5rx9",
+              "definitionId": "audio.bgm",
+              "arguments": {
+                "clipKey": "audio/bgm_idoberg-relaxing-guitar-loop-v5-245859",
+                "fadeDuration": "2s"
+              }
+            },
+            {
+              "id": "pc_g44d2czr",
+              "definitionId": "char_rig_placement.place_right",
+              "arguments": {
+                "duration": "0fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_ft9gyvmj",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "0fr",
+                "preserveFocus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_c5hk71u0",
+              "definitionId": "char_rig_presentation.fade_in",
+              "arguments": {
+                "duration": "18fr",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_rxvmhx0i",
+          "commands": [
+            {
+              "id": "pc_pr77qpc6",
+              "definitionId": "char_rig_placement.place_left",
+              "arguments": {
+                "duration": "0fr",
+                "focus": "bust",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_r8d6me38",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "0fr",
+                "preserveFocus": "bust",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_6gh60ckr",
+              "definitionId": "char_rig_presentation.slide_in",
+              "arguments": {
+                "direction": "left",
+                "distance": "2u",
+                "duration": "14fr",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_uax4e2dr",
+              "definitionId": "char_rig_presentation.fade_in",
+              "arguments": {
+                "duration": "14fr",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_ksq322v0",
+          "commands": [
+            {
+              "id": "pc_qej6dgb0",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "2",
+                "slot": "s2"
+              }
+            }
+          ],
+          "orphan": true
+        },
+        {
+          "lineId": "ln_gathtysb",
+          "commands": [
+            {
+              "id": "pc_b5v9fjpm",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "3",
+                "slot": "s2"
+              }
+            }
+          ],
+          "orphan": true
+        },
+        {
+          "lineId": "ln_q1me6jy8",
+          "commands": [
+            {
+              "id": "pc_nhfjkyuj",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "3",
+                "slot": "s1"
+              }
+            }
+          ]
+        }
+      ],
+      "resultId": "rs_42th34b0",
+      "version": 3,
+      "schemaVersion": 3,
+      "contentHash": "sha256:c48d271346eb2cb911315a634b989b5a58086656d377e99da826e2a72457bccb",
+      "publishedAt": "2026-11-04T13:40:35.9692879+00:00"
     }
   ]
 }

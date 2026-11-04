@@ -42,7 +42,8 @@ public sealed class ChapterMinimapTests
         (ChapterMinimap map, _) = FestivalEve();
 
         Assert.Equal(2, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Auto));
-        Assert.Equal(5, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Choice));
+        // 선택지 9 = 원래 5 + 소유자가 director에서 더한 Festival_Add 갈래 4 (2026-11-04 원고 사본 갱신).
+        Assert.Equal(9, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Choice));
         Assert.Equal(5, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Detour));
 
         Assert.Contains(map.Edges, edge =>

@@ -12,8 +12,8 @@
       },
       "source": {
         "resultId": "rs_jagr3c27",
-        "version": 1,
-        "contentHash": "sha256:3fc6d2060e984cae12fad7d0c1a1aac6be8d5a28cfa6bbbd15966fb4a1d36f4c"
+        "version": 2,
+        "contentHash": "sha256:ca8c666d7a4afe570c0b5ae4d1b6276792ec90aee2969a8d1ca4a085535c0195"
       },
       "setup": [
         {
@@ -707,32 +707,6 @@
                 "duration": "16fr",
                 "preset": "daze_open",
                 "stage": "stage00"
-              }
-            }
-          ]
-        },
-        {
-          "lineId": "ln_yy4tnzdq",
-          "commands": [
-            {
-              "id": "pc_42hpcec3",
-              "definitionId": "char_rig_cast.face",
-              "arguments": {
-                "emotionKey": "2",
-                "slot": "s1"
-              }
-            }
-          ]
-        },
-        {
-          "lineId": "ln_tzwkezwd",
-          "commands": [
-            {
-              "id": "pc_2pc5ja09",
-              "definitionId": "char_rig_cast.face",
-              "arguments": {
-                "emotionKey": "3",
-                "slot": "s2"
               }
             }
           ]

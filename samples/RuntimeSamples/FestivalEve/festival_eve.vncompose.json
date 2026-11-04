@@ -12,8 +12,8 @@
       },
       "source": {
         "resultId": "rs_v83rt8ht",
-        "version": 1,
-        "contentHash": "sha256:82fc87cb33ebf9d04d4b1a1389c7f7aaf1f00f211d8faab1910611ba6958f73f"
+        "version": 2,
+        "contentHash": "sha256:3fee2b85cdd9745c10b56b59a44fa3e177fc62c1794a7b47b2ec4b39fe4f8eb5"
       },
       "setup": [
         {
@@ -156,32 +156,6 @@
               "definitionId": "char_rig_presentation.fade_in",
               "arguments": {
                 "duration": "14fr",
-                "slot": "s2"
-              }
-            }
-          ]
-        },
-        {
-          "lineId": "ln_ksq322v0",
-          "commands": [
-            {
-              "id": "pc_qej6dgb0",
-              "definitionId": "char_rig_cast.face",
-              "arguments": {
-                "emotionKey": "2",
-                "slot": "s2"
-              }
-            }
-          ]
-        },
-        {
-          "lineId": "ln_gathtysb",
-          "commands": [
-            {
-              "id": "pc_b5v9fjpm",
-              "definitionId": "char_rig_cast.face",
-              "arguments": {
-                "emotionKey": "3",
                 "slot": "s2"
               }
             }
