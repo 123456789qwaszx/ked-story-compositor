@@ -221,6 +221,33 @@ public sealed class RuntimeTuningLibrary
             guidance: "초상 사이징이 '반영 안 됨'으로 남습니다.");
         tuning.PortraitDimensions = portraits;
 
+        // ── 배경 치수 (background-dimensions.json) — 배경은 캐스팅하지 않은 슬롯이다(런타임 2026-10-29).
+        // bg_spawn · bg_sprite가 이 표로 사이징한다. 없으면 배경 슬롯은 서되 사이징 축만 '반영 안 됨'으로 남는다.
+        tuning.BackgroundDimensions = ReadFile<BackgroundDimensionsFileDto>(
+            root, "background-dimensions.json", problems,
+            guidance: "배경 사이징이 '반영 안 됨'으로 남습니다.");
+
+        // ── 모션 (motions.json) — 모션 툴이 낸 파일을 런타임 대본 번들 곁과 같은 이름으로 여기에 둔다.
+        // 런타임과 같은 규칙으로 읽고 코어 MotionRules로 거른다 — motion 폴드가 같은 클립을 본다.
+        // 없으면 0개다(모션을 안 쓰는 프로젝트가 정상 경로). 그때 motion 커맨드는 코어가 사유를 남긴다.
+        string motionsPath = Path.Combine(root, MotionLibraryJson.FileName);
+
+        if (File.Exists(motionsPath))
+        {
+            try
+            {
+                tuning.Motions = MotionLibraryJson.Parse(
+                    File.ReadAllText(motionsPath),
+                    MotionLibraryJson.FileName,
+                    CharacterRigNodeIds(rigSchemas),
+                    problems);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                problems.Add($"tuning 파일을 읽지 못했습니다: {MotionLibraryJson.FileName} — {exception.Message}");
+            }
+        }
+
         // ── 대사창 surface 레이아웃 (presets/surface-layout.json) — 컴포저 입력 ──
         SurfaceLayoutFileDto? surfaces = ReadFile<SurfaceLayoutFileDto>(
             root, Path.Combine("presets", "surface-layout.json"), problems,
@@ -254,6 +281,21 @@ public sealed class RuntimeTuningLibrary
             hasFocusTuning: tuning.FocusTuning is not null,
             surfaceLayouts,
             problems);
+    }
+
+    /// <summary>
+    /// 모션 채널 검증에 쓸 캐릭터 리그 노드 id. 런타임은 <c>CharacterRigSchema.NodeIds()</c>를 넘긴다 —
+    /// 같은 리그를 덤프한 rig-schemas.json의 character 노드가 그것이다. 스키마가 없으면 null(노드 검증 생략).
+    /// </summary>
+    private static ICollection<string>? CharacterRigNodeIds(RigSchemasFileDto? rigSchemas)
+    {
+        RigSchemaRigDto? character = rigSchemas?.rigs?.FirstOrDefault(rig =>
+            string.Equals(rig?.rigKind, "character", StringComparison.Ordinal));
+
+        return character?.nodes?
+            .Where(node => !string.IsNullOrEmpty(node?.id))
+            .Select(node => node.id)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>

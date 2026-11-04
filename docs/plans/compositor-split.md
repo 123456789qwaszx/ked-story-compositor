@@ -45,8 +45,10 @@
 
 ## 4. 열린 것
 
-- 반입 `Ked.Presentation.Core`는 옛 판(2026-08-20)이다. 정본은 `ked-presentation-runtime`이다(`ked-stage-runtime`은 포트폴리오용 분리본) — 언제 갈아탈지.
-- `<<motion>>`: 런타임에 있고 카탈로그에 없다. 모션 이름은 `ked-motion-tool`이 내는 `motions.json`에서.
+- ~~반입 `Ked.Presentation.Core`는 옛 판(2026-08-20)이다~~ — **2026-11-04 갈아탔다**(런타임 `dev` @ `5de605a4`, `src/Ked.Presentation.Core/README.md`).
+  배경은 코어에서 캐스팅하지 않은 슬롯으로 서고 프리뷰는 배경 층으로 그린다. 배경을 코어 좌표로 그리는 것(`bg_move` · `bg_scale`이 화면에 보이게)은 아직이다.
+- ~~`<<motion>>`: 런타임에 있고 카탈로그에 없다~~ — 카탈로그에 있고(2026-11-03), 2026-11-04부터 튜닝 폴더의 `motions.json`을 코어가 접는다.
+  모션 툴은 아직 `motions/1`을 낸다(런타임 기대는 `motions/2` — 채널 `mode`만 다르고 읽을 때 무시된다).
 - director가 대사를 고친 뒤 이 툴이 그 변화를 언제 · 어떻게 알리는지(다시 열 때 · 파일 감시).
 - 코드의 이름(`Vn.*` 네임스페이스 · 어셈블리)과 라이브러리 문구 속 "VnTool"(예: 원고 manifest를 못 읽을 때의 오류)을
   바꿀지 — director의 S4와 같은 질문이다. `ARCHITECTURE.md` · `ORIENTATION.md` · `docs/` 안내서도 아직 VnTool 시절을 설명한다.

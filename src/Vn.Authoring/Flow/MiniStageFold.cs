@@ -169,6 +169,14 @@ public static class MiniStageFold
     {
         public string? BackgroundKey;
         public string? BackgroundRigKey;
+
+        /// <summary>
+        /// 코어가 <c>bg_spawn</c>으로 세운 슬롯 키 (2026-11-04 코어 재반입). 코어에서 배경은
+        /// 캐스팅하지 않은 캐릭터 슬롯이라 <c>Slots</c>에 함께 서는데, 프리뷰는 배경을 배경 층
+        /// (<see cref="BackgroundKey"/>)으로 그린다 — 인물 칸으로 투영하지 않으려고 따로 든다.
+        /// </summary>
+        public readonly HashSet<string> BackgroundSlots = new(StringComparer.Ordinal);
+
         public readonly Dictionary<string, MiniStageSlot> Slots = new(StringComparer.Ordinal);
         public readonly Dictionary<string, string> Aliases = new(StringComparer.Ordinal);
         public string NamedBoxKind = MiniStageState.DefaultNamedBoxKind;

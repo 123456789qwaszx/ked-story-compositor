@@ -43,7 +43,7 @@ public sealed class StageInstantCommandTests
     private static PresentationResultCommand[] CastInSetup =>
     [
         Command("char_rig_cast.slot", ("slotKey", "c1")),
-        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"), ("emotionKey", "1")),
+        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"), ("emotionKey", "1")),
     ];
 
     private static MiniStagePreviewRequest Request(
@@ -211,7 +211,7 @@ public sealed class StageInstantCommandTests
 
         // 화자 · 초상 매핑은 정의 파일에 산다 — 열기 전에 적어 두면 세션이 읽는다.
         GameDefinitionStore.SaveSpeakers(
-            manifest, [new SpeakerSpec { Name = "라루", CharacterId = "parkeunseol" }]);
+            manifest, [new SpeakerSpec { Name = "라루", CharacterId = "harin" }]);
 
         var session = new Vn.App.Services.AuthoringSession();
         session.Open(manifest);

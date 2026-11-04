@@ -100,14 +100,14 @@ public class CoreStageFoldTests
             composite.VisibleSlots.Select(slot => slot.Key));
     }
 
-    /// <summary>치수 픽스처에 있는 캐릭터(parkeunseol·yoonsaea)로 코어 경로를 실제로 태우는 장면.</summary>
+    /// <summary>치수 픽스처에 있는 캐릭터(harin·yoonsaea)로 코어 경로를 실제로 태우는 장면.</summary>
     private static (IReadOnlyList<PresentationResultCommand> Setup, IReadOnlyList<MiniStageFoldLine> Lines) CorePathScene()
     {
         PresentationResultCommand[] setup =
         [
             Command("background.bg_spawn", ("rigKey", "bg0"), ("spriteKey", "office")),
             Command("char_rig_cast.slot", ("slotKey", "c1")),
-            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"), ("emotionKey", "1")),
+            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"), ("emotionKey", "1")),
             Command("char_rig_cast.slot", ("slotKey", "c2")),
             Command("char_rig_cast.cast", ("slot", "c2"), ("characterKey", "yoonsaea")),
             Command("common_control.actor", ("aliasSymbol", "@y"), ("targetKey", "c2")),
@@ -226,7 +226,7 @@ public class CoreStageFoldTests
         // 코어는 spawn 없는 슬롯을 거부하지만, v1 프리뷰의 관대한 표시는 보완 폴드가 이어받는다.
         PresentationResultCommand[] setup =
         [
-            Command("char_rig_cast.cast", ("slot", "c9"), ("characterKey", "parkeunseol"))
+            Command("char_rig_cast.cast", ("slot", "c9"), ("characterKey", "harin"))
         ];
 
         MiniStageState legacy = MiniStageFold.Fold(Catalog, setup, Array.Empty<MiniStageFoldLine>());
@@ -234,7 +234,7 @@ public class CoreStageFoldTests
             Catalog, setup, Array.Empty<MiniStageFoldLine>(), LoadTuning());
 
         AssertGoldenEquivalent(legacy, composite.State);
-        Assert.Equal("parkeunseol", composite.State.Slots["c9"].CharacterId);
+        Assert.Equal("harin", composite.State.Slots["c9"].CharacterId);
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class CoreStageFoldTests
         [
             Command("char_rig_cast.slot_tyrant"),
             Command("char_rig_cast.slot", ("slotKey", "c1")),
-            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"))
+            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"))
         ];
 
         MiniStageFoldLine[] lines =
@@ -318,7 +318,7 @@ public class CoreStageFoldTests
         PresentationResultCommand[] setup =
         [
             Command("char_rig_cast.slot", ("slotKey", "c1")),
-            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"))
+            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"))
         ];
 
         MiniStageFoldLine[] lines =

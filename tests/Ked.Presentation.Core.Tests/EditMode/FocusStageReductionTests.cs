@@ -46,8 +46,11 @@ namespace Ked.Presentation.Core.Tests
         /// <summary>presets/depth.json의 level 커브 실값 — 깊이의 유일한 진실.</summary>
         private static DepthLevelTuningDto DepthLevel() => new()
         {
-            yCurve = Curve((0f, 120f, 0f, -56f), (10f, -440f, -56f, 0f)),
-            scaleCurve = Curve((0f, 0.86f, 0f, 0.052f), (10f, 1.38f, 0.052f, 0f)),
+            yCurve = Curve((0f, 120f, 0f, -56f), (20f, -1000f, -56f, 0f)),
+            scaleCurve = Curve(
+                (0f, 0.86f, 0f, 0.052f),
+                (10f, 1.38f, 0.052f, 0.082f),
+                (20f, 2.2f, 0.082f, 0f)),
         };
 
         private static AnimationCurveDto Curve(
@@ -268,20 +271,20 @@ namespace Ked.Presentation.Core.Tests
         // ── size: 보존 ───────────────────────────────────────────────
 
         // 라벨은 level 커브 위의 눈금이다(DepthLevelLabels):
-        // far=0 · back=10 · mid=14 · front=16 · close=20 (2026-08-21 소유자 상향),
-        // scale = 0.86 + 0.052L.
-        [TestCase("size_back", 1.38f)]
-        [TestCase("size_front", 1.692f)]
-        [TestCase("size_close", 1.9f)]
-        [TestCase("size_far", 0.86f)]
-        public void size는_배율을_적용하고_focus를_보존한다(string command, float expectedScale)
+        // far=0 · back=10 · mid=14 · front=16 · close=20 (2026-08-21 소유자 상향).
+        // scale은 무릎(레벨 10) 아래 0.86+0.052L, 위 1.38+0.082(L-10).
+        [TestCase("back", 1.38f)]
+        [TestCase("front", 1.872f)]
+        [TestCase("close", 2.2f)]
+        [TestCase("far", 0.86f)]
+        public void size는_배율을_적용하고_focus를_보존한다(string depthLabel, float expectedScale)
         {
             StageReducerTuning tuning = NewTuning();
 
             StageState before = Fold(tuning, Cmd("slot", "c1"), Cmd("place_center", "c1", "bust"));
             Vec2 focusBefore = FocusOf(before, "c1", "bust", tuning);
 
-            StageState after = StageReducer.Apply(before, Cmd(command, "c1", "bust"), tuning);
+            StageState after = StageReducer.Apply(before, Cmd("size", "c1", depthLabel, "bust"), tuning);
 
             Assert.That(after.Unhandled.Count, Is.EqualTo(before.Unhandled.Count), "접혀야 한다");
 
@@ -300,13 +303,13 @@ namespace Ked.Presentation.Core.Tests
         {
             // ⚠ 런타임 ResolveRawDepth가 프리셋의 preserveFocusPreset을 읽은 직후
             // 커맨드 인자로 덮어쓴다 — 덤프의 그 필드는 사장 데이터다.
-            // size_close의 프리셋 값은 30(face)이지만 인자 없이 부르면 브리지 기본 "bust"가 된다.
+            // close 프리셋 값은 30(face)이지만 셋째 인자 없이 부르면 파서 표 기본 "bust"가 된다.
             StageReducerTuning tuning = NewTuning();
 
             StageState before = Fold(tuning, Cmd("slot", "c1"));
 
-            StageState byDefault = StageReducer.Apply(before, Cmd("size_close", "c1"), tuning);
-            StageState byFace = StageReducer.Apply(before, Cmd("size_close", "c1", "face"), tuning);
+            StageState byDefault = StageReducer.Apply(before, Cmd("size", "c1", "close"), tuning);
+            StageState byFace = StageReducer.Apply(before, Cmd("size", "c1", "close", "face"), tuning);
 
             float defaultY = byDefault.Nodes.GetState("c1/CharSlot_DepthY").AnchoredPosition.Y;
             float faceY = byFace.Nodes.GetState("c1/CharSlot_DepthY").AnchoredPosition.Y;
@@ -327,21 +330,47 @@ namespace Ked.Presentation.Core.Tests
         public void size의_숫자_레벨이_커브로_접힌다()
         {
             // 실제 원문이 쓴다: <<size c1 5>>, <<size @4 14 bust>>, <<size 22 face>>
-            // 설계 구간[0,10] 밖(14)도 거부하지 않는다 — 끝 두 키의 할선으로 외삽한다.
+            // 무릎(레벨 10) 위쪽도 거부하지 않는다 — 위 구간 기울기 0.082로 선다.
             StageState state = Fold(NewTuning(), Cmd("slot", "c1"), Cmd("size", "c1", "14", "bust"));
 
             Assert.That(state.Unhandled.Count, Is.EqualTo(0));
             Assert.That(state.Nodes.GetState("c1/CharSlot_DepthScale").LocalScale.XY.X,
-                Is.EqualTo(0.86f + 0.052f * 14f).Within(1e-3f));
+                Is.EqualTo(1.38f + 0.082f * 4f).Within(1e-3f));
+        }
+
+        [Test]
+        public void close_위의_무릎이_라벨_구간을_건드리지_않는다()
+        {
+            // scale 커브는 레벨 10에 무릎이 있다 — 그 위로 더 가파르다(0.052 → 0.082).
+            // 2026-08-21 상향으로 back(10)이 무릎에 서고 mid·front·close는 무릎 위에 산다.
+            StageReducerTuning tuning = NewTuning();
+
+            foreach ((string label, float expected) in new[]
+                     {
+                         ("far", 0.86f), ("back", 1.38f),
+                         ("mid", 1.708f), ("front", 1.872f), ("close", 2.2f),
+                     })
+            {
+                StageState state = Fold(tuning, Cmd("slot", "c1"), Cmd("size", "c1", label, "bust"));
+
+                Assert.That(state.Nodes.GetState("c1/CharSlot_DepthScale").LocalScale.XY.X,
+                    Is.EqualTo(expected).Within(1e-3f), label);
+            }
+
+            // 무릎 위: 상한 20이 2.2다(직선 연장이면 1.9였을 자리).
+            StageState top = Fold(tuning, Cmd("slot", "c1"), Cmd("size", "c1", "20", "bust"));
+
+            Assert.That(top.Nodes.GetState("c1/CharSlot_DepthScale").LocalScale.XY.X,
+                Is.EqualTo(2.2f).Within(1e-3f));
         }
 
         [Test]
         public void 라벨과_같은_레벨의_숫자는_같은_값으로_접힌다()
         {
-            // 라벨은 커브 위의 눈금일 뿐이다 — size_front와 size 16은 같은 자리다.
+            // 라벨은 커브 위의 눈금일 뿐이다 — size front와 size 16은 같은 자리다.
             StageReducerTuning tuning = NewTuning();
 
-            StageState byLabel = Fold(tuning, Cmd("slot", "c1"), Cmd("size_front", "c1", "bust"));
+            StageState byLabel = Fold(tuning, Cmd("slot", "c1"), Cmd("size", "c1", "front", "bust"));
             StageState byNumber = Fold(tuning, Cmd("slot", "c1"), Cmd("size", "c1", "16", "bust"));
 
             Assert.That(byNumber.Nodes.GetState("c1/CharSlot_DepthScale").LocalScale.XY.X,
@@ -357,9 +386,63 @@ namespace Ked.Presentation.Core.Tests
             StageReducerTuning tuning = NewTuning();
             tuning.DepthLevel = null;
 
-            StageState state = Fold(tuning, Cmd("slot", "c1"), Cmd("size_close", "c1"));
+            StageState state = Fold(tuning, Cmd("slot", "c1"), Cmd("size", "c1", "close"));
 
             Assert.That(state.Unhandled.Any(u => u.Reason.Contains("커브")), Is.True);
+        }
+
+        // ── 이징 인자는 폴드에 무해하다 ──────────────────────────────
+
+        [Test]
+        public void scale_계열의_마지막_이징_인자는_폴드에_무해하다()
+        {
+            // 이징은 경로의 모양만 정한다 — 종점(목표 scale)은 그대로다.
+            // 지키는 것은 인자 자리다: 이징 토큰이 붙어도 배율을 읽는 인덱스가 밀리면 안 된다.
+            StageReducerTuning tuning = NewTuning();
+
+            StageState plain = Fold(tuning,
+                Cmd("slot", "c1"), Cmd("scale_by", "c1", "1.5", "24fr"));
+
+            StageState eased = Fold(tuning,
+                Cmd("slot", "c1"), Cmd("scale_by", "c1", "1.5", "24fr", "OutBack"));
+
+            Assert.That(eased.Unhandled.Count, Is.EqualTo(0));
+            Assert.That(eased.Nodes.GetState("c1/CharSlot_Scale").LocalScale.XY.X,
+                Is.EqualTo(plain.Nodes.GetState("c1/CharSlot_Scale").LocalScale.XY.X).Within(Eps));
+
+            // scale_reset도 같다 — 모르는 커브 이름이 붙어도 폴드는 흔들리지 않는다.
+            StageState reset = Fold(tuning,
+                Cmd("slot", "c1"), Cmd("scale_by", "c1", "1.5"),
+                Cmd("scale_reset", "c1", "12fr", "@no_such_curve"));
+
+            Assert.That(reset.Nodes.GetState("c1/CharSlot_Scale").LocalScale.XY.X,
+                Is.EqualTo(1f).Within(Eps));
+        }
+
+        // ── shot 계열의 이징 인자 ────────────────────────────────────
+
+        [Test]
+        public void shot_계열의_마지막_이징_인자는_폴드에_무해하다()
+        {
+            // 이징은 경로의 모양만 정한다 — 종점(shot intent)은 그대로다.
+            // 이 테스트가 지키는 것은 인자 자리다: 이징 토큰이 붙어도
+            // zoom·pan·focus를 읽는 인덱스가 밀리지 않아야 한다.
+            StageReducerTuning tuning = NewTuning();
+
+            StageState plain = Fold(tuning,
+                Cmd("slot", "c1"),
+                Cmd("shot_to", "3", "1u", "0u", "24fr"),
+                Cmd("shot_focus_to", "c1", "bust", "left", "2", "1.2s"));
+
+            StageState eased = Fold(tuning,
+                Cmd("slot", "c1"),
+                Cmd("shot_to", "3", "1u", "0u", "24fr", "InOutCubic"),
+                Cmd("shot_focus_to", "c1", "bust", "left", "2", "1.2s", "@push_in"));
+
+            Assert.That(eased.Unhandled.Count, Is.EqualTo(0));
+            Assert.That(eased.Shot.Zoom, Is.EqualTo(plain.Shot.Zoom).Within(Eps));
+            Assert.That(eased.Shot.PanInRigSpace.X, Is.EqualTo(plain.Shot.PanInRigSpace.X).Within(Eps));
+            Assert.That(eased.Shot.PanInRigSpace.Y, Is.EqualTo(plain.Shot.PanInRigSpace.Y).Within(Eps));
         }
 
         // ── shot_focus_to ────────────────────────────────────────────

@@ -49,7 +49,7 @@ public sealed class StageFadeTransitionTests
     private static PresentationResultCommand[] CastInSetup =>
     [
         Command("char_rig_cast.slot", ("slotKey", "c1")),
-        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"), ("emotionKey", "1")),
+        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"), ("emotionKey", "1")),
     ];
 
     private static MiniStagePreviewRequest Request(

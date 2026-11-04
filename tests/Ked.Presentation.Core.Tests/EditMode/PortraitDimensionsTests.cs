@@ -41,9 +41,6 @@ namespace Ked.Presentation.Core.Tests
         {
             // 초상 에셋이 <캐릭터>/<변형>/<표정>.png 폴더 규약을 쓰면서 변형은 폴더 이름 그 자체가 됐다.
             // 마지막 글자만 보던 종전 규칙이라면 school과 casual이 같은 키('l')로 뭉갠다.
-            //
-            // ⚠ 이 사본이 2026-08-21 ~ 08-23 사이 런타임과 갈려 있던 자리다. 툴만 옛 규칙이라
-            // 미리보기가 엉뚱한 치수를 집고 게임은 올바른 것을 집는데 오류는 하나도 안 났다.
             PortraitDimensionsFileDto db = Db(
                 E("tyrant", "school", "01", 700f),
                 E("tyrant", "casual", "01", 400f));

@@ -157,6 +157,22 @@ public static class CoreStageFold
         // 코어 메시지에 결합하는 판정은 코어가 바뀌는 날 조용히 어긋난다.
         bool coreHandled = next.Unhandled.Count == unhandledBefore;
 
+        if (outputCommand.StartsWith("bg_", StringComparison.Ordinal))
+        {
+            // 배경은 코어에서 캐스팅하지 않은 슬롯이다(런타임 2026-10-29 배경 리그 제거 — 재반입 11-04).
+            // 코어 상태에는 그 슬롯이 서고(샷 · 포커스가 같은 무대를 본다), 프리뷰는 지금처럼
+            // 배경 층으로 그린다 — 그리기는 보완 폴드의 몫 그대로다.
+            if (string.Equals(outputCommand, "bg_spawn", StringComparison.Ordinal) &&
+                args.Length > 0 && next.HasSlot(args[0]))
+            {
+                fold.BackgroundSlots.Add(args[0]);
+                fold.Slots.Remove(args[0]);
+            }
+
+            MiniStageFold.Apply(fold, catalog, lineId, command);
+            return next;
+        }
+
         if (!coreHandled)
         {
             // 코어 밖 축(배경·대사창·mirror 등)·거부된 대상·진단이 남은 커맨드 — 보완 폴드로.
@@ -212,6 +228,10 @@ public static class CoreStageFold
     {
         foreach (string slotKey in core.Slots)
         {
+            // 배경 슬롯은 배경 층이 그린다 — 인물 칸이 아니다.
+            if (fold.BackgroundSlots.Contains(slotKey))
+                continue;
+
             bool hasCast = core.TryGetCharacter(slotKey, out string? characterKey);
 
             // 코어의 빈 변형 = 기본 변형으로 물러선다는 뜻 — 화면 어휘로는 "a"다.

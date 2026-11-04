@@ -1,16 +1,22 @@
 # Ked.Presentation.Core — 복사 사본 (정본은 런타임 저장소)
 
-`ked-presentation-runtime` 저장소 `Assets/Scripts/Ked.Presentation.Core/`의 복사 사본이다.
-**정본은 언제나 저쪽이고, 흐름은 한 방향이다: 런타임 → 이 사본.**
+`ked-presentation-runtime` 저장소 `Assets/Ked.Presentation/Core/`의 복사 사본이다(예전 자리 `Assets/Scripts/Ked.Presentation.Core/`).
+**정본은 언제나 저쪽이고, 흐름은 한 방향이다: 런타임 → 이 사본.** `ked-stage-runtime`은 저쪽의 포트폴리오용 분리본이라 출처가 아니다.
 패키지화는 소유자 결정으로 보류 중이며(2026-08-20), 그 대신 아래 동기화 절차가
 반복 가능한 대체물이다 (`docs/work-orders/presentation-refresh-orders.md` W64).
 
-- 최근 동기화: **2026-08-20** (저쪽 `0a7f6d0f` 이후 시점의 작업 트리 기준, W64.
-  같은 날 `Ease/` 두 파일 추가 반입 — ease-open-orders §3 개통분. 등가의 심판은
-  저쪽 `EaseFunctionsDOTweenParityTests`(DOTween 참조라 이쪽에 못 온다)이고, 이쪽은
-  `ease-golden.json` 픽스처 대조(`EaseGoldenTests`)로 사본이 낡는 사고를 잡는다)
-- 이전 반입: `3fe52e9b` (2026-08-05, 최초 복사 스냅샷 — 당시엔 "동기화 없음"이었다)
-- 범위: `Primitives/`·`Reduce/`·`State/`·`Tokens/`·`Transforms/`·`Tuning/` 소스와
+- 최근 동기화: **2026-11-04** — 저쪽 `dev` @ `5de605a4`. 소스는 줄바꿈까지 같은 한 벌(`diff -r` 0).
+  - 들어온 것: `Motion/`(모션 클립 · 규칙 · 수학 — `motion` 폴드), `StageReducer.Background.cs`와
+    `BackgroundDimensionsDto`(배경은 캐스팅하지 않은 슬롯 — 저쪽 2026-10-29 배경 리그 제거),
+    대본 커맨드 정본화(2026-11-03 — 별칭 이름을 걷음. 옛 연출은 `LegacyCommandUpgrade`가 읽을 때 정본으로 옮긴다).
+  - 이쪽 코드 멤버 감사: 이쪽에만 있던 줄은 모두 저쪽의 옛 판(별칭 · 옛 slot 재선언)이었다 — 로컬 수정 0건.
+  - 소비자 적응(이쪽): `CoreStageFold`가 `bg_*`를 보완 폴드의 배경 층으로 그리고 배경 슬롯을 인물 칸으로 투영하지 않는다,
+    `RuntimeTuningLibrary`가 `background-dimensions.json` · `motions.json`(`MotionLibraryJson` — 저쪽 `MotionLibrary`와 같은 규칙)을 싣는다.
+  - 픽스처: `tests/Vn.Authoring.Tests/TuningFixtures/ExportedTuning/`과 앱 내장 기본 튜닝(`src/Vn.App/Assets/DefaultTuning/`)을
+    저쪽 `ExportedTuning/`(+ 대본 번들 곁의 `motions.json`)으로. 저쪽 덤프에는 공개 가능한 초상(harin · sigure · kasmi)만 있어 테스트의 캐릭터를 harin으로 바꿨다.
+  - 순수 테스트: `Tests/EditMode/*.cs` 중 엔진을 참조하지 않는 것(UnityParity · DOTween · AnimationCurve 대조 제외)을 들여왔다.
+- 그 전: 2026-08-24 (`df9ba4b` slide 개통까지), 2026-08-20 (W64), `3fe52e9b` (2026-08-05, 최초 복사 스냅샷)
+- 범위: `Ease/`·`Motion/`·`Primitives/`·`Reduce/`·`State/`·`Tokens/`·`Transforms/`·`Tuning/` 소스와
   `Documentation~/` 규약 문서. 순수 테스트(UnityParity 제외)는
   `tests/Ked.Presentation.Core.Tests/`에 있다.
 
@@ -22,7 +28,7 @@
    유지, **코드 멤버가 이쪽에만 있으면 그건 과거 로컬 수정이다** — 목록으로 남기고
    저쪽 반영을 소유자에게 물은 뒤 처리한다 (2026-08-20 감사에서는 0건이었다).
 2. **이식** — 저쪽 트리에서 `Tests/`·`*.meta`·`*.asmdef` 제외 전부 복사.
-   테스트는 `Tests/EditMode/*.cs`(UnityParity 제외)를 `tests/Ked.Presentation.Core.Tests/EditMode/`로.
+   테스트는 `Tests/EditMode/*.cs` 중 `UnityEngine` · `DG.Tweening`을 쓰지 않는 것(UnityParity 제외)을 `tests/Ked.Presentation.Core.Tests/EditMode/`로.
 3. **보수** — 소비자(Vn.Authoring·Vn.App)의 컴파일·의미 적응은 **소비자 쪽에서** 고친다.
    이 사본의 파일을 고쳐 맞추지 않는다 — 사본을 고치는 순간 다음 동기화가 그 수정을
    조용히 지운다. 저쪽에 문제가 있으면 목록으로 남겨 소유자가 전달한다.

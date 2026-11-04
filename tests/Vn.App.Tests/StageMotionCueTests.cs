@@ -37,7 +37,7 @@ public class StageMotionCueTests
     private static readonly PresentationResultCommand[] Setup =
     [
         Command("char_rig_cast.slot", ("slotKey", "c1")),
-        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "parkeunseol"), ("emotionKey", "1")),
+        Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin"), ("emotionKey", "1")),
         Command("char_rig_entrance.show", ("slot", "c1"))
     ];
 

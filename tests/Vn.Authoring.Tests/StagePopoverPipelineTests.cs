@@ -79,7 +79,7 @@ public class StagePopoverPipelineTests
     public void 팝오버_place는_코어_좌표를_실제로_움직인다()
     {
         (ProjectEditor editor, PresentationNode node) = BuildEditor();
-        StageCharacter(editor, node, "c1", "parkeunseol");
+        StageCharacter(editor, node, "c1", "harin");
 
         Vec2 before = FoldOf(editor, node, "ln_x")
             .CoreState!.Nodes.GetState("c1/CharSlot_Track_Focus").AnchoredPosition;
@@ -101,7 +101,7 @@ public class StagePopoverPipelineTests
     public void 팝오버_depth는_코어_스케일을_실제로_바꾼다()
     {
         (ProjectEditor editor, PresentationNode node) = BuildEditor();
-        StageCharacter(editor, node, "c1", "parkeunseol");
+        StageCharacter(editor, node, "c1", "harin");
 
         // 캐릭터 팝오버의 깊이 행과 같은 호출.
         PresentationStageActions.Apply(

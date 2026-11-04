@@ -39,7 +39,7 @@ public class StageSceneComposerCoreTests
     {
         var slots = visibleSlots.ToDictionary(
             slot => slot,
-            slot => new MiniStageSlot("parkeunseol", "a", "01", Visible: true, Mirrored: false),
+            slot => new MiniStageSlot("harin", "a", "01", Visible: true, Mirrored: false),
             StringComparer.Ordinal);
 
         return MiniStageState.Empty with { Slots = slots };
@@ -59,7 +59,7 @@ public class StageSceneComposerCoreTests
         StageCommand[] common =
         [
             new("slot", ["c1"]),
-            new("cast", ["c1", "parkeunseol", "a", "1"]),
+            new("cast", ["c1", "harin", "a", "1"]),
             new("show", ["c1"])
         ];
 
@@ -89,7 +89,7 @@ public class StageSceneComposerCoreTests
         StageCommand[] common =
         [
             new("slot", ["c1"]),
-            new("cast", ["c1", "parkeunseol", "a", "1"]),
+            new("cast", ["c1", "harin", "a", "1"]),
             new("show", ["c1"]),
             new("place", ["c1", "face", "center"])
         ];
@@ -115,7 +115,7 @@ public class StageSceneComposerCoreTests
         StageCommand[] common =
         [
             new("slot", ["c1"]),
-            new("cast", ["c1", "parkeunseol", "a", "1"]),
+            new("cast", ["c1", "harin", "a", "1"]),
             new("show", ["c1"])
         ];
 
@@ -143,7 +143,7 @@ public class StageSceneComposerCoreTests
         StageCommand[] common =
         [
             new("slot", ["c1"]),
-            new("cast", ["c1", "parkeunseol", "a", "1"]),
+            new("cast", ["c1", "harin", "a", "1"]),
             new("show", ["c1"])
         ];
 
@@ -165,7 +165,7 @@ public class StageSceneComposerCoreTests
         // 보완 폴드만 아는 슬롯(slot_tyrant·관대한 생성분) — 코어에 없다고 화면에서 지우면 침묵이다.
         StageState core = CoreState(
             new StageCommand("slot", ["c1"]),
-            new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c1", "harin", "a", "1"]),
             new StageCommand("show", ["c1"]));
 
         MiniStageState projection = Projection("c1", "tyrant");
@@ -184,10 +184,10 @@ public class StageSceneComposerCoreTests
         // 캔버스는 나중에 그린 것이 위에 오므로 far(c2)가 먼저, close(c1)가 나중이어야 한다.
         StageState core = CoreState(
             new StageCommand("slot", ["c1", "stage00", "close"]),
-            new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c1", "harin", "a", "1"]),
             new StageCommand("show", ["c1"]),
             new StageCommand("slot", ["c2", "stage00", "far"]),
-            new StageCommand("cast", ["c2", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c2", "harin", "a", "1"]),
             new StageCommand("show", ["c2"]));
 
         StageSceneLayout layout = StageSceneComposer.Compose(
@@ -201,10 +201,10 @@ public class StageSceneComposerCoreTests
     {
         StageState core = CoreState(
             new StageCommand("slot", ["c1", "stage01", "mid"]),
-            new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c1", "harin", "a", "1"]),
             new StageCommand("show", ["c1"]),
             new StageCommand("slot", ["c2", "stage00", "mid"]),
-            new StageCommand("cast", ["c2", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c2", "harin", "a", "1"]),
             new StageCommand("show", ["c2"]));
 
         StageSceneLayout layout = StageSceneComposer.Compose(
@@ -220,13 +220,13 @@ public class StageSceneComposerCoreTests
         // show 없이 캐스팅만 — 숨김 슬롯. 자리는 계산되고(Visible=false), 뷰가 윤곽+태그로 그린다(W28).
         StageState core = CoreState(
             new StageCommand("slot", ["c1"]),
-            new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]));
+            new StageCommand("cast", ["c1", "harin", "a", "1"]));
 
         MiniStageState projection = MiniStageState.Empty with
         {
             Slots = new Dictionary<string, MiniStageSlot>(StringComparer.Ordinal)
             {
-                ["c1"] = new MiniStageSlot("parkeunseol", "a", "01", Visible: false, Mirrored: false)
+                ["c1"] = new MiniStageSlot("harin", "a", "01", Visible: false, Mirrored: false)
             }
         };
 
@@ -245,11 +245,11 @@ public class StageSceneComposerCoreTests
         // c1은 far(작게·뒤), c2는 close(크게·앞) — 슬롯 키 순서를 깊이가 이긴다 (W30).
         StageState core = CoreState(
             new StageCommand("slot", ["c1"]),
-            new StageCommand("cast", ["c1", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c1", "harin", "a", "1"]),
             new StageCommand("show", ["c1"]),
             new StageCommand("size", ["c1", "close"]),
             new StageCommand("slot", ["c2"]),
-            new StageCommand("cast", ["c2", "parkeunseol", "a", "1"]),
+            new StageCommand("cast", ["c2", "harin", "a", "1"]),
             new StageCommand("show", ["c2"]),
             new StageCommand("size", ["c2", "far"]));
 

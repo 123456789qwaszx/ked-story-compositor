@@ -38,6 +38,15 @@ namespace Ked.Presentation.Core
 
         /// <summary>portrait-dimensions.json — 초상 사이징의 종횡비. 없으면 사이징은 Unhandled.</summary>
         public PortraitDimensionsFileDto PortraitDimensions;
+
+        /// <summary>
+        /// motions.json — 이름 → 클립(검증된 것만). motion 폴드가 채널마다 마지막 키를 클레임으로 접는다.
+        /// 없으면(null) motion 커맨드는 Unhandled — 재생이 모션을 읽었다면 폴드도 같은 파일을 받아야 한다.
+        /// </summary>
+        public IReadOnlyDictionary<string, MotionClip> Motions;
+
+        /// <summary>background-dimensions.json — 배경(bg_*) 사이징의 종횡비. 없으면 그 축만 Unhandled.</summary>
+        public BackgroundDimensionsFileDto BackgroundDimensions;
     }
 
     /// <summary>
@@ -54,8 +63,9 @@ namespace Ked.Presentation.Core
     /// 현재 어휘(v1): slot 계열(리그 스폰) · cast/actor(배역·별칭) ·
     ///   show(리셋+앵커+사이징+가시성) · fade_in/out · slide_in/out · place/size 계열 ·
     ///   nudge/move/scale/rotate 계열 · shot 5종 · char_to 계열 ·
-    ///   초상 축(pose/face/face_swap) · 시간 커맨드(pause·Nfr — 접을 것이 없다).
-    /// 명시적 한계: 배경/오버레이/이펙트/오디오/트랜지션 리그, 대사창,
+    ///   초상 축(pose/face/face_swap) · motion(채널마다 마지막 키) · 시간 커맨드(pause·Nfr — 접을 것이 없다) ·
+    ///   배경 bg_*(캐스팅하지 않은 슬롯 — spawn/sprite/fade/move/scale).
+    /// 명시적 한계: 오버레이/이펙트/오디오/트랜지션 리그, 대사창,
     ///   절차적 연기 커맨드(목표값이 정의되지 않음).
     ///
     /// ⚠ v1 가정 — 등가성 하네스가 판정한다:
@@ -71,6 +81,7 @@ namespace Ked.Presentation.Core
     ///   StageReducer.Placement.cs place · size
     ///   StageReducer.Staging.cs   nudge · move · scale · rotate
     ///   StageReducer.Shot.cs      shot 5종
+    ///   StageReducer.Background.cs bg_* (배경 = 캐스팅하지 않은 슬롯)
     /// </summary>
     public static partial class StageReducer
     {
@@ -125,11 +136,8 @@ namespace Ked.Presentation.Core
 
             switch (cmd.Name)
             {
-                // 슬롯 스폰. 브리지: slot(slotKey, stage="stage00", layer="mid") / slotNN(slotKey, layer="mid")
+                // 슬롯 스폰. 파서 표: slot(slotKey, stage="stage00", layer="mid")
                 case "slot":   return ApplySlot(state, cmd, tuning, cmd.Arg(1, "stage00"), cmd.Arg(2, "mid"), out reason);
-                case "slot00": return ApplySlot(state, cmd, tuning, "stage00", cmd.Arg(1, "mid"), out reason);
-                case "slot01": return ApplySlot(state, cmd, tuning, "stage01", cmd.Arg(1, "mid"), out reason);
-                case "slot02": return ApplySlot(state, cmd, tuning, "stage02", cmd.Arg(1, "mid"), out reason);
 
                 // 배역·별칭 — 커맨드 대상 해석(TryResolveSlot)의 전제.
                 // 브리지: cast(slot, character, variant="a", emotion="1") — 뒤 둘은 초상 축이다.
@@ -150,31 +158,16 @@ namespace Ked.Presentation.Core
                 case "fade_out": return ApplyFade(state, cmd, visible: false, out reason);
 
                 // place 계열 — focus 지점을 화면 지점으로 (SettledFocusMath.SolveFocusPlacement).
-                // 브리지: place(role, focus="bust", screenPoint="center") /
-                //         place_*(role, focus="face") — 접미사가 화면 지점을 정한다.
+                // 파서 표: place(role, focus="bust", screenPoint="center") /
+                //          place_left·center·right(role, focus="face") — 화면 지점이 이름에 박힌 것은 이 셋만 남겼다(소유자 결정).
                 case "place": return ApplyPlace(state, cmd, tuning, cmd.Arg(2, "center"), "bust", out reason);
                 case "place_left": return ApplyPlace(state, cmd, tuning, "left", "face", out reason);
                 case "place_center": return ApplyPlace(state, cmd, tuning, "center", "face", out reason);
                 case "place_right": return ApplyPlace(state, cmd, tuning, "right", "face", out reason);
-                case "place_top": return ApplyPlace(state, cmd, tuning, "top", "face", out reason);
-                case "place_bottom": return ApplyPlace(state, cmd, tuning, "bottom", "face", out reason);
-                case "place_tl": return ApplyPlace(state, cmd, tuning, "tl", "face", out reason);
-                case "place_tr": return ApplyPlace(state, cmd, tuning, "tr", "face", out reason);
-                case "place_bl": return ApplyPlace(state, cmd, tuning, "bl", "face", out reason);
-                case "place_br": return ApplyPlace(state, cmd, tuning, "br", "face", out reason);
-                case "place_inner_tl": return ApplyPlace(state, cmd, tuning, "inner_tl", "face", out reason);
-                case "place_inner_tr": return ApplyPlace(state, cmd, tuning, "inner_tr", "face", out reason);
-                case "place_inner_bl": return ApplyPlace(state, cmd, tuning, "inner_bl", "face", out reason);
-                case "place_inner_br": return ApplyPlace(state, cmd, tuning, "inner_br", "face", out reason);
 
                 // size 계열 — depth 프리셋 (focus 보존 보정 포함).
-                // 브리지: size(role, depthArg, preserveFocus="bust") / size_*(role, preserveFocus="bust").
+                // 파서 표: size(role, depthArg, preserveFocus="bust").
                 case "size": return ApplySize(state, cmd, tuning, cmd.Arg(1), cmd.Arg(2, "bust"), out reason);
-                case "size_far": return ApplySize(state, cmd, tuning, "far", cmd.Arg(1, "bust"), out reason);
-                case "size_back": return ApplySize(state, cmd, tuning, "back", cmd.Arg(1, "bust"), out reason);
-                case "size_mid": return ApplySize(state, cmd, tuning, "mid", cmd.Arg(1, "bust"), out reason);
-                case "size_front": return ApplySize(state, cmd, tuning, "front", cmd.Arg(1, "bust"), out reason);
-                case "size_close": return ApplySize(state, cmd, tuning, "close", cmd.Arg(1, "bust"), out reason);
                 case "size_reset": return ApplySize(state, cmd, tuning, "mid", cmd.Arg(1, "bust"), out reason);
 
                 // nudge (unitToken 필수 — 브리지에 기본값이 없다)
@@ -201,6 +194,9 @@ namespace Ked.Presentation.Core
                 // 곡선·진폭을 읽지 않으므로 인자 자리에 의존하지 않는다.
                 case "gesture": return ApplyGesture(state, cmd, out reason);
 
+                // motion — 채널마다 마지막 키가 클레임이다. 샘플링하지 않는다(MotionMath.ClaimFor).
+                case "motion": return ApplyMotion(state, cmd, tuning, out reason);
+
                 // shot
                 case "shot_zoom":  return ApplyShotZoom(state, cmd, out reason);
                 case "shot_to":    return ApplyShotTo(state, cmd, tuning, out reason);
@@ -212,10 +208,19 @@ namespace Ked.Presentation.Core
                 case "shot_focus_to": return ApplyShotFocusTo(state, cmd, tuning, out reason);
 
                 // 구조 축 (v1: 부착 기록만 — 컨테이너 항등 가정으로 좌표 영향 없음)
-                case "char_to":    return ApplyCharTo(state, cmd, cmd.Arg(1, "stage00"), cmd.Arg(2, "mid"), out reason);
-                case "char_to_s0": return ApplyCharTo(state, cmd, "stage00", cmd.Arg(1, "mid"), out reason);
-                case "char_to_s1": return ApplyCharTo(state, cmd, "stage01", cmd.Arg(1, "mid"), out reason);
-                case "char_to_s2": return ApplyCharTo(state, cmd, "stage02", cmd.Arg(1, "mid"), out reason);
+                case "char_to": return ApplyCharTo(state, cmd, cmd.Arg(1, "stage00"), cmd.Arg(2, "mid"), out reason);
+
+                // 배경 — 캐스팅하지 않은 슬롯. StageCommandParser.Background가 캐릭터 Spec으로 펼치는 것을 그대로 접는다.
+                // 인자 자리·생략값은 파서 표(StageCommandParser.Table)와 같다:
+                //   bg_spawn(rigKey, spriteKey, stage="stage00", layer="far") ·
+                //   bg_sprite(rigKey, spriteKey) · bg_fade_in/out(rigKey, dur) · bg_move(rigKey, x, y, dur) · bg_scale(rigKey, scale, dur).
+                // bg_size·bg_place·bg_slotNN은 케이스가 없다 — 지운 어휘다. 남은 대본은 Unhandled로 드러난다.
+                case "bg_spawn":  return ApplyBackgroundSpawn(state, cmd, tuning, cmd.Arg(2, "stage00"), cmd.Arg(3, "far"), out reason);
+                case "bg_sprite": return ApplyBackgroundSprite(state, cmd, tuning, out reason);
+                case "bg_fade_in":  return ApplyFade(state, cmd, visible: true, out reason);
+                case "bg_fade_out": return ApplyFade(state, cmd, visible: false, out reason);
+                case "bg_move":  return ApplyMoveBy(state, cmd, tuning, out reason);
+                case "bg_scale": return ApplyPortraitScaleTo(state, cmd, out reason);
 
                 default:
                     // 시간만 쓰는 커맨드는 못 접는 게 아니라 접을 것이 없다 — 아래 참조.
@@ -229,12 +234,12 @@ namespace Ked.Presentation.Core
 
         // ── helper ───────────────────────────────────────────────────
 
-        /// <summary>브리지가 등록하는 프레임 대기 별칭의 상한. `&lt;&lt;48fr&gt;&gt;` = 2초.</summary>
+        /// <summary>파서 표가 등록하는 프레임 대기 별칭의 상한. `&lt;&lt;48fr&gt;&gt;` = 2초.</summary>
         private const int MaxFrameWaitAlias = 48;
 
         /// <summary>
-        /// 시간만 쓰는 커맨드인가 — `&lt;&lt;pause 초&gt;&gt;`와 프레임 별칭 `&lt;&lt;1fr&gt;&gt;`~`&lt;&lt;48fr&gt;&gt;`
-        /// (브리지 BindFramePauseAliases, 24fps 기준).
+        /// 시간만 쓰는 커맨드인가 — `&lt;&lt;pause 시간&gt;&gt;`와 프레임 별칭 `&lt;&lt;1fr&gt;&gt;`~`&lt;&lt;48fr&gt;&gt;`
+        /// (파서 표의 정적 생성자, 24fps 기준).
         ///
         /// 정지 프레임에 목표가 **없는 게 아니라 접을 것이 없다** — 무대 상태를 하나도
         /// 건드리지 않는다. duration 인자를 파싱조차 하지 않는 것과 같은 규율이라

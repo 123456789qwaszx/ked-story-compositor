@@ -45,30 +45,13 @@ namespace Ked.Presentation.Core
         }
 
         /// <summary>
-        /// <c>slide_in</c> — <b>정착 상태는 항등이다.</b> 런타임 <c>SlideCommandBase</c>에서
-        /// 등장의 도착점은 클레임 시점의 <b>현재 위치</b>이고(<c>CurrentPositionIsDestination
-        /// = true</c>), 화면 밖 출발점과 punch 오버슈트는 <b>트윈 중에만</b> 존재한다.
-        /// 그래서 접는 것은 "위치를 바꾸지 않는다"는 사실 그 자체다.
-        ///
-        /// 접지 않으면 프리뷰가 이 커맨드를 영원히 "반영 안 된 연출"로 짚는다 — 고칠 것이
-        /// 없는 뱃지는 소음이고, 진짜 미표시를 그 안에 묻는다(규칙 14의 반대편).
-        ///
-        /// ⚠ 인자는 <b>읽고 검사한다.</b> 슬롯을 못 풀거나 거리 토큰이 깨졌으면 그것은
-        /// 런타임에서도 안 도는 커맨드다 — 무해하다고 통째로 눈감으면 오타가 산출까지 간다.
+        /// 접는 것은 "위치를 바꾸지 않는다"는 사실 그 자체.
+        /// 접지 않으면 프리뷰가 이 커맨드를 영원히 "반영 안 된 연출"로 짚음.
         /// </summary>
         private static bool ApplySlideIn(
             StageState state, in StageCommand cmd, StageReducerTuning tuning, out string reason)
             => TryReadSlide(state, cmd, tuning, SlideMotion.DefaultInDirection, out _, out _, out reason);
 
-        /// <summary>
-        /// <c>slide_out</c> — <b>나간 자리에 남는다.</b> 등장과 달리 현재 위치가 출발점이라
-        /// (<c>CurrentPositionIsDestination = false</c>) 순변위가 <b>방향 × 거리</b>다.
-        /// 표적 rect는 등장과 같은 <c>CharSlot_Track</c>이고 <c>move_by</c>와 같은 상대
-        /// 이동이므로, 시간 보간(타임라인·재생)은 <b>노드 차이에서 저절로</b> 나온다.
-        ///
-        /// ⚠ <b>가시성은 건드리지 않는다</b> — 화면 밖으로 밀어낼 뿐 알파는 그대로다
-        /// (런타임도 그렇다). 지우려면 작가가 <c>fade_out</c>을 함께 적는다.
-        /// </summary>
         private static bool ApplySlideOut(
             StageState state, in StageCommand cmd, StageReducerTuning tuning, out string reason)
         {
@@ -80,11 +63,6 @@ namespace Ked.Presentation.Core
             return true;
         }
 
-        /// <summary>
-        /// 슬라이드 두 커맨드의 공통 인자 — 슬롯 · 방향 · 거리. 낱말 표와 기본값의 주인은
-        /// <see cref="SlideMotion"/> 하나다(툴의 시간 계획도 같은 것을 본다 — 사본 금지).
-        /// </summary>
-        /// <param name="offset">정착 상태에 얹을 변위. 등장은 부르는 쪽이 버린다(항등).</param>
         private static bool TryReadSlide(
             StageState state, in StageCommand cmd, StageReducerTuning tuning,
             string defaultDirection, out string slotKey, out Vec2 offset, out string reason)
@@ -96,9 +74,6 @@ namespace Ked.Presentation.Core
 
             string distanceToken = cmd.Arg(2, SlideMotion.DefaultDistanceToken);
 
-            // ⚠ 부호 없는 파서다 — 런타임 `YarnUnitParser.Parse`가 지나는 것과 같은 함수이고,
-            // 그 안에서 음수가 0으로 <b>클램프</b>된다(거부가 아니다). 어느 쪽으로 가는지는
-            // direction 인자만이 정하므로 거리에 부호를 실을 자리가 없다.
             if (!UnitToken.TryParsePixels(distanceToken, tuning.ReferenceStageWidth, out float pixels))
             {
                 reason = $"거리 토큰을 읽지 못했다: '{distanceToken}'";
@@ -205,6 +180,69 @@ namespace Ked.Presentation.Core
         /// </summary>
         private static bool ApplyGesture(StageState state, in StageCommand cmd, out string reason)
             => TryGetSpawnedSlot(state, cmd, out _, out reason);
+
+        /// <summary>
+        /// motion(slot, name, mode?) — restore면 무변(gesture와 같다), commit이면 채널마다 **마지막 키**를 그 노드의
+        /// 클레임으로 접는다. 종점이 평가 결과가 아니라 키 값이라 샘플링이 필요 없다 — "이징은 종점에 관여하지
+        /// 않는다"가 모션에서도 그대로 선다. mode는 세 번째 인자(생략 = relative): relative는 현재 상태 위에
+        /// (위치·회전 덧셈, 배율 곱셈), absolute는 그 값으로. 클립은 mode를 모른다(motions/2).
+        ///
+        /// 재생(MotionCommandCharR.ClaimTarget)과 같은 함수(MotionMath.ClaimFor)를 지난다 —
+        /// 장부 게시·트윈 종점·상태 폴드가 같은 값을 본다.
+        /// </summary>
+        private static bool ApplyMotion(
+            StageState state, in StageCommand cmd, StageReducerTuning tuning, out string reason)
+        {
+            if (!TryGetSpawnedSlot(state, cmd, out string slotKey, out reason))
+                return false;
+
+            string name = cmd.Arg(1);
+
+            if (string.IsNullOrEmpty(name))
+            {
+                reason = "모션 이름이 없다";
+                return false;
+            }
+
+            if (tuning.Motions == null || !tuning.Motions.TryGetValue(name, out MotionClip clip))
+            {
+                reason = tuning.Motions == null
+                    ? $"모션 '{name}' — 튜닝에 motions.json이 없다"
+                    : $"모션 '{name}'을 모른다 (motions.json에 없거나 검증에서 걸렸다)";
+                return false;
+            }
+
+            if (!MotionModeToken.TryParse(cmd.Arg(2), out MotionChannelMode mode))
+            {
+                reason = $"모션 '{name}': mode는 relative|absolute 여야 한다 ('{cmd.Arg(2)}')";
+                return false;
+            }
+
+            // 채널이 가리키는 노드가 하나라도 없으면 통째로 거부한다 — 반만 접힌 모션은 거짓 정지 프레임이다.
+            for (int i = 0; i < clip.Channels.Length; i++)
+            {
+                if (!state.Nodes.Contains(StageState.NodeKeyOf(slotKey, clip.Channels[i].Node)))
+                {
+                    reason = $"모션 '{name}' 채널 {i}: 리그에 노드 '{clip.Channels[i].Node}'가 없다";
+                    return false;
+                }
+            }
+
+            // restore — 남기는 것이 없다. 노드 검사는 위에서 했다(없는 노드를 가리키는 모션은 restore라도 거짓이다).
+            if (clip.End == MotionEnd.Restore)
+                return true;
+
+            for (int i = 0; i < clip.Channels.Length; i++)
+            {
+                ref readonly MotionChannel channel = ref clip.Channels[i];
+                string nodeKey = StageState.NodeKeyOf(slotKey, channel.Node);
+
+                Vec3 start = MotionMath.StartOf(channel, state.Nodes.GetState(nodeKey));
+                state.Apply(MotionMath.ClaimFor(channel, mode, nodeKey, start));
+            }
+
+            return true;
+        }
 
         // char_rotate_to — 초상 축의 절대 회전(브리지: CharacterPortrait_SwayPivot).
         // rotate_by가 미는 CharSlot_SwayPivot과는 다른 노드다.
