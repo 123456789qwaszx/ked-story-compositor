@@ -885,7 +885,7 @@
           "type": "screenPoint",
           "required": false,
           "default": "center",
-          "description": "화면상의 지점"
+          "description": "무대 지점 — 카메라가 중립일 때 그 화면 지점과 겹치는 무대 위 자리(샷과 무관)"
         },
         {
           "name": "duration",
@@ -900,7 +900,7 @@
           "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
         }
       ],
-      "notes": "이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개(서로 간섭하지 않음)."
+      "notes": "이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개(서로 간섭하지 않음). 지점은 무대 좌표라 카메라(shot_*)가 어디를 보든 같은 자리에 선다 — 화면 구도는 샷으로 맞춘다."
     },
     {
       "id": "char_rig_placement.place_left",
@@ -934,7 +934,7 @@
           "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
         }
       ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
+      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개. 지점은 무대 좌표 — 카메라(shot_*)와 무관하다."
     },
     {
       "id": "char_rig_placement.place_center",
@@ -968,7 +968,7 @@
           "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
         }
       ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
+      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개. 지점은 무대 좌표 — 카메라(shot_*)와 무관하다."
     },
     {
       "id": "char_rig_placement.place_right",
@@ -1002,7 +1002,7 @@
           "description": "ì´ì§ ê³¡ì  ì´ë¦(EaseKind 35ì¢, ëìë¬¸ì ë¬´ì). ë¹ì°ë©´ ë°íì ê¸°ë³¸ OutCubic â ë¯¸ì§ì  ì ë§ì§ë§ í í°ì´ ìëµëê² ê¸°ë³¸ê°ì ì ì§ ìëë¤(ê¸°ì¡´ ëë³¸ ìµì diff)."
         }
       ],
-      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개."
+      "notes": "place_* 계열의 두 번째 인자는 screenPoint가 아니라 focus(신체 지점)다. screenPoint는 커맨드 이름에 고정되어 있다. 이동 타겟은 CharSlot_Track_Focus로 move_by 축과 별개. 지점은 무대 좌표 — 카메라(shot_*)와 무관하다."
     },
     {
       "id": "char_rig_depth.size",
