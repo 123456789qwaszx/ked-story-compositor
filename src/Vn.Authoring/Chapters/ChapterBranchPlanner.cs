@@ -4,8 +4,7 @@ namespace Vn.Authoring.Chapters;
 /// 챕터의 <b>깊이</b>(depth) — 시작 에피소드에서 그 에피소드까지의 <b>가장 긴 경로</b>. 합류 노드(두 분기가 다시
 /// 만나는 곳)는 가장 깊은 부모보다 한 칸 깊다. 장면 묶음(<see cref="ChapterSceneGrouping"/>)이 읽는다.
 ///
-/// ⛔ 이 깊이로 챕터 그래프를 펴던 배치(새 카드 자리 · 한 번 심기 · [자동 정렬])는 2026-10-29에 걷혔다 —
-/// 이 툴에는 그래프가 없고, 그래프는 ked-story-director에 있다.
+/// 챕터 그래프 배치는 이 툴의 몫이 아니다 — 그래프는 ked-story-director에 있다.
 /// </summary>
 public static class ChapterBranchPlanner
 {

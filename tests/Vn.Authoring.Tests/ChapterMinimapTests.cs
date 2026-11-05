@@ -5,7 +5,7 @@ using Vn.Authoring.Serialization;
 namespace Vn.Authoring.Tests;
 
 /// <summary>
-/// 챕터 지도 (2026-11-04 소유자: "슬레이 더 스파이어의 미니맵 같은 노드 기반 연결 + 애님스쿨 피커"). 축제 전날 예제로 잰다 —
+/// 챕터 지도 (슬레이 더 스파이어의 미니맵 같은 노드 기반 연결 + 피커). 축제 전날 예제로 잰다 —
 /// 장면 둘 · 분기 카드 다섯 · 갈림 둘 · 자동 간선 둘 · 끝 하나. 자리는 director의 것이다.
 /// </summary>
 public sealed class ChapterMinimapTests
@@ -42,7 +42,7 @@ public sealed class ChapterMinimapTests
         (ChapterMinimap map, _) = FestivalEve();
 
         Assert.Equal(2, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Auto));
-        // 선택지 9 = 원래 5 + 소유자가 director에서 더한 Festival_Add 갈래 4 (2026-11-04 원고 사본 갱신).
+        // 선택지 9 = 기본 5 + Festival_Add 갈래 4.
         Assert.Equal(9, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Choice));
         Assert.Equal(5, map.Edges.Count(edge => edge.Kind == ChapterMinimapEdgeKind.Detour));
 

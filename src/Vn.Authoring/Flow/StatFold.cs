@@ -44,7 +44,7 @@ public static class StatFold
     }
 
     /// <summary>
-    /// set 하나를 값 사전에 적용한다 — HUD 누적과 조건 값 시뮬(W36-b)이 같은 연산 하나를
+    /// set 하나를 값 사전에 적용한다 — HUD 누적과 조건 값 시뮬이 같은 연산 하나를
     /// 쓴다(사본 금지). 등록되지 않은 변수는 스탯이 아니다 — HUD 범위 밖(set 행에서는 보인다).
     /// </summary>
     public static void Apply(

@@ -24,8 +24,8 @@ public sealed record ChapterTrailStep(
     bool Played = true);
 
 /// <summary>
-/// <b>전체 재생이 지나온 길</b> (2026-11-04 소유자: *"현재 플레이를 누르면 어떤 루트와 선을 타면서 어떤 에피소드들을
-/// 지나가는지도 정확하게 표시"*). 챕터 런(<see cref="ChapterRunState"/>)은 스탯만 들고 길은 잊는다 — 이 기록이
+/// <b>전체 재생이 지나온 길</b> — 어떤 루트와 선을 타며 어떤 에피소드들을 지나는지 지도에 정확히 표시한다.
+/// 챕터 런(<see cref="ChapterRunState"/>)은 스탯만 들고 길은 잊는다 — 이 기록이
 /// 지도의 덧칠(지나온 점 · 탄 선 · 막힌 분기)이다. 수명은 런과 같다(새 전체 재생이 비운다).
 /// </summary>
 public sealed class ChapterRunTrail

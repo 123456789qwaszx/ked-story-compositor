@@ -153,7 +153,6 @@ public static class CsvBundleExporter
     private static string BuildReviewCsv(DialogueResult dialogue, StoryProject? project)
     {
         var rows = new StringBuilder();
-        // ⛔ "선택" 열(블록N 옵션M 라벨)은 대사 안 선택지와 함께 2026-11-04에 걷혔다 — 선택지는 간선에서만.
         AppendRow(rows, "노드", "인덱스", "LineId", "화자", "대사", "조건", "Set", "출구");
 
         string condition = string.Empty;

@@ -16,7 +16,7 @@ namespace Vn.App.Views;
 /// 트리는 <see cref="AssetExplorerModel"/>의 순수 계산 결과를 그리기만 한다.
 /// 문제(파일 없음·고아·초상화 없는 화자)는 항목 옆 ⚠와 문구로 보인다 — 침묵을 화면으로.
 /// 파일 감시는 없다. 새로 고침 버튼이 유일한 갱신 경로다.
-/// 항목은 W20 프리뷰 드래그의 소스가 된다.
+/// 항목은 프리뷰 드래그의 소스가 된다.
 /// </summary>
 public partial class AssetExplorerView : UserControl
 {
@@ -32,9 +32,9 @@ public partial class AssetExplorerView : UserControl
 
         RefreshButton.Click += async (_, _) =>
             await UiGuard.RunAsync(_session, "에셋 새로 고침", RefreshWithFeedbackAsync);
-        // 에셋 루트 변경의 상시 진입점 (X8 — 프리뷰 위 버튼을 걷어낸 자리).
+        // 에셋 루트 변경의 상시 진입점.
         RootsButton.Click += (_, _) => UiGuard.Run(_session, "에셋 폴더 설정", ShowRootsFlyout);
-        // 튜닝 관리의 상시 진입점 (W46) — 기본 생성·기존 폴더 연결.
+        // 튜닝 관리의 상시 진입점 — 기본 생성·기존 폴더 연결.
         TuningButton.Click += (_, _) => UiGuard.Run(_session, "튜닝 설정", ShowTuningFlyout);
         CollapseToggle.IsCheckedChanged += (_, _) =>
         {
@@ -61,17 +61,17 @@ public partial class AssetExplorerView : UserControl
     }
 
     /// <summary>
-    /// 새로 고침 — <b>도는 동안 그 사실이 화면에 보여야 한다</b> (2026-08-21 소유자 보고:
-    /// 새 튜닝 덤프를 넣고 누르자 창이 30초 넘게 굳어 멈춘 줄 알았다).
+    /// 새로 고침 — <b>도는 동안 그 사실이 화면에 보여야 한다</b>. 새 튜닝 덤프를 넣고
+    /// 누르면 창이 30초 넘게 굳을 수 있고, 보이는 것이 없으면 멈춘 줄 안다.
     ///
-    /// 일 자체는 여전히 UI 스레드의 동기 작업이다(에셋 png 재귀 스캔 + 튜닝 재읽기 +
+    /// 일 자체는 UI 스레드의 동기 작업이다(에셋 png 재귀 스캔 + 튜닝 재읽기 +
     /// 비트맵 캐시 비우기 + 트리 재구성). 가벼운 쪽으로 고른 것은 <b>일을 옮기는 대신
     /// 상태를 먼저 그리는 것</b>이다: 단추를 잠그고 "다시 읽는 중"을 적은 뒤, 렌더 패스가
     /// 지나가도록 <see cref="DispatcherPriority.Background"/>로 한 박자 양보하고 시작한다.
     /// 양보가 없으면 상태줄도 잠긴 단추도 <b>일이 끝난 뒤에야</b> 그려져 아무 소용이 없다.
     ///
     /// 이 대기가 위험한 이유는 느려서가 아니라, 굳은 창을 죽이면 저장 안 한 편집이
-    /// 함께 날아가기 때문이다(같은 보고). 근본 해결(스캔을 백그라운드 스레드로)은 호출처가
+    /// 함께 날아가기 때문이다. 근본 해결(스캔을 백그라운드 스레드로)은 호출처가
     /// 일곱 군데라 따로 다룬다.
     /// </summary>
     private async Task RefreshWithFeedbackAsync()
@@ -156,12 +156,12 @@ public partial class AssetExplorerView : UserControl
             AddItems(tree.PortraitItems, depth: 0, parentPath: "pt");
         }
 
-        // 오디오 (W59) — 배경과 같은 규약: 파일명이 곧 clipKey. 연출 조절창의 오디오 탭이 쓴다.
+        // 오디오 — 배경과 같은 규약: 파일명이 곧 clipKey. 연출 조절창의 오디오 탭이 쓴다.
         AddAudioSection("BGM", bgm: true, _session.BgmRoot);
         AddAudioSection("효과음", bgm: false, _session.SfxRoot);
     }
 
-    /// <summary>오디오 섹션 (W59) — 파일 목록 + 가져오기/폴더 열기. 규약은 배경과 같다.</summary>
+    /// <summary>오디오 섹션 — 파일 목록 + 가져오기/폴더 열기. 규약은 배경과 같다.</summary>
     private void AddAudioSection(string title, bool bgm, string? root)
     {
         TreeHost.Children.Add(SectionHeaderRow(
@@ -186,7 +186,7 @@ public partial class AssetExplorerView : UserControl
 
         foreach (string key in keys)
         {
-            // ♪ 항목이 곧 미리 듣기 버튼이다 (W62). 같은 파일을 다시 누르면 멈춘다.
+            // ♪ 항목이 곧 미리 듣기 버튼이다. 같은 파일을 다시 누르면 멈춘다.
             var audition = new Button
             {
                 Content = $"▶ {key}",
@@ -250,7 +250,7 @@ public partial class AssetExplorerView : UserControl
         });
     }
 
-    // ── 가져오기·폴더 열기 (W48) ──────────────────────────────────────────
+    // ── 가져오기·폴더 열기 ──────────────────────────────────────────
 
     /// <summary>섹션 제목 + [가져오기…]/[열기] — 루트가 없으면 버튼도 없다(안내가 대신한다).</summary>
     private Control SectionHeaderRow(string title, string? root, Action<Control>? importAction)
@@ -286,7 +286,7 @@ public partial class AssetExplorerView : UserControl
         return row;
     }
 
-    /// <summary>지정 폴더를 파일 탐색기로 연다 (W48). 없으면 만들어서 연다 — 빈칸 채우기가 목적이다.</summary>
+    /// <summary>지정 폴더를 파일 탐색기로 연다. 없으면 만들어서 연다 — 빈칸 채우기가 목적이다.</summary>
     private static void OpenInExplorer(string path)
     {
         System.IO.Directory.CreateDirectory(path);
@@ -330,7 +330,7 @@ public partial class AssetExplorerView : UserControl
         });
     }
 
-    /// <summary>초상화 가져오기 (W48) — 캐릭터·변형을 정하고 PNG를 고르면 표정 번호가 차례로 붙는다.</summary>
+    /// <summary>초상화 가져오기 — 캐릭터·변형을 정하고 PNG를 고르면 표정 번호가 차례로 붙는다.</summary>
     private void ShowPortraitImportFlyout(Control anchor)
     {
         if (_session is null)
@@ -432,7 +432,7 @@ public partial class AssetExplorerView : UserControl
 
         var panel = new StackPanel { Spacing = 4, MinWidth = 220 };
 
-        // 프로젝트 폴더가 모든 규약 경로의 기준이다 — 바로 열 수 있게 한다 (W48).
+        // 프로젝트 폴더가 모든 규약 경로의 기준이다 — 바로 열 수 있게 한다.
         if (_session.ProjectPath is { } projectPath &&
             System.IO.Path.GetDirectoryName(projectPath) is { } projectRoot)
         {
@@ -469,7 +469,7 @@ public partial class AssetExplorerView : UserControl
     }
 
     /// <summary>
-    /// 튜닝 관리 팝오버 (W46) — 현재 상태와 두 진입점.
+    /// 튜닝 관리 팝오버 — 현재 상태와 두 진입점.
     /// [기본 튜닝 생성] = 앱 내장 실측 덤프 스냅샷을 프로젝트 옆 규약 폴더에 쓴다(기존 불가침).
     /// [튜닝 폴더 연결…] = 갖고 있는 ExportedTuning 폴더를 골라 규약 자리로 복사한다.
     /// </summary>

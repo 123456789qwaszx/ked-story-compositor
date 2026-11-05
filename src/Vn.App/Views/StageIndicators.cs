@@ -16,9 +16,9 @@ internal static class StageIndicators
 {
     /// <returns>
     /// 하단 [연출 보고] 머리글에 실을 요약 — "🔴 반영 안 된 연출 N (이 라인 x) · 미표시 M".
-    /// 짚을 것이 없으면 null이다. 뱃지 줄이 아니라 머리글이 이 요약을 드는 이유는
-    /// 2026-08-26 소유자 지시다: "챕터 그래프처럼 아래쪽에서 경고로 접혀진 상태로
-    /// 표시되었다가, 오른쪽의 펼치기 버튼으로 펴면 상세하게."
+    /// 짚을 것이 없으면 null이다. 뱃지 줄이 아니라 머리글이 이 요약을 드는 까닭은
+    /// 챕터 그래프처럼 아래쪽에 경고로 접혀 있다가, 오른쪽의 펼치기 버튼으로 펴면
+    /// 상세가 보이게 하기 위해서다.
     /// </returns>
     public static string? FillBadges(
         MiniStagePreviewRequest request,
@@ -37,7 +37,7 @@ internal static class StageIndicators
 
         MiniStageState state = request.State;
 
-        // H-3 두 갈래 (W26): "반영 안 됨" = 코어도 툴도 못 접은 커맨드,
+        // H-3 두 갈래: "반영 안 됨" = 코어도 툴도 못 접은 커맨드,
         // "미표시" = 상태로는 접혔지만 아직 그리지 않는 축(구조 기록·셰이더 축).
         MiniStageUnhandled[] notFolded = state.Unhandled.Where(item => !item.FoldedButNotDrawn).ToArray();
         MiniStageUnhandled[] notDrawn = state.Unhandled.Where(item => item.FoldedButNotDrawn).ToArray();
@@ -94,7 +94,7 @@ internal static class StageIndicators
 
         }
 
-        // tuning 미수입이면 배치가 균등 나열 근사다 — 근사를 정확한 척하지 않는다 (W25, 규칙 14).
+        // tuning 미수입이면 배치가 균등 나열 근사다 — 근사를 정확한 척하지 않는다 (규칙 14).
         if (request.CoreState is null)
         {
             badgeRow.Children.Add(new Border
@@ -127,13 +127,13 @@ internal static class StageIndicators
             });
         }
 
-        // 갈래 칩 (W35): 지나온 블록마다 하나 — 클릭이 갈래를 순환시킨다
+        // 갈래 칩: 지나온 블록마다 하나 — 클릭이 갈래를 순환시킨다
         // (갈래 0 → 1 → … → 건너뜀 → 미선택(근사)). 지금 무엇을 보고 있는지 항상 보인다.
         if (request.BranchBlocks is { Count: > 0 } blocks && branchSelection is not null)
         {
             foreach (BranchFlow.Block block in blocks)
             {
-                // 값 시뮬(W36-b)이 자동으로 판정한 블록 — 수동(칩 클릭)이 언제든 덮는다.
+                // 값 시뮬이 자동으로 판정한 블록 — 수동(칩 클릭)이 언제든 덮는다.
                 bool auto = request.AutoBranchBlocks?.Contains(block.BlockLineId) == true;
 
                 string current = block.SelectedBranch switch
@@ -207,7 +207,7 @@ internal static class StageIndicators
                 warning: false);
         }
 
-        // 런타임 tuning 미수입은 오류가 아니라 안내다 — 어디에 무엇을 놓으면 되는지 말한다(W23).
+        // 런타임 tuning 미수입은 오류가 아니라 안내다 — 어디에 무엇을 놓으면 되는지 말한다.
         if (includeRootHint && !tuning.IsLoaded && tuning.Problems.Count == 0)
         {
             AddNotice(
@@ -228,17 +228,15 @@ internal static class StageIndicators
         }
     }
 
-    /// <summary>뱃지 줄은 WrapPanel이다(W37) — 간격은 Spacing이 아니라 이 마진 하나로 준다.</summary>
+    /// <summary>뱃지 줄은 WrapPanel이다 — 간격은 Spacing이 아니라 이 마진 하나로 준다.</summary>
     private static readonly Thickness BadgeMargin = new(0, 0, 6, 4);
 
-    // ⛔ 토글 뱃지(반영 안 된 연출·미표시)는 2026-08-26에 걷혔다 (소유자) — 요약은 하단
-    //   [연출 보고] 머리글이 들고, 상세는 그 보고를 펴면 선다. 뱃지 줄에는 근사 표시와
-    //   갈래 칩만 남는다.
+    // 반영 안 된 연출·미표시는 뱃지로 세우지 않는다 — 요약은 하단 [연출 보고] 머리글이
+    //   들고, 상세는 그 보고를 펴면 선다. 뱃지 줄에는 근사 표시와 갈래 칩만 선다.
 
     /// <summary>
-    /// 알림 한 줄. <b>SelectableTextBlock</b>이다 (2026-08-21 소유자: "이런 문구를 복사할
-    /// 수 있도록") — 드래그로 집어 간다. 전체를 들고 가던 [진단 복사] 단추는 2026-08-24에
-    /// 걷혔고, 이제 이 드래그가 <b>유일한 복사 통로</b>다.
+    /// 알림 한 줄. <b>SelectableTextBlock</b>이다 — 문구를 드래그로 집어 복사할 수 있다.
+    /// 이 드래그가 <b>유일한 복사 통로</b>다.
     /// ked-story-director의 챕터 그래프 검증 보고와 같은 문법이다.
     /// </summary>
     private static void AddNotice(Panel host, string message, bool warning)
@@ -252,8 +250,4 @@ internal static class StageIndicators
             Foreground = warning ? new SolidColorBrush(Color.FromRgb(194, 65, 12)) : null
         });
     }
-
-    // ⚠ `CollectText`(뜬 진단을 텍스트로 모으기)는 2026-08-24에 걷혔다 — 유일한 손님이던
-    //   무대 프리뷰의 [진단 복사] 단추가 사라졌다(소유자). 남은 복사 통로는 아래
-    //   `AddNotice`가 세우는 <b>SelectableTextBlock의 드래그</b>다.
 }

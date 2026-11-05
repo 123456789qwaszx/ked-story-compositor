@@ -19,7 +19,7 @@ internal sealed class LiveOutputService
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(600);
 
-    /// <summary>출력 폴더를 지정하지 않았을 때 — 프로젝트 폴더의 <c>yarn/</c> (2026-11-04).</summary>
+    /// <summary>출력 폴더를 지정하지 않았을 때 — 프로젝트 폴더의 <c>yarn/</c>.</summary>
     public const string DefaultOutputFolder = "yarn";
 
     private readonly AuthoringSession _session;
@@ -27,13 +27,13 @@ internal sealed class LiveOutputService
     private string? _lastReport;
 
     /// <summary>
-    /// 직전 저장에서 발견한 낡은 산출 파일. 지우지 않고 보여 주기만 한다(K1 ②안) —
+    /// 직전 저장에서 발견한 낡은 산출 파일. 지우지 않고 보여 주기만 한다 —
     /// 목록 화면은 [양식…]이 읽는다.
     /// </summary>
     public OrphanOutputScan Orphans { get; private set; } = OrphanOutputScan.Empty;
 
     /// <summary>
-    /// 직전 쓰기의 산출물 컴파일 판정 (2026-08-23). 상태줄은 실패만 말하므로, 화면이
+    /// 직전 쓰기의 산출물 컴파일 판정. 상태줄은 실패만 말하므로, 화면이
     /// "몇 개를 검사해서 통과했나"를 보이고 싶으면 이 값을 읽는다.
     /// </summary>
     public YarnOutputVerdict LastVerdict { get; private set; } = YarnOutputVerdict.Skipped;
@@ -80,7 +80,7 @@ internal sealed class LiveOutputService
                 return;
             }
 
-            // 출력 폴더의 기본은 프로젝트 폴더의 yarn/ (2026-11-04) — 지정하지 않아도 저장이 곧 내보내기다.
+            // 출력 폴더의 기본은 프로젝트 폴더의 yarn/ — 지정하지 않아도 저장이 곧 내보내기다.
             string directory = AssetRootSettings.ResolveFrom(
                 _session.ProjectPath, _session.Project.OutputPath ?? DefaultOutputFolder)!;
 
@@ -109,7 +109,7 @@ internal sealed class LiveOutputService
                 ? YarnBundleEmitter.WriteBundles(bundles, directory)
                 : []);
 
-            // 커스텀 곡선(W67 후속) — 라이브 출력도 정식 내보내기와 같은 동반 파일을 낸다.
+            // 커스텀 곡선 — 라이브 출력도 정식 내보내기와 같은 동반 파일을 낸다.
             if (bundles.Count > 0 &&
                 YarnBundleEmitter.WriteCurves(_session.Project.EaseCurves, directory) is { } curvesPath)
             {
@@ -127,14 +127,14 @@ internal sealed class LiveOutputService
                 OutputManifest.Record(directory, written);
             }
 
-            // 방금 쓴 것이 실제로 컴파일되는가 (2026-08-23). 여기가 아니면 아무도 안 본다 —
-            // 종전에는 이 검사가 테스트에만 있어서, 컴파일 안 되는 대본이 유니티까지 갔다.
-            // ⚠ 실패해도 쓰기를 되돌리지 않는다. 자세한 이유는 YarnOutputVerification 참조.
+            // 방금 쓴 것이 실제로 컴파일되는가. 여기가 아니면 아무도 안 본다 —
+            // 이 검사가 테스트에만 있으면 컴파일 안 되는 대본이 유니티까지 간다.
+            // 주의: 실패해도 쓰기를 되돌리지 않는다. 자세한 이유는 YarnOutputVerification 참조.
             LastVerdict = YarnOutputVerification.Verify(written);
 
             var parts = new List<string>();
 
-            // 게임 폴더 (2026-11-04) — director와 같은 runtime.target.json. 같은 번들을 거기에도 쓴다.
+            // 게임 폴더 — director와 같은 runtime.target.json. 같은 번들을 거기에도 쓴다.
             // 검증은 <b>그 폴더의 .yarn 전부</b>로 한다 — 손 대본이 남아 노드 이름이 겹치면 여기서 잡힌다.
             if (_session.GameFolder is { } gameFolder && bundles.Count > 0)
             {

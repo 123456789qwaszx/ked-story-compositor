@@ -10,8 +10,8 @@ using Vn.Authoring.Script;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 연출 추가 콘솔 (2026-08-21 소유자: "아래쪽에서 보이게 한다는 느낌 대신에 콘솔을
-/// 띄운다는 느낌으로 … 최근 사용·검색은 유지하되 종류별로 탭으로") — 검색·탭·항목
+/// 연출 추가 콘솔 — 아래쪽 판이 아니라 띄우는 콘솔이고, 최근 사용·검색에 종류별 탭을
+/// 더한다. 검색·탭·항목
 /// 클릭이 실제로 커맨드를 다는 것까지 사람 눈 없이 닫는다.
 /// </summary>
 public sealed class PresentationAddConsoleTests

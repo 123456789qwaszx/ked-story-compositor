@@ -234,7 +234,6 @@ namespace Ked.Presentation.Core
         /// 해석 순서(런타임 CharacterRigTargetResolver.ResolveRigKeyByPolicy와 같다): 별칭을 풀고 →
         /// 캐릭터 키인가(배역 맵) → 슬롯 키인가. 이걸로 "@3"·"parkeunseol"·"c1"이 모두 풀린다.
         /// 한 키가 슬롯 키이면서 캐스팅된 캐릭터 키이면 **캐릭터 쪽**이 이긴다 — 런타임이 그렇다.
-        /// (2026-10-29까지 여기만 슬롯 키를 먼저 봤다. 주석은 "런타임과 같다"였다.)
         /// </summary>
         public bool TryResolveSlot(string targetKey, out string slotKey)
         {

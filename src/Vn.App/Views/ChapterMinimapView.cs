@@ -10,7 +10,7 @@ using Vn.Authoring.Chapters;
 namespace Vn.App.Views;
 
 /// <summary>
-/// <b>챕터 지도</b> (2026-11-04 소유자: *"슬레이 더 스파이어의 미니맵 같은 노드 기반 연결 + 마야의 애님스쿨 피커 같은 느낌"*).
+/// <b>챕터 지도</b> — 슬레이 더 스파이어의 미니맵 같은 노드 기반 연결에 마야의 애님스쿨 피커 같은 손맛.
 /// 무대 왼쪽의 씬 선택기 위에 선다 — 점이 에피소드, 선이 간선, 띠가 장면. 점을 누르면 그 씬이 무대에 오른다(드롭다운과 같은 길).
 ///
 /// - 자리는 director 챕터 그래프의 것을 축소해 그린다(편집 없음 — 자리의 주인은 director).
@@ -26,7 +26,7 @@ public sealed class ChapterMinimapView : UserControl
     private const double NodeSize = 24;          // 애님스쿨 피커처럼 누를 수 있는 크기 — 안에 차례 숫자가 든다
     private const double MapPadding = 28;
     private const double MinSpacing = 34;        // 점 사이 최소 간격 — director 자리를 축소해도 겹치지 않게
-    /// <summary>폭 맞춤의 기준은 상수가 아니라 <b>지금 보이는 폭</b>이다 (2026-11-04 소유자: "좌우로 흰 공간만 넓히지 말고 실제 미니맵이 보이는 영역을 늘려").</summary>
+    /// <summary>폭 맞춤의 기준은 상수가 아니라 <b>지금 보이는 폭</b>이다 — 좌우로 흰 공간만 넓히지 않고 실제 지도가 보이는 영역을 늘린다.</summary>
     private double _lastViewportWidth;
     private Point? _panStart;
     private Vector _panOffset;
@@ -66,7 +66,7 @@ public sealed class ChapterMinimapView : UserControl
             Background = new SolidColorBrush(Color.FromRgb(0x2b, 0x2e, 0x33))
         };
 
-        // 확대 · 축소 (2026-11-04 소유자) — Ctrl+휠, 또는 아래 줄의 − · ＋ · 맞춤. 배율은 director 자리에 곱하는 하나의 수다.
+        // 확대 · 축소 — Ctrl+휠, 또는 아래 줄의 − · ＋ · 맞춤. 배율은 director 자리에 곱하는 하나의 수다.
         var zoomOut = new Button { Content = "−", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
         var zoomIn = new Button { Content = "＋", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
         var zoomFit = new Button { Content = "맞춤", FontSize = 11, Padding = new Thickness(6, 0), MinWidth = 0 };
@@ -101,7 +101,7 @@ public sealed class ChapterMinimapView : UserControl
             Redraw();   // 배율은 그대로 — 캔버스가 보이는 영역을 다시 채운다. 처음 폭을 알았을 때만 맞춤(_fitPending)이 든다.
         };
 
-        // 가운데 단추 끌기 = 이동 (2026-11-04 소유자). 연출 그래프와 같은 손놀림.
+        // 가운데 단추 끌기 = 이동. 연출 그래프와 같은 손놀림.
         _scroll.PointerPressed += (_, args) =>
         {
             if (!args.GetCurrentPoint(_scroll).Properties.IsMiddleButtonPressed)
@@ -187,7 +187,7 @@ public sealed class ChapterMinimapView : UserControl
     }
 
     /// <summary>지도를 다시 그린다. 모델이 없으면 비운다.</summary>
-    /// <summary>루트만 보기 (2026-11-04 소유자: "체크를 해둔다면 미리 고르기로 한 선택지의 루트만 표시") — 예정 길 밖의 점과 선을 숨긴다.</summary>
+    /// <summary>루트만 보기 — 미리 고르기로 한 선택지의 루트만 표시한다. 예정 길 밖의 점과 선을 숨긴다.</summary>
     public bool RouteOnly
     {
         get => _routeOnly;
@@ -276,7 +276,7 @@ public sealed class ChapterMinimapView : UserControl
         bool routeOnly = _routeOnly && _plan is not null;
         bool hasTrail = _trail is { Steps.Count: > 0 };
 
-        // 지나는 차례 (2026-11-04 소유자: "각 에피소드를 지나치는 순서를 정확히 숫자로 — 노드 안에") — 에피소드에 들어선 뒤
+        // 지나는 차례 — 각 에피소드를 지나는 순서를 노드 안에 숫자로 적는다. 에피소드에 들어선 뒤
         // 그 줄 앞에서 다녀오는 분기(조건이 성립하는 것만)가 다음 번호다. 막히는 분기는 번호가 없다(가지 않는다).
         var order = new Dictionary<string, int>(StringComparer.Ordinal);
         if (_plan is not null)
@@ -518,13 +518,13 @@ public sealed class ChapterMinimapView : UserControl
               (hasTrail ? $" · 지나온 에피소드 {visited.Count}" + (blocked.Count > 0 ? $" · 막힌 분기 {blocked.Count}" : string.Empty) : string.Empty) +
               (Math.Abs(_zoom - 1) > 0.0001 ? $" · {_zoom:P0}" : string.Empty);
 
-        // 스크롤 위치는 손대지 않는다 (2026-11-04 소유자: "특정 노드를 클릭하면 자꾸 미니맵이 움직이는 게 거슬립니다").
+        // 스크롤 위치는 손대지 않는다 — 노드를 누를 때마다 지도가 움직이면 거슬린다.
         // 지도는 사람이 휠 · 가운데 버튼으로 둔 자리에 그대로 있고, 현재 점은 고리와 캡션으로만 알린다.
     }
 
     /// <summary>
     /// 기본 배율 — director 자리를 그대로(1배) 쓰되, 가장 가까운 두 점이 겹치면 그만큼만 키운다. 배율은 기둥 폭과 <b>무관</b>하다
-    /// (2026-11-04 소유자: "연출 그래프에서 그랬듯이 지도 자체의 보이는 영역이 늘어나도록") — 기둥을 넓히면 더 넓은 자리가 보이고,
+    /// — 연출 그래프처럼 지도 자체의 보이는 영역이 늘어난다. 기둥을 넓히면 더 넓은 자리가 보이고,
     /// 크기는 확대 · 축소(Ctrl+휠 · − ＋)와 [맞춤]만 바꾼다.
     /// </summary>
     private static double BaseScale(ChapterMinimap map)

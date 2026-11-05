@@ -4,7 +4,7 @@ using Vn.App.Views;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 곡선 에디터의 기울기 ↔ 화면 팔 벡터 변환 (2026-08-20 소유자 보고의 수리) —
+/// 곡선 에디터의 기울기 ↔ 화면 팔 벡터 변환 —
 /// 화면 y는 값과 반대로 자라므로 부호 반전이 두 방향 모두에 있어야 한다.
 /// 이게 빠지면 핸들이 곡선과 거울로 서고, 날개를 돌리면 의도와 반대로 굽는다.
 /// </summary>
@@ -50,8 +50,8 @@ public class EaseCurveEditorMathTests
     [Fact]
     public void 끝점은_계약_자리로_되돌아온다_탄젠트와_중간_오버슈트는_그대로다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "overshoot은 중간에서만 허용 … 처음과 끝은 기울기만 조정".
-        // 값까지 끌 수 있던 시절의 곡선이 어긋난 끝값(0.2·0.9)을 들고 와도, 로드가
+        // overshoot은 중간에서만 허용하고, 처음과 끝은 기울기만 조정한다.
+        // 곡선이 어긋난 끝값(0.2·0.9)을 들고 와도, 로드가
         // (0,0)·(1,1)로 되돌린다 — 리듀서가 출발·도착을 정확히 밟는 계약이다.
         var editor = new EaseCurveEditor();
 
@@ -76,7 +76,7 @@ public class EaseCurveEditorMathTests
     [Fact]
     public void 진동_모드는_끝점을_0으로_잠근다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 `gesture` 개통 — 잠그는 끝값이 곡선 종류를 따른다.
+        // 잠그는 끝값이 곡선 종류를 따른다.
         // 이동은 (1,1), 진동은 (1,0). 규칙의 정본은 코어 CurveKindRules다.
         var editor = new EaseCurveEditor();
 

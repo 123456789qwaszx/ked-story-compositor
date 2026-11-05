@@ -8,14 +8,10 @@ namespace Vn.App.Tests;
 
 /// <summary>
 /// <b>창 전체의 Ctrl+Z</b> — 되돌리기는 단추만이 아니라 단축키로도 된다. (글을 쓰는 칸에서는 가로채지
-/// 않는다 — 그 시험은 늘 서 있는 글 칸을 쓰던 화면[챕터 그래프의 화자 탭]과 함께 2026-10-29에 걷혔고,
-/// 규칙은 MainWindow의 Ctrl+Z 처리에 그대로 있다.)
+/// 않는다 — 규칙은 MainWindow의 Ctrl+Z 처리에 있다.)
 ///
-/// ⚠ 그래서 이 클래스는 화면 하나가 아니라 <b>창</b>을 띄운다. 단축키는 창이 Tunnel로 받는다 —
+/// 그래서 이 클래스는 화면 하나가 아니라 <b>창</b>을 띄운다. 단축키는 창이 Tunnel로 받는다 —
 /// 화면 혼자서는 맞아도 둘을 잇는 자리가 비어 있으면 사람은 키를 눌러도 아무 일이 없다.
-///
-/// (2026-10-29: 이 파일은 [대본] 탭의 Ctrl+S 테스트와 한 클래스였다. 탭이 걷히며 그 둘은 함께
-/// 사라졌고, 창의 되돌리기 둘만 남았다.)
 /// </summary>
 public sealed class ShellUndoTests : IDisposable
 {
@@ -33,9 +29,8 @@ public sealed class ShellUndoTests : IDisposable
     [Fact]
     public void Ctrl_Z가_되돌린다() => HeadlessUi.Run(() =>
     {
-        // ⛔ <b>단축키가 없었다</b> (2026-09-18). 되돌리기는 창 위쪽 띠의 단추로만 됐는데,
-        //    실수로 지운 사람은 거기까지 찾아 올라가야 했다. 지우는 단추를 세우며
-        //    소유자가 건 조건이 *"ctrl+z로 롤백이 가능해야"*다.
+        // 되돌리기가 창 위쪽 띠의 단추로만 되면 실수로 지운 사람은 거기까지 찾아
+        // 올라가야 한다. 지우는 단추가 있는 한 Ctrl+Z로 롤백이 돼야 한다.
         var window = new MainWindow();
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -66,7 +61,7 @@ public sealed class ShellUndoTests : IDisposable
 
         session.Editor.EnsureChapter("ch01");
 
-        // ⚠ 카드와 대본까지 함께 선다 (2026-09-18) — 여기서 또 만들면 카드가 둘이 된다.
+        // 카드와 대본까지 함께 선다 — 여기서 또 만들면 카드가 둘이 된다.
         session.Editor.AddEpisode("ch01", "ep01", title: "ep01", 0, 0);
 
         DialogueNode node = session.Project.EnumerateNodes().OfType<DialogueNode>()

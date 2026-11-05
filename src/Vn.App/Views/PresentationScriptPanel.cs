@@ -9,7 +9,7 @@ using Vn.Authoring.Results;
 namespace Vn.App.Views;
 
 /// <summary>
-/// 연출 대본 텍스트 패널 (2026-08-20 소유자: "프리뷰 왼쪽에 텍스트 로그 터미널") —
+/// 연출 대본 텍스트 패널 — 프리뷰 왼쪽의 텍스트 로그 터미널.
 /// 시나리오 전체가 텍스트로 미리 적혀 있고:
 ///
 /// - <b>Setup 구획과 라인 구획이 분리</b>돼 있다(다른 바탕 + 구분선)
@@ -43,11 +43,11 @@ internal sealed class PresentationScriptPanel : UserControl
     /// <summary>대사 행 클릭 또는 커맨드 선택 — 그 라인을 선택해 달라.</summary>
     public event Action<string>? LineClicked;
 
-    /// <summary>Setup 구획 클릭 — 작업대에 Setup 편집을 열어 달라 (2026-08-21).</summary>
+    /// <summary>Setup 구획 클릭 — 작업대에 Setup 편집을 열어 달라.</summary>
     public event Action? SetupClicked;
 
     /// <summary>
-    /// 커맨드 점 클릭 (2026-08-21 소유자: "세부 디테일 대신에 키고 끄는기능") —
+    /// 커맨드 점 클릭 — 세부 조절 대신 켜고 끄는 기능이다.
     /// 이 커맨드를 켜고 꺼 달라. bool은 지금 값(활성 여부)이다.
     /// </summary>
     public event Action<PresentationResultCommand, bool>? CommandToggleRequested;
@@ -55,14 +55,14 @@ internal sealed class PresentationScriptPanel : UserControl
     /// <summary>커맨드 선택 확정 — 아래 작업대(Inspector)를 이 커맨드로 바꿔 달라.</summary>
     public event Action<PresentationResultCommand>? CommandSelected;
 
-    /// <summary>행 우측 X 클릭 — 이 커맨드를 제거해 달라 (2026-08-21).</summary>
+    /// <summary>행 우측 X 클릭 — 이 커맨드를 제거해 달라.</summary>
     public event Action<PresentationResultCommand>? CommandRemoveRequested;
 
     /// <summary>드래그 이동 확정 — targetLineId(null=Setup)의 insertIndex 자리로 옮겨 달라.</summary>
     public event Action<PresentationResultCommand, string?, int>? CommandMoveRequested;
 
-    // ── 우클릭 메뉴 + 클립보드 (2026-08-21 소유자: "터미널에서 마우스 우클릭을 했을 때
-    // 연출 추가 표시" + "복사 붙여넣기 기능도, ctrl+c/v/d 단축키도") ──────────────
+    // ── 우클릭 메뉴 + 클립보드 ──────────────────────────────────────────────
+    // 우클릭이 연출 추가를 띄우고, 복사·붙여넣기·복제는 Ctrl+C/V/D 단축키로도 된다.
     // 클립보드 자체는 호스트가 진다 — 이 패널은 그리기와 신호뿐이라는 규칙 그대로.
 
     /// <summary>[＋ 연출 추가] — 이 자리(lineId 또는 Setup)의 추가 UI를 작업대에 열어 달라.</summary>
@@ -81,26 +81,24 @@ internal sealed class PresentationScriptPanel : UserControl
     public Func<bool>? HasClipboardCommand { get; set; }
 
     /// <summary>
-    /// 행 우측 ★ 클릭 (2026-08-22) — 이 커맨드를 무대 조절창의 칩으로 담아 달라.
+    /// 행 우측 ★ 클릭 —이 커맨드를 무대 조절창의 칩으로 담아 달라.
     /// 이미 원하는 값으로 맞춰 놓은 커맨드를 그대로 집는 것이 칩을 만드는 가장 짧은 길이다.
     /// </summary>
     public event Action<PresentationResultCommand>? CommandPinRequested;
 
     /// <summary>
-    /// 담기 모드 (2026-08-22 소유자: "편집을 누르면 터미널쪽에서 무언가 추가할 수 있다는
-    /// 표시가 되고, 그걸 실제로 클릭하면 자주쓰는 커맨드로 추가"). 조절창 [★ 자주 쓰는]
-    /// 탭의 [편집]이 켠다.
+    /// 담기 모드 — 터미널이 무언가 담을 수 있다는 표시를 하고, 커맨드를 클릭하면 자주 쓰는
+    /// 커맨드로 담긴다. 조절창 [★ 자주 쓰는] 탭의 [편집]이 켠다.
     ///
-    /// ⚠ <b>행마다 글리프를 바꾸지 않는다</b> (같은 날 2차: "X를 ★로 바꾸는 건 최악의
-    /// 아이디어야 … 터미널 자체의 줄높이가 바뀌면서 꿈틀거리는게 조작감이 좋지 않아").
-    /// 글자가 달라지면 글리프 높이가 달라지고 그것이 곧 줄 높이다. 대신 <b>판 전체가
+    /// 주의: <b>행마다 글리프를 바꾸지 않는다</b> — 줄 높이가 바뀌며 터미널이 꿈틀거리면
+    /// 조작감이 나쁘다. 글자가 달라지면 글리프 높이가 달라지고 그것이 곧 줄 높이다. 대신 <b>판 전체가
     /// 활성 상태로 보이고</b>(테두리 + 바탕) <b>커맨드 행을 그냥 클릭하면 담긴다</b> —
     /// 테두리 두께는 평소에도 자리를 잡고 있으므로 켜고 꺼도 아무것도 안 움직인다.
     /// </summary>
     public bool PinMode { get; set; }
 
     /// <summary>
-    /// 담기 모드에서 행 툴팁이 말할 <b>목적지</b> (2026-08-24 — 묶음 칩). 담긴 곳이
+    /// 담기 모드에서 행 툴팁이 말할 <b>목적지</b>(묶음 칩). 담긴 곳이
     /// 새 칩이냐 펼쳐 둔 칩이냐로 갈리므로, 손이 행 위에 있는 그 순간 그것을 말한다.
     /// 조절창이 정본이고(<c>StageSceneView.QuickPinTarget</c>) 여기는 그 문장을 받는다.
     /// </summary>
@@ -120,8 +118,8 @@ internal sealed class PresentationScriptPanel : UserControl
         // 텍스트 편집을 가로채지 않는다. 행 클릭이 포커스를 이리로 가져온다.
         Focusable = true;
 
-        // 스크롤바가 행 위에 겹쳐 뜨므로 오른쪽·아래를 비워 둔다 (2026-08-21 소유자:
-        // "두꺼운 바가 삭제 버튼을 가려버려서") — X가 바 밑에 깔리지 않는 자리다.
+        // 스크롤바가 행 위에 겹쳐 뜨므로 오른쪽·아래를 비워 둔다 — 두꺼운 바가 삭제 버튼을
+        // 가리지 않게, X가 바 밑에 깔리지 않는 자리다.
         _rows.Margin = new Thickness(0, 0, 16, 8);
 
         _scroll = new ScrollViewer
@@ -130,7 +128,7 @@ internal sealed class PresentationScriptPanel : UserControl
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         };
 
-        // 테두리는 <b>늘</b> 2px 자리를 잡는다 (2026-08-22) — 담기 모드가 색만 칠하므로
+        // 테두리는 <b>늘</b> 2px 자리를 잡는다 — 담기 모드가 색만 칠하므로
         // 켜고 꺼도 안쪽 내용이 한 픽셀도 안 움직인다. 안쪽 여백은 그만큼 줄여 총합을 지킨다.
         _frame = new Border
         {
@@ -138,7 +136,7 @@ internal sealed class PresentationScriptPanel : UserControl
             CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(2),
             BorderBrush = Brushes.Transparent,
-            Padding = new Thickness(10, 8), // 빽빽함 완화 (2026-08-21 소유자: "여백도 너무 빽빽")
+            Padding = new Thickness(10, 8), // 빽빽하지 않게 여백을 둔다
             Child = _scroll
         };
 
@@ -193,7 +191,7 @@ internal sealed class PresentationScriptPanel : UserControl
         }
 
         // 라인 단위로 묶어 컨테이너 하나(= 하이라이트 박스 단위)로 만든다.
-        // Setup 구획(LineId null)은 라인들과 분리된 제 공간을 갖는다(소유자 다듬기 1).
+        // Setup 구획(LineId null)은 라인들과 분리된 제 공간을 갖는다.
         int index = 0;
 
         while (index < rows.Count)
@@ -205,13 +203,12 @@ internal sealed class PresentationScriptPanel : UserControl
 
             if (!isSetup)
             {
-                // 라인 박스 위쪽의 lineId 헤더 (2026-08-21 소유자: "-setup-과 동일하게") —
+                // 라인 박스 위쪽의 lineId 헤더 — -setup- 헤더와 같은 모양이다.
                 // 대사 텍스트는 지금 자리(박스 아래쪽) 그대로다.
                 group.Children.Add(BuildLineHeader(lineId!));
             }
 
-            // 제거 X는 선택된 구획에서만 보인다 (2026-08-21 소유자: "특정 라인을
-            // 클릭했을 때만 x가 보이도록") — 다른 라인은 읽기 화면처럼 고요하다.
+            // 제거 X는 선택된 구획에서만 보인다 — 다른 라인은 읽기 화면처럼 고요하다.
             // 보이지 않을 때도 자리는 그대로 잡는다(아래) — 클릭마다 줄이 흔들리지 않게.
             bool showRemove = editable && (isSetup
                 ? setupSelected
@@ -241,7 +238,7 @@ internal sealed class PresentationScriptPanel : UserControl
                 index++;
             }
 
-            // 선택은 하나다 (2026-08-21 소유자: "하이라이트가 2군데에 잡혀") — Setup을
+            // 선택은 하나다 — 하이라이트가 두 군데에 잡히지 않는다. Setup을
             // 고르면 라인 하이라이트는 꺼진다. 라인 선택 정보는 그대로 살아 있다가
             // Setup에서 벗어나면 다시 그 라인이 켜진다.
             bool selected = lineId is not null && !setupSelected &&
@@ -348,7 +345,7 @@ internal sealed class PresentationScriptPanel : UserControl
 
         if (editable && row.LineId is null)
         {
-            // Setup 헤더 클릭 = 작업대에 Setup 편집 (2026-08-21 소유자 지시).
+            // Setup 헤더 클릭 = 작업대에 Setup 편집.
             header.Cursor = new Cursor(StandardCursorType.Hand);
             header.PointerPressed += (_, args) =>
             {
@@ -427,8 +424,8 @@ internal sealed class PresentationScriptPanel : UserControl
 
     private Border BuildCommandRow(PresentationScriptRow row, bool editable, bool showRemove)
     {
-        // Rider 브레이크포인트 감각의 점 — 켜고 끄기 토글 (2026-08-21 소유자:
-        // "세부 디테일 대신에 키고 끄는기능"). 찬 점 = 켜짐, 빈 점 = 꺼짐.
+        // Rider 브레이크포인트 감각의 점 — 세부 조절이 아니라 켜고 끄기 토글이다.
+        // 찬 점 = 켜짐, 빈 점 = 꺼짐.
         var dot = new Ellipse
         {
             Width = 8,
@@ -480,12 +477,11 @@ internal sealed class PresentationScriptPanel : UserControl
 
         dot.Cursor = new Cursor(StandardCursorType.Hand);
 
-        // 행 우측 끝의 제거 X (2026-08-21 소유자: "터미널 라인 우측 끝에 X", 같은 날:
-        // "특정 라인을 클릭했을 때만") — 선택된 구획에서만 <b>보이되</b>, 안 보일 때도
-        // 자리는 그대로 잡는다. 넣었다 뺐다 하면 클릭할 때마다 줄 높이가 흔들린다
-        // (같은 날: "간격이 계속 바뀌면서 레이아웃이 이동하는데 … 어지럽고 피로해").
+        // 행 우측 끝의 제거 X — 선택된 구획에서만 <b>보이되</b>, 안 보일 때도
+        // 자리는 그대로 잡는다. 넣었다 뺐다 하면 클릭할 때마다 줄 높이가 흔들려
+        // 레이아웃이 움직이고, 보는 눈이 어지럽고 피로하다.
         //
-        // ⚠ 담기 모드에서도 이 글리프는 안 바뀐다 (2026-08-22 소유자) — ✕를 ★로 갈면
+        // 주의: 담기 모드에서도 이 글리프는 안 바뀐다 — ✕를 ★로 갈면
         // 글리프 높이가 달라져 줄이 꿈틀거린다. 담는 동안에는 숨을 뿐이다.
         var remove = new TextBlock
         {
@@ -508,8 +504,8 @@ internal sealed class PresentationScriptPanel : UserControl
 
         if (PinMode)
         {
-            // 담기 모드 = 행 자체가 단추다 (2026-08-22 소유자: "그냥 터미널 자체가 무언가
-            // 활성화 된다는 느낌과 같이 특정 커맨드를 클릭했을 때 가져와지도록").
+            // 담기 모드 = 행 자체가 단추다 — 터미널 전체가 활성화된 느낌 속에서 특정
+            // 커맨드를 클릭하면 담긴다.
             // 바탕과 커서만 바뀐다 — 자리를 차지하는 것은 아무것도 안 늘어난다.
             host.Cursor = new Cursor(StandardCursorType.Hand);
             host.Background = new SolidColorBrush(Color.FromArgb(28, 250, 204, 21));
@@ -624,8 +620,8 @@ internal sealed class PresentationScriptPanel : UserControl
 
         if (!wasDragging)
         {
-            // 좌클릭 한 번 = 선택 (소유자 다듬기 2) — 그 라인(Setup 커맨드면 Setup 구획)도
-            // 함께 고르고, 아래 작업대의 표시도 같은 커맨드로 맞춘다 (2026-08-21).
+            // 좌클릭 한 번 = 선택 — 그 라인(Setup 커맨드면 Setup 구획)도
+            // 함께 고르고, 아래 작업대의 표시도 같은 커맨드로 맞춘다.
             _selectedCommandId = command.CommandId;
             CommandSelected?.Invoke(command);
 
@@ -694,7 +690,7 @@ internal sealed class PresentationScriptPanel : UserControl
         }
     }
 
-    // ── 우클릭 메뉴 + 단축키 (2026-08-21 소유자 지시) ────────────────────────
+    // ── 우클릭 메뉴 + 단축키 ────────────────────────
 
     /// <summary>
     /// 우클릭이면 그 자리의 메뉴를 열고 true. 좌클릭이면 아무것도 안 하고 false —
@@ -745,8 +741,8 @@ internal sealed class PresentationScriptPanel : UserControl
             duplicate.Click += (_, _) => CommandDuplicateRequested?.Invoke(command);
             menu.Items.Add(duplicate);
         }
-        // [★ 자주 쓰는 데 담기]는 여기 없다 (2026-08-22) — 우클릭에서 담으면 조절창이
-        // 닫힌 채라 담긴 결과가 화면 어디에도 안 보였다. 담기는 조절창 [편집]이 켜는
+        // [★ 자주 쓰는 데 담기]는 여기 없다 — 우클릭에서 담으면 조절창이
+        // 닫힌 채라 담긴 결과가 화면 어디에도 안 보인다. 담기는 조절창 [편집]이 켜는
         // 행 우측 ★ 하나다: 판을 띄워 놓고 담고, 담기는 즉시 그 판에 선다.
 
         var paste = new MenuItem

@@ -271,7 +271,7 @@ namespace Ked.Presentation.Core.Tests
         // ── size: 보존 ───────────────────────────────────────────────
 
         // 라벨은 level 커브 위의 눈금이다(DepthLevelLabels):
-        // far=0 · back=10 · mid=14 · front=16 · close=20 (2026-08-21 소유자 상향).
+        // far=0 · back=10 · mid=14 · front=16 · close=20.
         // scale은 무릎(레벨 10) 아래 0.86+0.052L, 위 1.38+0.082(L-10).
         [TestCase("back", 1.38f)]
         [TestCase("front", 1.872f)]
@@ -301,7 +301,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void 보존_focus는_커맨드_인자가_정한다_프리셋_필드가_아니다()
         {
-            // ⚠ 런타임 ResolveRawDepth가 프리셋의 preserveFocusPreset을 읽은 직후
+            // 주의: 런타임 ResolveRawDepth가 프리셋의 preserveFocusPreset을 읽은 직후
             // 커맨드 인자로 덮어쓴다 — 덤프의 그 필드는 사장 데이터다.
             // close 프리셋 값은 30(face)이지만 셋째 인자 없이 부르면 파서 표 기본 "bust"가 된다.
             StageReducerTuning tuning = NewTuning();
@@ -342,7 +342,7 @@ namespace Ked.Presentation.Core.Tests
         public void close_위의_무릎이_라벨_구간을_건드리지_않는다()
         {
             // scale 커브는 레벨 10에 무릎이 있다 — 그 위로 더 가파르다(0.052 → 0.082).
-            // 2026-08-21 상향으로 back(10)이 무릎에 서고 mid·front·close는 무릎 위에 산다.
+            // back(10)은 무릎에 서고 mid·front·close는 무릎 위에 산다.
             StageReducerTuning tuning = NewTuning();
 
             foreach ((string label, float expected) in new[]

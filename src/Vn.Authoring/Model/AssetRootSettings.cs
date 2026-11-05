@@ -18,10 +18,10 @@ public sealed class AssetRootSettings
     /// <summary><c>portraits.manifest.json</c>과 PNG가 있는 초상화 폴더.</summary>
     public string? PortraitsPath { get; set; }
 
-    /// <summary>BGM 오디오 폴더 (W59). 배경과 같은 규약 — 파일명이 곧 clipKey다.</summary>
+    /// <summary>BGM 오디오 폴더. 배경과 같은 규약 — 파일명이 곧 clipKey다.</summary>
     public string? BgmPath { get; set; }
 
-    /// <summary>효과음(SFX) 오디오 폴더 (W59). 파일명이 곧 clipKey다.</summary>
+    /// <summary>효과음(SFX) 오디오 폴더. 파일명이 곧 clipKey다.</summary>
     public string? SfxPath { get; set; }
 
     public bool IsEmpty =>

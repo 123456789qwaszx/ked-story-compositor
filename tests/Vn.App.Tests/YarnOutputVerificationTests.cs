@@ -4,12 +4,12 @@ using Vn.App.Services;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 산출물 컴파일 검증 (2026-08-23) — 이미터가 방금 쓴 대본이 실제로 컴파일되는가.
+/// 산출물 컴파일 검증 — 이미터가 방금 쓴 대본이 실제로 컴파일되는가.
 ///
-/// 이 검사가 없던 동안 프로덕션 경로에서 Yarn 컴파일러를 부르는 자리가 <b>0건</b>이었다.
-/// 컴파일 안 되는 대본을 써도 유니티까지 아무도 몰랐다.
+/// 이 검사가 없으면 프로덕션 경로에서 Yarn 컴파일러를 부르는 자리가 없어서,
+/// 컴파일 안 되는 대본을 써도 유니티까지 아무도 모른다.
 ///
-/// ⚠ 여기 테스트는 <b>헤드리스 UI가 필요 없다</b> — 검증기가 세션도 화면도 모른다.
+/// 여기 테스트는 <b>헤드리스 UI가 필요 없다</b> — 검증기가 세션도 화면도 모른다.
 /// </summary>
 public sealed class YarnOutputVerificationTests : IDisposable
 {
@@ -64,7 +64,7 @@ public sealed class YarnOutputVerificationTests : IDisposable
     [Fact]
     public void 같은_노드_이름이_두_파일에_있으면_잡는다()
     {
-        // 2026-08-23의 이름 사건이 남긴 자리 — 타이틀은 세이브 키이자 진입 키다(계약서 C2).
+        // 타이틀은 세이브 키이자 진입 키다(계약서 C2).
         // 두 대본이 같은 타이틀을 내면 런타임이 어느 쪽을 재생할지 아무도 답할 수 없다.
         string[] written =
         [
@@ -80,7 +80,7 @@ public sealed class YarnOutputVerificationTests : IDisposable
     [Fact]
     public void 검사는_산출_폴더를_바꾸지_않는다()
     {
-        // ⛔ 규율. 검증하려고 `.yarnproject`를 산출 폴더에 만들면 유니티가 읽는 폴더가
+        // 규율. 검증하려고 `.yarnproject`를 산출 폴더에 만들면 유니티가 읽는 폴더가
         // 달라지고 고아 스캔에도 걸린다 — 검증 때문에 산출물이 달라지면 검증이 아니다.
         string[] written = [Write("Story_ep1.yarn", Story("Story_ep1", "라루: 첫 줄 #line:ln_001"))];
 
@@ -128,12 +128,12 @@ public sealed class YarnOutputVerificationTests : IDisposable
         // 합성 픽스처만 통과시키는 검증기는 아무것도 지키지 않는다. 이미터가 실제로 내는
         // 글자(`Vn.Authoring.Tests/Golden`)에 그대로 건다 — 저 골든이 바뀌면 여기도 운다.
         //
-        // ⚠ 한 벌은 **대본 하나 + declarations**다. 골든 폴더에는 서로 무관한 테스트 대본
+        // 한 벌은 **대본 하나**다. 골든 폴더에는 서로 무관한 테스트 대본
         // 둘이 함께 살아서 통째로 걸면 LineId가 겹친다(둘 다 ln_004부터 쓴다) — 그것은
         // 이미터의 잘못이 아니라 픽스처 폴더의 사정이다. 진짜 산출 폴더는 한 프로젝트의
         // 것만 담으므로, 거기서 겹치면 그때는 진짜 오류다(계약서 C4 · 아래 테스트).
         //
-        // ⚠ 실측으로 하나 배웠다: 자기 밖의 노드로 나가는 `<<jump>>`(`Story_기본으로_간다`)는
+        // 자기 밖의 노드로 나가는 `<<jump>>`(`Story_기본으로_간다`)는
         // **컴파일 오류가 아니다.** 그래서 막혀서 빠진 노드가 있어도 이 검사가 그 이유로
         // 무더기 오탐을 내지 않는다 — 그 사실은 `blocked` 보고가 따로 말한다.
         string golden = Path.GetFullPath(Path.Combine(
@@ -143,8 +143,8 @@ public sealed class YarnOutputVerificationTests : IDisposable
         Assert.True(Directory.Exists(golden), $"골든 폴더를 못 찾았다: {golden}");
 
         string[] sources =
-        // ⛔ 선언 파일은 2026-09-17에 사라졌다 — 작가 변수가 없어져 선언할 것이 없고,
-        //    빈 선언 파일은 아예 안 쓴다. 골든도 대본 하나다.
+        // 선언 파일은 없다 — 작가 변수가 없어 선언할 것이 없고,
+        // 빈 선언 파일은 아예 안 쓴다. 골든도 대본 하나다.
         [Path.Combine(golden, storyFile)];
 
         YarnOutputVerdict verdict = YarnOutputVerification.Verify(sources);

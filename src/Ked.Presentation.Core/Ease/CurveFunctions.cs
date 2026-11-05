@@ -91,11 +91,11 @@ namespace Ked.Presentation.Core
         /// 구간 밖을 **끝 두 키의 할선(secant)**으로 외삽한다 — 런타임
         /// CharacterDepthLevelTuningSet.EvaluateUnclamped와 같은 규칙이다.
         ///
-        /// ⚠ 탄젠트가 아니라 할선이다. 지금 덤프의 yCurve가 Linear라
+        /// 주의: 탄젠트가 아니라 할선이다. 지금 덤프의 yCurve가 Linear라
         /// outSlope(-56)과 할선((-440-120)/10 = -56)이 우연히 같지만,
         /// 커브를 손보는 날 조용히 갈린다.
         ///
-        /// ⚠ WrapMode(m_PreInfinity/m_PostInfinity)는 보지 않는다 —
+        /// WrapMode(m_PreInfinity/m_PostInfinity)는 보지 않는다 —
         /// 런타임이 그걸 쓰지 않는다. 흉내 내면 재생과 갈린다.
         /// </summary>
         public static float EvaluateUnclamped(CurveKey[] keys, float t)

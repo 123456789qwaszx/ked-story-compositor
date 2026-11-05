@@ -155,7 +155,7 @@ public class AuthoringSessionTests
         Assert.All(changes, change => Assert.True(change.FileListChanged));
     }
 
-    // ── 튜닝 관리 (W46) ───────────────────────────────────────────────────
+    // ── 튜닝 관리 ───────────────────────────────────────────────────
 
     [Fact]
     public void 기본_튜닝_생성은_규약_폴더에_내장_파일을_쓰고_바로_읽힌다()
@@ -175,11 +175,10 @@ public class AuthoringSessionTests
             Assert.True(session.TuningLibrary.IsLoaded);
             Assert.True(session.TuningLibrary.RigCount > 0);
 
-            // ⛔ <b>기본 튜닝은 로더가 찾는 것을 하나도 빠뜨리지 않는다</b> (2026-08-26).
-            //    파일 이름을 몇 개 세는 것으로는 이걸 못 지킨다 — 로더에 축이 하나 늘면
-            //    (W64의 `presets/role-anchor.json`이 그랬다) 여기 목록은 조용히 통과하고
-            //    새 프로젝트는 <b>열 때마다 경고</b>를 맞는다. 실제로 그렇게 났다.
-            //    불평 목록이 비어 있는지를 걸면 다음에 축이 늘 때 이 시험이 먼저 운다.
+            // <b>기본 튜닝은 로더가 찾는 것을 하나도 빠뜨리지 않는다</b>.
+            // 파일 이름을 몇 개 세는 것으로는 이걸 못 지킨다 — 로더에 축이 하나 늘면
+            // 여기 목록은 조용히 통과하고 새 프로젝트는 <b>열 때마다 경고</b>를 맞는다.
+            // 불평 목록이 비어 있는지를 걸면 다음에 축이 늘 때 이 시험이 먼저 운다.
             Assert.Empty(session.TuningLibrary.Problems);
         }
         finally
@@ -199,7 +198,7 @@ public class AuthoringSessionTests
 
         try
         {
-            // 이미 튜닝이 있는 폴더에 저장한다 — 첫 저장의 자동 준비(W48)도 불가침을 지킨다.
+            // 이미 튜닝이 있는 폴더에 저장한다 — 첫 저장의 자동 준비도 불가침을 지킨다.
             string tuningRoot = Path.Combine(directory, "ExportedTuning");
             Directory.CreateDirectory(tuningRoot);
             File.WriteAllText(Path.Combine(tuningRoot, "custom.json"), "{}");
@@ -253,7 +252,7 @@ public class AuthoringSessionTests
         }
     }
 
-    // ── 새 프로젝트 자동 준비 + PNG 가져오기 (W48) ────────────────────────
+    // ── 새 프로젝트 자동 준비 + PNG 가져오기 ────────────────────────
 
     [Fact]
     public void 첫_저장은_에셋_폴더와_기본_튜닝을_준비한다()
@@ -266,7 +265,7 @@ public class AuthoringSessionTests
 
             Assert.Equal("assets/backgrounds", session.Project.AssetRoots.BackgroundsPath);
             Assert.Equal("assets/portraits", session.Project.AssetRoots.PortraitsPath);
-            Assert.Equal("assets/bgm", session.Project.AssetRoots.BgmPath);   // W59
+            Assert.Equal("assets/bgm", session.Project.AssetRoots.BgmPath);
             Assert.Equal("assets/sfx", session.Project.AssetRoots.SfxPath);
             Assert.True(Directory.Exists(Path.Combine(directory, "assets", "backgrounds")));
             Assert.True(Directory.Exists(Path.Combine(directory, "assets", "portraits")));
@@ -313,8 +312,8 @@ public class AuthoringSessionTests
     [Fact]
     public void 저장은_없는_폴더를_복구한다()
     {
-        // W60: 실수로 지운 폴더는 다음 저장이 되살린다. 내용이 있는 폴더는 불가침이다.
-        // (⛔ [다른 이름으로…]의 새 자리 살림은 2026-10-29에 그 단추와 함께 걷혔다 — 이 툴의 파일은 원고 옆 한 자리다.)
+        // 실수로 지운 폴더는 다음 저장이 되살린다. 내용이 있는 폴더는 불가침이다.
+        // (이 툴의 파일은 원고 옆 한 자리다.)
         string first = TempDirectory();
 
         try
@@ -351,7 +350,7 @@ public class AuthoringSessionTests
             Assert.True(File.Exists(Path.Combine(directory, "assets", "bgm", "main_theme.mp3")));
             Assert.Equal(["main_theme"], session.AudioClipKeys(session.BgmRoot));
 
-            // 오디오 루트는 저장본에 남는다 (W59 직렬화).
+            // 오디오 루트는 저장본에 남는다.
             session.Save();
             var reopened = new AuthoringSession();
             reopened.Open(projectPath);

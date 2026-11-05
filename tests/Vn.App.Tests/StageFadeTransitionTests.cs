@@ -12,15 +12,13 @@ using Path = System.IO.Path;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// <b><c>fade_in</c>이 프리뷰에서 실제로 페이드로 흐르는가</b> (2026-08-24 소유자 보고:
-/// "무대 프리뷰에서 fade_in 커맨드가 종종 안 먹을 때가 있는데").
+/// <b><c>fade_in</c>이 프리뷰에서 실제로 페이드로 흐르는가</b>.
 ///
-/// <b>"종종"의 정체</b> — 페이드 판정이 <em>가시성</em>이 아니라 <em>직전 프레임에 이 슬롯의
-/// 자리가 있었는가</em>였다. 숨김 슬롯도 고스트 윤곽으로 자리를 등록하므로(W28), 무대에
-/// 이미 서 있던 슬롯의 <c>fade_in</c>은 "자리가 있었으니 이동"으로 읽혀 불투명도 1로 튀어
-/// 올랐다. 페이드가 돌던 것은 슬롯이 그 라인에서 <b>처음 생길 때</b>뿐이었다 — 그리고
+/// 페이드 판정은 <em>직전 프레임에 이 슬롯의 자리가 있었는가</em>가 아니라 <em>가시성</em>을
+/// 본다. 숨김 슬롯도 고스트 윤곽으로 자리를 등록하므로, 자리로 판정하면 무대에 이미 서 있던
+/// 슬롯의 <c>fade_in</c>이 "자리가 있었으니 이동"으로 읽혀 불투명도 1로 튀어 오른다 —
 /// <c>slot</c>·<c>cast</c>는 보통 노드 Setup에 있으므로, 실제 작업에서는 거의 언제나
-/// 안 도는 쪽이었다.
+/// 그 경우다.
 ///
 /// 그래서 이 파일은 <b>두 경로가 같은 답을 내는지</b>를 붙든다: 무대에 처음 서는 슬롯도,
 /// 숨겨져 있던 슬롯도, 보이게 되는 순간은 페이드 인이다.
@@ -71,7 +69,7 @@ public sealed class StageFadeTransitionTests
             LineText: "대사",
             CoreState: fold.CoreState,
             TransitionSeconds: 0.5,
-            // 페이드는 제 duration으로 흐른다 (2026-08-26) — 이 파일의 페이드는 전부
+            // 페이드는 제 duration으로 흐른다 — 이 파일의 페이드는 전부
             // 12fr(=0.5초)이라 라인 시계와 같은 속도이고, 기존 단언 값이 그대로 선다.
             Fades: StageFades.Of(Catalog, lines.Length > 0 ? lines[^1] : [], fold.State));
     }
@@ -121,8 +119,8 @@ public sealed class StageFadeTransitionTests
     [Fact]
     public void 숨어_있던_슬롯의_fade_in도_페이드로_흐른다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 이것이 소유자가 본 그 장면이다 — Setup에서 이미 캐스팅해 둔 슬롯(숨김 고스트)이
-        //    다음 라인에서 fade_in을 받는다. 고치기 전에는 불투명도가 처음부터 1이었다.
+        // 실제 작업에서 흔한 장면이다 — Setup에서 이미 캐스팅해 둔 슬롯(숨김 고스트)이
+        // 다음 라인에서 fade_in을 받는다. 불투명도가 처음부터 1이면 안 된다.
         Stage stage = Open();
 
         stage.Draw(Request(CastInSetup, [Nothing]));                   // ln1 — 숨김
@@ -154,8 +152,8 @@ public sealed class StageFadeTransitionTests
     [Fact]
     public void 첫_라인의_fade_in은_기준선이_굳어도_페이드로_흐른다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 — "첫번째 말하는 거는 fade_in의 duration을 늘리더라도
-        // 0인것처럼 즉시 보이는". 씬에 처음 들어올 때 첫 라인이 <b>정체가 다른 요청</b>으로
+        // 첫 화자의 fade_in은 duration만큼 흘러야 한다 — 즉시 보이면 안 된다.
+        // 씬에 처음 들어올 때 첫 라인이 <b>정체가 다른 요청</b>으로
         // 두 번 그려지면(편집기 둘이 미는 실사례) 기준선이 "이미 보임"으로 굳는다 —
         // 그래도 이 라인에 적힌 fade_in이 등장의 근거다: 재생은 그 라인의 커맨드를
         // 처음부터 다시 트는 것이다.
@@ -171,7 +169,7 @@ public sealed class StageFadeTransitionTests
         stage.Window.Close();
     });
 
-    // ── 퇴장도 같은 결로 (2026-08-24 소유자) ────────────────────────────────
+    // ── 퇴장도 같은 결로 ────────────────────────────────
 
     [Fact]
     public void fade_out은_나가는_초상이_걷히며_사라진다() => HeadlessUi.Run(() =>
@@ -200,7 +198,7 @@ public sealed class StageFadeTransitionTests
     [Fact]
     public void 걷힌_초상은_확정_프레임에서_캔버스에서_내려간다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 반투명한 잔상이 남으면 그것이 곧 버그다 — 정지 화면은 언제나 확정 상태다.
+        // 반투명한 잔상이 남으면 그것이 곧 버그다 — 정지 화면은 언제나 확정 상태다.
         Stage stage = Open();
 
         stage.Draw(Request(CastInSetup, [[FadeIn]]));
@@ -240,14 +238,12 @@ public sealed class StageFadeTransitionTests
         stage.Window.Close();
     });
 
-    // ── 같은 라인을 다시 그려도 (2026-08-24 소유자 2차 보고) ────────────────
+    // ── 같은 라인을 다시 그려도 ────────────────
     //
-    // "커맨드를 추가했을 때 재생을 시켜도 Fade효과가 안 먹혀. 다른곳에 나갔다 오면 되는데"
-    //
-    // 전이의 출발점이 <b>직전 렌더</b>였다. 커맨드 추가·선택·[＋ 연출 추가]·스탯 토글이
-    // 전부 같은 라인을 다시 그리므로, 그때 출발점이 이번 라인으로 갈려 "바뀐 것이 없다"가
-    // 된다 — 등장도 퇴장도 근거를 잃는다. 다른 라인에 갔다 오면 되던 것이 증거다.
-    // 출발점의 단위는 렌더가 아니라 <b>프레임</b>이어야 한다.
+    // 커맨드 추가·선택·[＋ 연출 추가]·스탯 토글은 전부 같은 라인을 다시 그린다. 전이의
+    // 출발점이 <b>직전 렌더</b>라면 그때 출발점이 이번 라인으로 갈려 "바뀐 것이 없다"가
+    // 되고, 등장도 퇴장도 근거를 잃는다. 그래서 출발점의 단위는 렌더가 아니라
+    // <b>프레임</b>이다.
 
     [Fact]
     public void 같은_라인을_다시_그려도_페이드는_살아_있다() => HeadlessUi.Run(() =>
@@ -289,8 +285,8 @@ public sealed class StageFadeTransitionTests
     [Fact]
     public void 다시_그린_뒤_다음_라인으로_가면_출발점은_그_라인이다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 출발점을 미루는 것이 <b>미는 것을 잊는 것</b>이 되면 안 된다 — 이미 보이던
-        //    슬롯이 다음 라인에서 다시 페이드하면 대사가 넘어갈 때마다 무대가 깜빡인다.
+        // 출발점을 미루는 것이 <b>미는 것을 잊는 것</b>이 되면 안 된다 — 이미 보이던
+        // 슬롯이 다음 라인에서 다시 페이드하면 대사가 넘어갈 때마다 무대가 깜빡인다.
         Stage stage = Open();
 
         stage.Draw(Request(CastInSetup, [Nothing]));                   // ln1 — 숨김

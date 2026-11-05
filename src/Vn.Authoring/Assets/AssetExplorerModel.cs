@@ -29,7 +29,7 @@ public enum AssetExplorerItemKind
 /// <summary>
 /// 탐색기 트리 항목 하나. <see cref="Problem"/>이 있으면 화면이 아이콘+문구로 표시한다 —
 /// 침묵을 화면으로 바꾸는 자리다(원칙 문서 §2.5).
-/// <see cref="BackgroundKey"/>/<see cref="Portrait"/>는 드래그 페이로드다(W20).
+/// <see cref="BackgroundKey"/>/<see cref="Portrait"/>는 드래그 페이로드다.
 /// </summary>
 public sealed record AssetExplorerItem(
     AssetExplorerItemKind Kind,

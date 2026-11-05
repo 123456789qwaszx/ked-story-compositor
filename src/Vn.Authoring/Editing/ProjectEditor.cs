@@ -95,9 +95,8 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 대사 노드를 만든다. 카드는 <b>제 대본을 들고</b> 선다 (X4, D-3) — 노드는 생성 즉시 편집 대상이고, 첫 빈 줄까지
+    /// 대사 노드를 만든다. 카드는 <b>제 대본을 들고</b> 선다 — 노드는 생성 즉시 편집 대상이고, 첫 빈 줄까지
     /// 준비되어 바로 타이핑할 수 있다. 노드·대본·첫 줄이 한 번의 편집이라 되돌리기 한 번에 함께 사라진다.
-    /// (⛔ 이미 있는 대본을 주어 잇던 <c>scriptId</c>는 대본이 카드 안으로 들어오며 걷혔다 — 2026-10-29.)
     /// </summary>
     public DialogueNode AddDialogueNode(
         string fileId,
@@ -115,13 +114,13 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 대사 노드와 그 전용 대본을 <b>짓기만</b> 한다 — <see cref="Mutate"/> 밖이다.
     ///
-    /// ⚠ 다른 변경과 <b>한 번에</b> 묶어야 할 때 쓴다(「분기 추가」는 노드·대본·표식이 한
+    /// 다른 변경과 <b>한 번에</b> 묶어야 할 때 쓴다(「분기 추가」는 노드·대본·표식이 한
     /// 동작이라 되돌리기 한 번에 셋이 함께 돌아와야 한다). <c>Mutate</c> 안에서 다른 명령을
     /// 부르면 변경이 겹쳐 쌓여 되돌리기가 반쪽이 된다 — 그래서 <b>짓는 것</b>과 <b>붙이는
     /// 것</b>을 갈라 둔다.
     ///
-    /// ⭐ <b>챕터 판에 세우면 에피소드도 함께 선다</b> (R7 P-6 · 결정 ⑤ · 2026-09-17).
-    /// 자유 씬이라는 종류가 없어졌으므로 <b>판의 대사 노드는 전부 에피소드</b>다 — 카드를
+    /// <b>챕터 판에 세우면 에피소드도 함께 선다</b>.
+    /// 자유 씬이라는 종류가 없으므로 <b>판의 대사 노드는 전부 에피소드</b>다 — 카드를
     /// 세우는 것이 곧 에피소드를 만드는 일이고, 그래서 어긋난 이름이 애초에 안 생긴다.
     /// </summary>
     private (DialogueNode Created, ChapterEpisode? Episode, Action Attach) NewDialogueNodeCore(
@@ -136,10 +135,9 @@ public sealed partial class ProjectEditor
     {
         StoryFile file = RequireFile(fileId);
 
-        // ⭐ <b>이름을 고르는 규칙도 여기 하나다</b> (2026-09-18). 챕터 판에서는 이 이름이
+        // <b>이름을 고르는 규칙도 여기 하나다</b>. 챕터 판에서는 이 이름이
         //    곧 EpisodeId가 되므로 <c>장면 3</c> 같은 <b>공백 든 Id</b>가 나오면 안 된다 —
-        //    그 Id는 진행 JSON과 산출물의 열쇠로 나간다(엑셀 시절에는 대본 워크북의 파일 이름이기도
-        //    했다). 다른 창구가 이미 쓰던 `new01`
+        //    그 Id는 진행 JSON과 산출물의 열쇠로 나간다. 다른 창구가 쓰는 `new01`
         //    규약으로 맞춘다.
         var created = new DialogueNode(
             name: name ?? (ChapterOfBoard(file) is { } board
@@ -187,18 +185,18 @@ public sealed partial class ProjectEditor
         EpisodeNaming.ChapterOfBoard(Project, file);
 
     /// <summary>
-    /// 이 노드가 질 <b>에피소드</b>를 짓는다 (R7 P-6). 챕터 판이 아니면 둘 다 <c>null</c>이다 —
+    /// 이 노드가 질 <b>에피소드</b>를 짓는다. 챕터 판이 아니면 둘 다 <c>null</c>이다 —
     /// 작가의 낙서판에는 챕터가 없고, 거기 세운 노드는 진행에 안 실린다.
     ///
-    /// ⚠ <b>이미 있는 에피소드면 짓지 않고 표식만 붙인다.</b> 챕터에 먼저 적힌 에피소드에
+    /// <b>이미 있는 에피소드면 짓지 않고 표식만 붙인다.</b> 챕터에 먼저 적힌 에피소드에
     /// 대본을 다는 것이 정확히 그 자리다 — 거기서 또 지으면 에피소드 하나에 카드가 둘 선다.
     ///
-    /// ⚠ 임포터는 노드를 <b>EpisodeId가 아니라 `대사엔트리`로</b> 짓는다. 그래서 찾는 일은
+    /// 주의: 임포터는 노드를 <b>EpisodeId가 아니라 `대사엔트리`로</b> 짓는다. 그래서 찾는 일은
     /// <see cref="EpisodeNaming.EpisodeFor"/>에 맡긴다 — 여기서 이름만 맞춰 보면 `대사엔트리`가
-    /// 따로 적힌 챕터마다 에피소드가 <b>두 배로 불어난다</b>(2026-09-17에 겪었다).
+    /// 따로 적힌 챕터마다 에피소드가 <b>두 배로 불어난다</b>.
     /// </summary>
     /// <param name="episodePosition">
-    /// 챕터 그래프에서의 자리. ⚠ <b>카드의 자리와 다른 판이다</b> — 연출 판의 좌표를 그대로
+    /// 챕터 그래프에서의 자리. <b>카드의 자리와 다른 판이다</b> — 연출 판의 좌표를 그대로
     /// 챕터 그래프에 넣으면 사람이 맞춰 둔 배치가 흐트러진다. 안 주면 카드 자리를 따른다
     /// (연출 그래프에서 카드부터 세우는 길이 그렇다 — 거기서는 그 자리가 유일한 정보다).
     /// </param>
@@ -213,7 +211,7 @@ public sealed partial class ProjectEditor
 
         if (EpisodeNaming.EpisodeFor(chapter, created) is { } standing)
         {
-            // 표식이 신원이다 — 이름은 사람이 고치는 글자라 개명 때마다 끊긴다(P-6 결정).
+            // 표식이 신원이다 — 이름은 사람이 고치는 글자라 개명 때마다 끊긴다.
             created.MarkedEpisodeId = standing.EpisodeId;
 
             return (null, null);
@@ -237,24 +235,24 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// <b>「분기 추가」</b> (R7 P-5 · 2026-09-17 소유자) — 그 줄 <b>앞</b>에 분기 표식을 두고,
-    /// 다녀올 <b>자유 씬</b>을 함께 세워 잇는다.
+    /// <b>「분기 추가」</b> — 그 줄 <b>앞</b>에 분기 표식을 두고,
+    /// 다녀올 씬을 함께 세워 잇는다.
     ///
-    /// ⛔ <b>조건을 걸지 않는다.</b> 연출 그래프는 "어디서 갈라지는가"만 짚는다 — 성립하든
+    /// <b>조건을 걸지 않는다.</b> 연출 그래프는 "어디서 갈라지는가"만 짚는다 — 성립하든
     /// 말든 다녀오고, 다녀온 씬이 제 첫머리에서 보고 아니면 곧바로 돌아온다.
     ///
-    /// ⭐ <b>조건은 다녀갈 에피소드의 첫머리</b>에 적힌다 — 부르는 쪽 대본은 그대로다. 그 조건을
+    /// <b>조건은 다녀갈 에피소드의 첫머리</b>에 적힌다 — 부르는 쪽 대본은 그대로다. 그 조건을
     /// 채우는 창구(챕터 그래프의 분기 패널)는 ked-story-director에 있다.
     ///
-    /// ⚠ <b>그냥 에피소드다</b> (R7 P-6 · 결정 ⑤가 2026-09-17에 뒤집었다 — 전에는 자유 씬).
+    /// 다녀갈 씬은 <b>그냥 에피소드다</b>.
     /// 진행에 실리며, 아래에 선택지 3칸이 뚫린다. <b>출발과 같은
     /// 장면</b>에 둔다 — 곁가지는 제 본줄 옆에 있어야 판에서 읽힌다.
     ///
-    /// ⚠ 노드·대본·표식이 <b>한 번의 변경</b>이다. 갈라 두면 되돌리기 한 번에 표식만 사라져
+    /// 노드·대본·표식이 <b>한 번의 변경</b>이다. 갈라 두면 되돌리기 한 번에 표식만 사라져
     /// <b>아무도 안 부르는 씬</b>이 판에 남는다.
     /// </summary>
-    /// <param name="beforeLineId">이 줄 앞에서 갈라진다. 그 줄에 이미 분기가 있으면 그 뒤에 하나 더 선다(2026-10-29 —
-    /// 전에는 거절했다). 차례로 다녀온다.</param>
+    /// <param name="beforeLineId">이 줄 앞에서 갈라진다. 그 줄에 이미 분기가 있으면 그 뒤에 하나 더 선다.
+    /// 차례로 다녀온다.</param>
     public DialogueNode AddBranchMarker(string nodeId, string beforeLineId, string? name = null)
     {
         if (Project.FindNode(nodeId) is not DialogueNode source)
@@ -273,8 +271,7 @@ public sealed partial class ProjectEditor
             throw new InvalidOperationException("그 줄이 이 노드의 대본에 없습니다.");
         }
 
-        // 분기로 다녀갈 카드는 원본의 <b>오른쪽</b>에 선다 (D3 · 2026-10-29 소유자: "분기는 기존처럼
-        // 오른쪽으로 빠지도록"). 아래는 선택지로 가는 다음 에피소드의 자리다.
+        // 분기로 다녀갈 카드는 원본의 <b>오른쪽</b>에 선다. 아래는 선택지로 가는 다음 에피소드의 자리다.
         (double x, double y) = Graph.NodePlacement.BesideOf(file, source);
 
         (DialogueNode created, _, Action attach) = NewDialogueNodeCore(
@@ -283,7 +280,7 @@ public sealed partial class ProjectEditor
             y,
             name ?? NextName("분기"),
             SceneOfNode(file, source),
-            // ⛔ 들어오는 간선이 없다 — 챕터 진행이 아니라 대본의 `<<detour>>`로 들어간다.
+            // 들어오는 간선이 없다 — 챕터 진행이 아니라 대본의 `<<detour>>`로 들어간다.
             //    그래서 도달성 증명은 이것을 <b>정확히 도달 불가로</b> 판정하고, 그 판정이
             //    맞다. 증명기를 고치지 않는 이유는 그것이 저쪽 런타임의 <b>오라클</b>이기
             //    때문이다(코퍼스로 고정돼 있어 여기서 답을 바꾸면 둘이 조용히 갈린다).
@@ -428,7 +425,7 @@ public sealed partial class ProjectEditor
         SetLineTransitions(nodeId, lineId, transition is null ? [] : [transition]);
 
     /// <summary>
-    /// 이 줄 앞의 전환들을 통째로 바꾼다 (2026-08-17) — 목록 순서가 곧 일어나는 순서다.
+    /// 이 줄 앞의 전환들을 통째로 바꾼다 — 목록 순서가 곧 일어나는 순서다.
     /// 빈 목록이면 전환이 없는 줄이다. 대본에 없는 LineId를 주면 아무것도 하지 않는다.
     /// </summary>
     public void SetLineTransitions(
@@ -557,10 +554,6 @@ public sealed partial class ProjectEditor
 
         if (kind == ExitPortKind.Default)
         {
-            // ⛔ ~~커스텀(자유) 노드의 기본 출구 쓰기는 조용히 거절한다~~ (2026-08-21) —
-            //    <b>걷혔다</b> (R7 P-6 · 결정 ⑤ · 2026-09-17). 그 거절이 곧 엑셀노드/자유노드의
-            //    구분이었고, 같은 규칙이 `NodeConnections`와 `EffectiveDefaultExit`에도
-            //    한 벌씩 더 있었다 — 셋을 함께 걷었다.
             if (!string.Equals(node.DefaultExitTargetNodeId, targetNodeId, StringComparison.Ordinal))
             {
                 Mutate(() => node.DefaultExitTargetNodeId = targetNodeId);
@@ -574,10 +567,10 @@ public sealed partial class ProjectEditor
             return;
         }
 
-        // 「조건 분기」 표식의 목표는 <b>그 줄</b>이 진다 (R7 P-5) — 갈래 출구 장부에 적으면
+        // 「조건 분기」 표식의 목표는 <b>그 줄</b>이 진다 — 갈래 출구 장부에 적으면
         // 여는 전환이 없는 고아가 되고, 저장할 때 그 칸이 전환 안에 있어 통째로 사라진다.
         //
-        // 줄만 주면(2026-10-29 — 한 줄에 분기가 여럿) 대상이 있으면 그 줄의 분기 끝에 하나를 <b>더하고</b>(이미 있으면
+        // 한 줄에 분기가 여럿일 수 있으므로, 줄만 주면 대상이 있으면 그 줄의 분기 끝에 하나를 <b>더하고</b>(이미 있으면
         // 그대로), 대상이 없으면 그 줄의 분기를 <b>모두</b> 끊는다. 분기 하나만 바꾸려면 포트(<see cref="ExitPort"/>)로 부른다.
         if (kind == ExitPortKind.Detour)
         {
@@ -603,7 +596,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 그 줄의 분기 하나를 바꾼다 (2026-10-29 — 한 줄에 분기가 여럿). <paramref name="from"/>은 지금 가는 곳이다.
+    /// 그 줄의 분기 하나를 바꾼다(한 줄에 분기가 여럿일 수 있다). <paramref name="from"/>은 지금 가는 곳이다.
     /// <list type="bullet">
     /// <item><c>from</c> 없음 · <c>to</c> 있음 — 그 줄 분기 끝에 더한다(이미 있으면 그대로).</item>
     /// <item><c>from</c> 없음 · <c>to</c> 없음 — 그 줄의 분기를 모두 끊는다.</item>
@@ -1037,7 +1030,7 @@ public sealed partial class ProjectEditor
         }
     }
 
-    // ── 자주 쓰는 칩 (2026-08-22) ────────────────────────────────────────────
+    // ── 자주 쓰는 칩 ────────────────────────────────────────────
 
     /// <summary>
     /// 칩 하나를 [자주 쓰는] 목록 맨 뒤에 담는다. 목록에 처음 손대는 것이면
@@ -1064,11 +1057,10 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// <b>빈 묶음 칩</b>을 만들고 그 자리를 돌려준다 (2026-08-24 소유자: "커맨드 칩 생성을
-    /// 하면, 여기에 원하는 커맨드들을 골라담도록").
+    /// <b>빈 묶음 칩</b>을 만들고 그 자리를 돌려준다.
     ///
-    /// <b>담기의 출발점이 뒤집혔다.</b> 예전에는 커맨드를 집으면 칩이 따라 생겨서 묶음이
-    /// 부산물이었다. 이제는 <b>그릇을 먼저 만들고 골라 담는다</b> — 사람이 "이제부터 묶음
+    /// 묶음은 커맨드를 집을 때 따라 생기는 부산물이 아니다.
+    /// <b>그릇을 먼저 만들고 골라 담는다</b> — 사람이 "이제부터 묶음
     /// 하나를 만든다"고 말할 수 있어야 담는 동안의 화면이 그 사실을 계속 보여 줄 수 있다.
     ///
     /// 그래서 <b>단계 없는 칩이 정상 상태다</b>(막 만든 그릇). 눌러서 낼 것이 없으므로
@@ -1119,8 +1111,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 단계 여럿을 칩 하나의 <b>맨 뒤에</b> 붙인다 — 이것이 묶음이 자라는 유일한 통로다
-    /// (2026-08-24 소유자: "여러개의 커맨드 단위로 커스텀").
+    /// 단계 여럿을 칩 하나의 <b>맨 뒤에</b> 붙인다 — 이것이 묶음이 자라는 유일한 통로다.
     ///
     /// 붙이는 자리가 맨 뒤인 이유는 <b>순서가 곧 뜻</b>이기 때문이다: 터미널에서 집는
     /// 순서가 곧 무대에 붙는 순서다. 중간에 끼우고 싶으면 붙인 뒤 ▲▼로 옮긴다
@@ -1243,8 +1234,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 칩이 담아 둔 인자 하나를 고친다 (2026-08-22 소유자: "편집시에 개별 커맨드의 세부
-    /// 수치를 조절할 수 있게 … 터미널 아래에서 그랬던 것 처럼"). 칩은 발행 결과가 아니라
+    /// 칩이 담아 둔 인자 하나를 고친다. 칩은 발행 결과가 아니라
     /// 프로젝트의 값 한 벌이라 커맨드 인자 수정과 같은 통로를 못 쓴다 — 이것이 그 통로다.
     /// </summary>
     public void SetQuickCommandArgument(int index, string argumentName, string value) =>
@@ -1399,7 +1389,7 @@ public sealed partial class ProjectEditor
 
     /// <summary>
     /// 추가와 수정이 섞인 편집 여러 개를 <b>한 번의 편집으로</b> 라인에 반영한다
-    /// (2026-08-24 — 자주 쓰는 칩이 묶음이 되면서 생긴 통로).
+    /// — 자주 쓰는 묶음 칩을 거는 통로다.
     ///
     /// <b>왜 한 번인가</b>: 단추 하나를 누른 것은 조작 하나다. 단계마다 <c>Mutate</c>를
     /// 지나면 다섯 단계짜리 칩을 되돌리는 데 Ctrl+Z를 다섯 번 눌러야 한다 —
@@ -1651,7 +1641,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 커맨드 하나를 다른 자리로 옮긴다 (2026-08-20 소유자: "드래그해서 위치를 자유롭게") —
+    /// 커맨드 하나를 다른 자리로 옮긴다 —
     /// 같은 라인 안 재배열, 라인 사이 이동, Setup ↔ 라인 이동 전부 이 통로 하나다.
     /// <paramref name="targetLineId"/>가 null이면 Setup, 아니면 그 라인의 바인딩
     /// (없으면 만든다). <paramref name="insertIndex"/>는 대상 목록 기준이고 범위를
@@ -1717,7 +1707,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 커맨드 하나를 <b>바로 뒤에</b> 복제한다 (2026-08-21 소유자: 터미널 Ctrl+D) —
+    /// 커맨드 하나를 <b>바로 뒤에</b> 복제한다(터미널 Ctrl+D) —
     /// Setup·라인 어느 목록이든 원본이 있는 그 자리 다음이다. 새 Id를 받으므로 원본과
     /// 독립으로 편집된다. 한 번의 mutate라 되돌리기 한 번이 복제 하나를 원복한다.
     /// </summary>
@@ -1894,11 +1884,9 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 그 판(챕터)의 <b>설정 노드</b>를 보장한다 (2026-08-17 소유자: "조건 노드라기보다는
-    /// 챕터별로 자동으로 저장되는 컨트롤러에 가까운 것 같아. 챕터 하나에 저런 설정을 담아두는
-    /// 노드가 상시로 뜨는거지").
+    /// 그 판(챕터)의 <b>설정 노드</b>를 보장한다 — 챕터에 딸려 상시로 서는 컨트롤러다.
     ///
-    /// 공급 범위가 판 전체가 된 뒤로 설정노드는 <b>여러 개일 이유가 없다</b> — 어차피 다 같은
+    /// 공급 범위가 판 전체이므로 설정노드는 <b>여러 개일 이유가 없다</b> — 어차피 다 같은
     /// 곳에 미치므로 나눠 놓으면 "어디에 적었더라"만 생긴다. 그래서 챕터당 하나가 자동으로
     /// 서고, 작가는 그 안을 채울 뿐 노드를 만들거나 지우지 않는다.
     /// </summary>
@@ -1919,13 +1907,11 @@ public sealed partial class ProjectEditor
 
     /// <summary>
     /// 그 챕터의 <b>판</b>을 보장한다 — 없으면 만들고, 설정 노드까지 세워 돌려준다
-    /// (챕터 = 판 1:1, G-1 v2).
+    /// (챕터 = 판 1:1).
     ///
-    /// <b>왜 여기 있나 (2026-08-23)</b> — 이 함수는 오래 `AuthoringSession`에 살았는데,
-    /// <b>세션 상태를 하나도 안 본다.</b> 열려 있는 파일도, 선택도, 저장 여부도 안 묻고
-    /// <see cref="Project"/>와 자기 자신만 쓴다. 세션에 주차돼 있던 순수한 편집 작업이라,
-    /// 에피소드 동기화를 화면 밖으로 꺼내려던 시도가 여기서 막혔다 — 도메인이 셸의
-    /// 메서드를 불러야 했기 때문이다.
+    /// <b>왜 여기 있나</b> — 이 함수는 <b>세션 상태를 하나도 안 본다.</b> 열려 있는 파일도,
+    /// 선택도, 저장 여부도 안 묻고 <see cref="Project"/>와 자기 자신만 쓰는 순수한 편집 작업이다.
+    /// 셸(`AuthoringSession`)에 두면 에피소드 동기화 같은 도메인 코드가 셸의 메서드를 불러야 한다.
     ///
     /// 왼쪽 챕터 목록 클릭과 에피소드 동기화가 <b>같은 규칙 하나</b>를 쓴다.
     /// </summary>
@@ -1935,12 +1921,11 @@ public sealed partial class ProjectEditor
         StoryFile? standing = Chapters.EpisodeNaming.BoardOf(Project, chapterId);
         StoryFile board = standing ?? AddStoryFile(chapterId);
 
-        // 챕터마다 설정 노드 하나가 상시로 선다 (2026-08-17 소유자) — 작가가 만들고 지우는
+        // 챕터마다 설정 노드 하나가 상시로 선다 — 작가가 만들고 지우는
         // 것이 아니라 챕터에 딸린 자리다.
         EnsureChapterSettingsNode(board.Id);
 
-        // 판이 <b>막 섰으면</b> 챕터 조건이 함께 공급된다 (2026-10-29 · D2). 예전에는 이 일을
-        // 엑셀 [대본 가져오기]가 했다 — 그 단추가 사라진 지금, 조건을 먼저 적고 에피소드를
+        // 판이 <b>막 섰으면</b> 챕터 조건이 함께 공급된다 — 조건을 먼저 적고 에피소드를
         // 나중에 만든 챕터는 여기서 받지 않으면 대사 노드의 조건 목록이 비어 있게 된다.
         if (standing is null)
         {
@@ -1951,7 +1936,7 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 커스텀 이징 곡선 하나를 넣거나 고친다 (W67 후속) — 같은 이름이 있으면 키를
+    /// 커스텀 이징 곡선 하나를 넣거나 고친다 — 같은 이름이 있으면 키를
     /// 교체한다. 검증은 저작이 1차 방어다: 이름·키 규칙 위반은 예외로 막는다
     /// (런타임 로더는 같은 위반을 경고 로그 + 무시로 물러선다 — 조용한 어긋남을
     /// 이쪽에서 끊는 것이 싸다).
@@ -2034,7 +2019,7 @@ public sealed partial class ProjectEditor
     {
         string? backgrounds = AssetRootSettings.NormalizePath(backgroundsPath);
         string? portraits = AssetRootSettings.NormalizePath(portraitsPath);
-        // 오디오 루트 (W59) — 넘기지 않으면(null) 기존 값을 유지한다: 배경/초상화만
+        // 오디오 루트 — 넘기지 않으면(null) 기존 값을 유지한다: 배경/초상화만
         // 바꾸는 기존 호출(폴더 지정 UI)이 오디오 설정을 지우면 안 된다.
         string? bgm = AssetRootSettings.NormalizePath(bgmPath) ?? Project.AssetRoots.BgmPath;
         string? sfx = AssetRootSettings.NormalizePath(sfxPath) ?? Project.AssetRoots.SfxPath;
@@ -2056,7 +2041,7 @@ public sealed partial class ProjectEditor
         });
     }
 
-    /// <summary>라이브 출력 폴더를 바꾼다 (X12c). null은 라이브 출력 없음이다.</summary>
+    /// <summary>라이브 출력 폴더를 바꾼다. null은 라이브 출력 없음이다.</summary>
     public void SetOutputPath(string? outputPath)
     {
         string? next = AssetRootSettings.NormalizePath(outputPath);
@@ -2069,7 +2054,7 @@ public sealed partial class ProjectEditor
         Mutate(ProjectChangeKind.Content, () => Project.OutputPath = next);
     }
 
-    /// <summary>내보내기 양식 선택을 바꾼다 (X13). 프로젝트에 저장되고 되돌릴 수 있다.</summary>
+    /// <summary>내보내기 양식 선택을 바꾼다. 프로젝트에 저장되고 되돌릴 수 있다.</summary>
     public void SetExportFormats(ExportFormatSelection formats)
     {
         ArgumentNullException.ThrowIfNull(formats);
@@ -2169,18 +2154,18 @@ public sealed partial class ProjectEditor
     private ProjectChangeKind? _batchKind;
 
     /// <summary>
-    /// 여러 명령을 <b>되돌리기 한 칸 · 알림 한 번</b>으로 묶는다 (2026-10-29 · D2).
+    /// 여러 명령을 <b>되돌리기 한 칸 · 알림 한 번</b>으로 묶는다.
     ///
-    /// <b>왜 필요해졌나</b> — 엑셀 [대본 가져오기]가 걷히며 그 안에 숨어 있던 일(챕터 조건을 판에
-    /// 공급하는 일)이 <b>조건을 고치는 그 명령</b>으로 옮겨 왔다. 조건 하나를 고쳤는데 되돌리기가
+    /// <b>왜 필요한가</b> — 챕터 조건을 판에 공급하는 일은 <b>조건을 고치는 그 명령</b> 안에서
+    /// 일어난다. 조건 하나를 고쳤는데 되돌리기가
     /// 두 번이어야 하면 사람은 첫 번째에서 "안 돌아갔다"고 본다. 공급은 남의 명령
     /// (<see cref="AddSetNode"/>·<see cref="AddCondition"/>)을 부르므로, 짓기와 붙이기를 가르는
-    /// 예전 방식(<c>NewDialogueNodeCore</c>)으로는 감당이 안 된다.
+    /// 방식(<c>NewDialogueNodeCore</c>)으로는 감당이 안 된다.
     ///
-    /// ⚠ 안에서 예외가 나면 <b>묶음 전 상태로 되돌리고</b> 다시 던진다 — 반쯤 된 묶음이 남으면
+    /// 안에서 예외가 나면 <b>묶음 전 상태로 되돌리고</b> 다시 던진다 — 반쯤 된 묶음이 남으면
     /// 되돌리기 한 칸이 무엇을 되돌리는지 아무도 모른다.
     ///
-    /// ⚠ 묶음 안에서 아무것도 안 바뀌었으면 되돌리기 칸도 알림도 없다.
+    /// 묶음 안에서 아무것도 안 바뀌었으면 되돌리기 칸도 알림도 없다.
     /// </summary>
     public void Batch(Action change)
     {
@@ -2224,15 +2209,14 @@ public sealed partial class ProjectEditor
     }
 
     /// <summary>
-    /// 프로젝트가 <b>실제로 바뀐 횟수</b> (2026-08-24 성능). 두 시점의 값이 같으면 그
+    /// 프로젝트가 <b>실제로 바뀐 횟수</b>. 두 시점의 값이 같으면 그
     /// 사이에 아무 일도 없었다 — 무슨 일이 있었는지는 몰라도 <em>없었다</em>는 것은 안다.
     ///
-    /// <b>왜 필요했나</b> — 에피소드 동기화는 워크북을 반영할 때마다 셸에 "다시 그려라"고
-    /// 알렸는데, 그 근거로 쓰던 <c>EpisodeSyncReport.Applied</c>는 <b>"반영을 돌렸다"</b>는
+    /// <b>왜 필요한가</b> — <c>EpisodeSyncReport.Applied</c>는 <b>"반영을 돌렸다"</b>는
     /// 뜻이지 <b>"뭔가 달라졌다"</b>는 뜻이 아니다(`ChapterBoardSupplyTests`의
-    /// `같은_워크북을_두_번_동기화하면_두_번째는_변경이_없다`가 그 사실을 이미 못 박아
-    /// 두었다 — 두 번째도 <c>Applied</c>가 참이다). 그래서 아무것도 안 바뀐 동기화가
-    /// 매번 전체 다시 그리기를 방송했고, 그 순간 사람이 <b>타이핑하던 칸이 파괴됐다.</b>
+    /// `같은_워크북을_두_번_동기화하면_두_번째는_변경이_없다`가 못 박아
+    /// 둔다 — 두 번째도 <c>Applied</c>가 참이다). 그것을 다시 그리기의 근거로 쓰면 아무것도 안 바뀐
+    /// 동기화도 매번 전체 다시 그리기를 방송하고, 그 순간 사람이 <b>타이핑하던 칸이 파괴된다.</b>
     ///
     /// 각 변경을 일일이 세는 대신 여기 하나를 둔다: 새 편집 명령이 생겨도 <c>Mutate</c>를
     /// 지나는 한 저절로 세어진다. 빠뜨릴 수 있는 목록을 만들지 않는다.
@@ -2263,10 +2247,9 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 주인 없는 출구를 버린다 — 갈래가 사라졌으면 거기 매달린 배선도 갈 곳이 없다.
     ///
-    /// ⚠ <b>신원을 흐름 해석과 같은 규칙으로 짓는다</b>(<see cref="Flow.BranchAnchor"/>).
-    /// 예전에는 여기가 <c>extension.Transition</c>(첫 전환) 하나만 보고 <b>맨 줄 Id</b>만
-    /// 살렸다. 그래서 (ㄱ) 첫 전환이 여는 것이 아닌 줄의 출구가 통째로 지워졌고,
-    /// (ㄴ) 한 줄이 갈래를 여럿 열 때 둘째부터의 출구가 매달자마자 사라졌다.
+    /// <b>신원을 흐름 해석과 같은 규칙으로 짓는다</b>(<see cref="Flow.BranchAnchor"/>).
+    /// 첫 전환 하나만 보고 <b>맨 줄 Id</b>만 살리면 (ㄱ) 첫 전환이 여는 것이 아닌 줄의 출구가
+    /// 통째로 지워지고, (ㄴ) 한 줄이 갈래를 여럿 열 때 둘째부터의 출구가 매달자마자 사라진다.
     /// </summary>
     private static void PruneBranchExits(DialogueNode node)
     {
@@ -2285,7 +2268,7 @@ public sealed partial class ProjectEditor
             }
         }
 
-        // 대본 끝의 줄 없는 갈래들 (2026-08-24).
+        // 대본 끝의 줄 없는 갈래들.
         int trailing = 0;
 
         foreach (LineConditionTransition transition in node.TrailingTransitions)
@@ -2380,12 +2363,11 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 그 챕터에서 <b>아직 안 쓰인 자리표시 EpisodeId</b> — <c>new01</c>, <c>new02</c>…
     ///
-    /// ⛔ 이 규약은 2026-09-18까지 <b>화면 둘에 손으로 복사돼</b> 있었고(챕터 그래프·대본 탭),
-    /// 연출 그래프는 아예 다른 규약(<c>장면 3</c>)을 썼다 — 같은 행동이 창구마다 다른 Id를
-    /// 만들었다. EpisodeId는 진행 JSON과 산출물의 <b>열쇠</b>로 나가므로(엑셀 시절에는 대본 워크북의
-    /// 파일 이름이었다) 공백이 든 Id는 특히 나쁘다.
+    /// 규약은 여기 하나다 — 창구마다 규약이 따로 있으면 같은 행동이 창구마다 다른 Id를
+    /// 만든다. EpisodeId는 진행 JSON과 산출물의 <b>열쇠</b>로 나가므로 공백이 든 Id(<c>장면 3</c>)는
+    /// 특히 나쁘다.
     ///
-    /// ⚠ 사람이 고칠 것을 전제한 이름이다 — 이름을 정하는 것은 기획자의 일이고, 여기서는
+    /// 사람이 고칠 것을 전제한 이름이다 — 이름을 정하는 것은 기획자의 일이고, 여기서는
     /// <b>겹치지 않는 자리</b>만 준다.
     /// </summary>
     /// <summary>

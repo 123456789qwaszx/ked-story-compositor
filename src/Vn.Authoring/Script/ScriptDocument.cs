@@ -81,11 +81,10 @@ public sealed class ScriptLocale
 /// 본문을 복사하지 않는다. 같은 문장을 고칠 수 있는 자리가 두 곳이 되면 어느 쪽이 진실인지
 /// 아무도 답할 수 없게 된다.
 ///
-/// 대본을 쓰고 고치는 것은 ked-story-director다 — 이 툴은 원고를 읽기만 한다(2026-10-29).
+/// 대본을 쓰고 고치는 것은 ked-story-director다 — 이 툴은 원고를 읽기만 한다.
 ///
-/// ⛔ 2026-10-29까지는 카드와 따로 선 문서였다 — 제 Id · 이름을 들고 <c>script/*.vnscript.json</c>에 따로 저장됐고 카드는
-/// Id로 가리켰다. director에서 카드와 늘 1:1이 된 뒤로 카드가 직접 들고, 원고 형식 4부터는 판 파일 안에 카드와 함께
-/// 든다(director <c>docs/plans/script-merge.md</c>). 이 툴은 형식 3 · 4를 다 읽는다.
+/// 대본은 카드와 늘 1:1이라 카드가 직접 든다. 원고 형식 4는 판 파일 안에 카드와 함께 들고, 형식 3은 대본을
+/// <c>script/*.vnscript.json</c>에 따로 두고 카드가 Id로 가리킨다. 이 툴은 형식 3 · 4를 다 읽는다.
 /// </summary>
 public sealed class ScriptDocument
 {

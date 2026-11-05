@@ -8,16 +8,16 @@ using Vn.Authoring.Model;
 namespace Vn.App.Views;
 
 /// <summary>
-/// 이징 곡선 그래프 에디터 (W67 후속) — 마야 그래프 에디터의 감각으로 키를 만진다.
+/// 이징 곡선 그래프 에디터 — 마야 그래프 에디터의 감각으로 키를 만진다.
 ///
 /// - 키 드래그: 자리(t)와 값(v). 첫/끝 키는 <b>자리째 잠긴다</b> — 기울기(탄젠트)만
-///   만진다 (2026-08-21 소유자: "overshoot은 중간에서만 허용" — 끝값이 어긋나면
+///   만진다 (overshoot은 중간에서만 허용한다 — 끝값이 어긋나면
 ///   리듀서가 접은 종점과 재생이 갈린다)
 /// - 잠기는 끝값은 <b>곡선 종류</b>가 정한다: 이동은 (1,1), 진동(`gesture`)은 (1,0).
 ///   판정 규칙은 코어 <see cref="CurveKindRules"/> 하나이고 런타임 로더도 그것을 쓴다
 /// - 탄젠트 핸들 드래그: 선택 키의 in/out 기울기. Shift를 누르면 한쪽만 꺾인다
 /// - 곡선 빈 자리 클릭: 그 t에 키 추가(값은 지금 곡선 위)
-/// - 키 삭제는 바깥의 [키 삭제] 버튼 — 우클릭은 소유자 보류라 여기서 쓰지 않는다
+/// - 키 삭제는 바깥의 [키 삭제] 버튼 — 우클릭은 여기서 쓰지 않는다
 ///
 /// 그리는 곡선은 코어 <see cref="CurveFunctions"/> 그대로다 — 에디터가 보여 주는 모양 =
 /// 프리뷰가 재생하는 모양 = 유니티가 재생하는 모양. 편집은 뷰 안의 작업 사본에서 일어나고,
@@ -61,7 +61,7 @@ internal sealed class EaseCurveEditor : Control
     }
 
     /// <summary>
-    /// 이 곡선이 무엇에 쓰이는가 — <b>끝값이 곧 종류</b>다 (2026-08-21 `gesture` 개통).
+    /// 이 곡선이 무엇에 쓰이는가 — <b>끝값이 곧 종류</b>다.
     /// <see cref="CurveKind.Motion"/>은 (1,1)로, <see cref="CurveKind.Oscillation"/>은
     /// (1,0)으로 끝난다. 판정 규칙은 코어 <see cref="CurveKindRules"/> 하나이고
     /// 런타임 로더도 그것을 쓴다 — 여기서 다른 눈금을 쓰면 "툴에서는 저장되는데 재생에서는
@@ -129,9 +129,8 @@ internal sealed class EaseCurveEditor : Control
 
     /// <summary>
     /// 기울기(dv/dt) ↔ 화면 팔 벡터 변환의 순수 산수 — <b>화면 y는 값과 반대로 자란다</b>
-    /// (값이 오르면 픽셀 y는 줄어든다). 처음 이 부호를 빼먹어 핸들이 곡선과 거울로 서고
-    /// 날개를 돌리면 반대로 굽는 버그가 있었다(2026-08-20 소유자 보고) — 왕복 항등과
-    /// 방향을 테스트가 지킨다.
+    /// (값이 오르면 픽셀 y는 줄어든다). 이 부호를 빼먹으면 핸들이 곡선과 거울로 서고
+    /// 날개를 돌리면 반대로 굽는다 — 왕복 항등과 방향을 테스트가 지킨다.
     /// </summary>
     internal static double HandleDyPixels(double slope, double dxPixels, double pixelsPerT, double pixelsPerValue)
         => -slope * dxPixels / pixelsPerT * pixelsPerValue;

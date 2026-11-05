@@ -6,7 +6,7 @@
             <TextBlock Text="연출 노드" FontWeight="SemiBold" />
             <TextBox x:Name="NameBox" PlaceholderText="노드 이름" />
 
-            <!-- 입력 결과·공급 대상 콤보와 [연출 발행]은 2026-08-21에 사라졌다 —
+            <!-- 입력 결과·공급 대상은 고르지 않는다 —
                  채널이 자동으로 최신 대사 발행본을 고정하고 공급·발행까지 한다
                  (ProjectEditor.EnsurePresentationChannel). 상태는 아래 한 줄이 말한다. -->
             <TextBlock x:Name="ChannelStatusText" FontSize="11" Opacity="0.65" TextWrapping="Wrap" />

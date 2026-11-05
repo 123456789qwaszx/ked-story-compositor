@@ -9,8 +9,8 @@ using Vn.Authoring.Flow;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 무대 아래 프레임 타임라인 (2026-08-22 소유자: "프레임별로 눈금을 매긴 다음, 재생될 때
-/// 핸들이 현재 재생 중인 프레임에 맞춰지도록. 핸들도 프레임 단위로 움직이도록").
+/// 무대 아래 프레임 타임라인 — 프레임별로 눈금이 서고, 재생될 때 핸들이 현재 재생 중인
+/// 프레임에 맞춰지며, 핸들도 프레임 단위로 움직인다.
 ///
 /// 여기서 지키는 것 셋: <b>눈금 한 칸 = 한 프레임</b> · <b>손잡이는 프레임 사이에 안 선다</b>
 /// (스냅 설정만으로는 끄는 동안 미끄러진다) · <b>재생이 손잡이를 민다</b>.
@@ -51,7 +51,7 @@ public sealed class StageTimelineTests
         Assert.Equal(1, scrub.TickFrequency);
         Assert.True(scrub.IsSnapToTickEnabled);
 
-        // ⚠ 눈금이 <b>보여야</b> 한다 — TickFrequency만 있고 배치가 없으면 그려지지 않는다.
+        // 눈금이 <b>보여야</b> 한다 — TickFrequency만 있고 배치가 없으면 그려지지 않는다.
         Assert.NotEqual(TickPlacement.None, scrub.TickPlacement);
 
         // 키보드·페이지 이동도 한 프레임씩 — 손짓마다 걸음이 다르면 안 된다.
@@ -77,8 +77,8 @@ public sealed class StageTimelineTests
     });
 
     /// <summary>
-    /// 타임라인 오른쪽의 라인 넘기기 (2026-08-22 소유자) — 예전에는 왼쪽 터미널이나 씬
-    /// 선택기로만 라인을 옮길 수 있어, 속도를 맞추고 재생하는 손이 판을 가로질러야 했다.
+    /// 타임라인 오른쪽의 라인 넘기기 — 속도를 맞추고 재생하는 손이 판을 가로지르지 않고
+    /// 그 자리에서 라인을 옮긴다.
     /// </summary>
     [Fact]
     public void 라인_넘기기가_끝에서_회색이_되고_같은_통로로_옮긴다() => HeadlessUi.Run(() =>
@@ -121,8 +121,8 @@ public sealed class StageTimelineTests
     });
 
     /// <summary>
-    /// detour 복귀 스택 (2026-08-22 소유자 보고: "detour로 중간에 다른 노드로 넘어가는 건
-    /// 구현이 되는데, 끝까지 재생한 뒤에 원래 노드로 돌아오지가 않네").
+    /// detour 복귀 스택 — detour로 중간에 다른 노드로 넘어가면, 끝까지 재생한 뒤 원래 노드로
+    /// 돌아온다.
     /// </summary>
     [Fact]
     public void detour는_돌아올_자리를_쌓고_꺼낼_때_다녀왔음을_표시한다()
@@ -143,7 +143,7 @@ public sealed class StageTimelineTests
         Assert.Equal("nd_a", outer.NodeId);
         Assert.Equal("ln_a1", outer.ResumeAfterLineId);
 
-        // ⚠ 다녀왔음 표시가 없으면 돌아온 경로가 같은 출구를 또 타 무한히 돈다.
+        // 다녀왔음 표시가 없으면 돌아온 경로가 같은 출구를 또 타 무한히 돈다.
         Assert.Contains("ln_labelA", playback.SpentExitsOf("nd_a"));
 
         Assert.Null(playback.PopDetour());
@@ -173,7 +173,7 @@ public sealed class StageTimelineTests
     });
 
     /// <summary>
-    /// 줄 앞 분기 (2026-11-04 소유자: "분기를 타야 하는데 분기는 안 타는 것 같아") — 복귀는 "그 줄부터"이고, 다녀왔음 키는
+    /// 줄 앞 분기 — 복귀는 "그 줄부터"이고, 다녀왔음 키는
     /// 줄과 대상의 쌍이라 한 줄의 분기 여럿이 각각 표시된다. 새 전체 재생은 RunStarted를 울려 호스트가 ▶ 누른 줄 앞의
     /// 분기부터 다녀올 수 있고, 일시정지 재개는 울리지 않는다.
     /// </summary>
@@ -215,7 +215,7 @@ public sealed class StageTimelineTests
     [Fact]
     public void 재생_중에_라인을_옮기면_재생이_멈춘다() => HeadlessUi.Run(() =>
     {
-        // ⚠ 자동 진행은 제가 부른 이동을 기다리는 중이다 — 거기에 사람의 이동이 끼어들면
+        // 자동 진행은 제가 부른 이동을 기다리는 중이다 — 거기에 사람의 이동이 끼어들면
         // 둘이 같은 자리를 다투고 어느 쪽이 이겼는지 화면이 말하지 못한다.
         var playback = new StagePlayback();
         playback.OnRequest(0, 3, "첫 줄", isChoice: false, transitionSeconds: 0);

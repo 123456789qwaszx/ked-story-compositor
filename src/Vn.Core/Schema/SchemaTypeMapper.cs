@@ -28,7 +28,7 @@ internal static class SchemaTypeMapper
     /// <summary>
     /// 스키마의 default를 Yarn 값으로 변환한다.
     ///
-    /// 예전에는 <c>Convert.ToSingle</c> 계열을 썼는데, 그것은 변환이 <em>가능하기만 하면</em>
+    /// <c>Convert.ToSingle</c> 계열은 쓰지 않는다 — 그것은 변환이 <em>가능하기만 하면</em>
     /// 통과시킨다. 그래서 bool 변수에 <c>1</c>, string 변수에 <c>true</c>, number 변수에 <c>"5"</c>가
     /// 조용히 들어가고, 작가는 자기가 쓴 것과 다른 값이 게임에 들어간 줄 모른다.
     /// 여기서는 JSON의 실제 종류(<see cref="JsonElement.ValueKind"/>)를 선언 타입과 직접 대조한다.

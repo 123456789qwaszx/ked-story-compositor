@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Vn.Authoring.Assets;
 
 /// <summary>
-/// 런타임 U12-v1이 내보내는 초상화 덤프 매니페스트(<c>portraits.manifest.json</c>).
+/// 런타임이 내보내는 초상화 덤프 매니페스트(<c>portraits.manifest.json</c>).
 ///
 /// 초상화는 배경과 달리 파일명 규약만으로 찾을 수 없다 — 런타임의 원본이
 /// <c>(characterId, variantKey, emotionKey) → Sprite</c> 키 매핑이기 때문이다.

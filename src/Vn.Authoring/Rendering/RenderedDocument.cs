@@ -13,8 +13,6 @@ public enum RenderedSegmentKind
     PresentationCommand,
     DialogueLine,
 
-    // ⛔ ChoiceOption · ChoiceEnd · BranchJump(선택지 옵션의 <<jump>> 출구)는 대사 안 선택지와 함께 2026-11-04에 걷혔다.
-
     /// <summary>
     /// 조건 갈래(IF)의 커스텀 씬 출구. <c>&lt;&lt;detour&gt;&gt;</c> — 씬을 재생하고
     /// 갈래로 <b>돌아와</b> 나머지 대본을 계속한다. jump면 갈래 뒤의 대사가 전부 죽는다.

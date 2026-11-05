@@ -16,7 +16,7 @@ namespace Vn.Authoring.Serialization;
 /// </summary>
 public static class ProjectSnapshotCodec
 {
-    /// <summary>3 — 카드의 대본이 카드 안에 든다(2026-10-29 · 원고 형식 4). 스냅샷은 메모리에만 산다.</summary>
+    /// <summary>3 — 카드의 대본이 카드 안에 든다(원고 형식 4). 스냅샷은 메모리에만 산다.</summary>
     public const int CurrentSnapshotVersion = 3;
 
     public static string Encode(StoryProject project)
@@ -106,8 +106,8 @@ public static class ProjectSnapshotCodec
             root["compositions"] = compositions;
         }
 
-        // 작가 화자·커스텀 곡선 — manifest와 같은 직렬화 하나를 쓴다. 예전엔 스냅샷에
-        // 안 실려 <b>undo가 작가 화자를 지우는 잠복 버그</b>가 있었다(W67 후속에서 발견).
+        // 작가 화자·커스텀 곡선 — manifest와 같은 직렬화 하나를 쓴다. 스냅샷에서
+        // 빠지면 <b>undo가 작가 화자를 지운다</b>.
         if (ChapterDocumentJson.Write(project.Chapters) is { } chapters)
         {
             root["chapters"] = chapters;

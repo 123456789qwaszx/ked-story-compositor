@@ -55,7 +55,6 @@ internal sealed class AuthoringSession
 
     /// <summary>
     /// 프로젝트가 든 챕터를 화면이 쓰는 모양으로 낸다 — 무대의 챕터 · 씬 선택기가 읽는다.
-    /// (⛔ 예전에는 챕터 그래프 뷰가 폈고 셸이 나눠 줬다 — 그 뷰는 2026-10-29에 걷혔다.)
     /// </summary>
     public IReadOnlyList<ChapterEntry> ChapterEntries() =>
         Project.Chapters
@@ -115,26 +114,26 @@ internal sealed class AuthoringSession
     public PreviewImageCache<Bitmap> ImageCache { get; } = new(path => new Bitmap(path));
 
     /// <summary>
-    /// 프리뷰 갈래 선택 (W35) — "지금 어느 갈래를 보고 있는가". 뷰 상태라 저장하지 않고,
+    /// 프리뷰 갈래 선택 — "지금 어느 갈래를 보고 있는가". 뷰 상태라 저장하지 않고,
     /// 프로젝트를 새로 열면 비워진다. 대사·연출 편집기가 같은 선택 하나를 본다(LineId 불변 덕).
     /// </summary>
     public StageBranchSelection BranchSelection { get; } = new();
 
     /// <summary>
-    /// 조건 값 시뮬의 시작값 오버라이드 (W36-b) — 변수명 → "이 값으로 시작한다고 치자".
+    /// 조건 값 시뮬의 시작값 오버라이드 — 변수명 → "이 값으로 시작한다고 치자".
     /// 뷰 상태라 저장하지 않는다. 비어 있으면 등록 초기값 그대로다.
     /// </summary>
     public Dictionary<string, string> SimulationValues { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 챕터 런의 지금 스탯을 대본 조건 평가기 값으로 (2026-11-04) — 키는 <c>stat("키")</c>. 무대 프리뷰가 런이 설 때와
+    /// 챕터 런의 지금 스탯을 대본 조건 평가기 값으로 — 키는 <c>stat("키")</c>. 무대 프리뷰가 런이 설 때와
     /// 간선을 탈 때 갱신한다. 이것이 있어야 분기 카드의 첫머리 조건(<c>&lt;&lt;if stat("성실") &gt;= 2&gt;&gt;</c>)이
-    /// 수동 선택 없이 런의 스탯으로 판정된다 — 그 전에는 평가 불가라 늘 사람이 골라야 했다.
+    /// 수동 선택 없이 런의 스탯으로 판정된다 — 없으면 평가 불가라 늘 사람이 골라야 한다.
     /// </summary>
     public IReadOnlyDictionary<string, string> ChapterStatValues { get; set; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
-    // ── 런타임 tuning (W23) ────────────────────────────────────────────────
+    // ── 런타임 tuning ────────────────────────────────────────────────
 
     private RuntimeTuningLibrary? _tuningLibrary;
     private string _tuningLibrarySignature = string.Empty;
@@ -185,19 +184,19 @@ internal sealed class AuthoringSession
     /// <summary>해석된 초상화 루트 절대 경로 — 표정 스프라이트 복제(설정노드)가 쓴다.</summary>
     public string? PortraitsRoot => ResolveAssetRoots().Portraits;
 
-    /// <summary>해석된 배경 루트 절대 경로 — 가져오기·폴더 열기(W48)가 쓴다.</summary>
+    /// <summary>해석된 배경 루트 절대 경로 — 가져오기·폴더 열기가 쓴다.</summary>
     public string? BackgroundsRoot => ResolveAssetRoots().Backgrounds;
 
-    /// <summary>해석된 BGM 루트 절대 경로 (W59). 파일명이 곧 clipKey다.</summary>
+    /// <summary>해석된 BGM 루트 절대 경로. 파일명이 곧 clipKey다.</summary>
     public string? BgmRoot => ResolvePath(Project.AssetRoots.BgmPath);
 
-    /// <summary>해석된 효과음 루트 절대 경로 (W59). 파일명이 곧 clipKey다.</summary>
+    /// <summary>해석된 효과음 루트 절대 경로. 파일명이 곧 clipKey다.</summary>
     public string? SfxRoot => ResolvePath(Project.AssetRoots.SfxPath);
 
-    /// <summary>오디오 파일 확장자 규약 (W59) — 이 셋만 clipKey 후보가 된다.</summary>
+    /// <summary>오디오 파일 확장자 규약 — 이 셋만 clipKey 후보가 된다.</summary>
     public static readonly string[] AudioExtensions = [".mp3", ".wav", ".ogg"];
 
-    /// <summary>루트 폴더의 오디오 clipKey 목록 (W59) — 파일명(확장자 제외)이 곧 키다.</summary>
+    /// <summary>루트 폴더의 오디오 clipKey 목록 — 파일명(확장자 제외)이 곧 키다.</summary>
     public IReadOnlyList<string> AudioClipKeys(string? root)
     {
         if (root is null || !Directory.Exists(root))
@@ -216,7 +215,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// clipKey를 실제 파일 경로로 되찾는다 (W62 미리 듣기) — 파일명(확장자 제외)=키
+    /// clipKey를 실제 파일 경로로 되찾는다(미리 듣기) — 파일명(확장자 제외)=키
     /// 규약의 역방향. 없으면 null — 호출자가 사유를 상태줄로 알린다.
     /// </summary>
     public string? ResolveAudioClipPath(string? root, string clipKey)
@@ -234,7 +233,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 아무 곳의 오디오 파일을 BGM/효과음 루트로 복제해 들여온다 (W59) — 배경 가져오기와
+    /// 아무 곳의 오디오 파일을 BGM/효과음 루트로 복제해 들여온다 — 배경 가져오기와
     /// 같은 규약: 파일명이 곧 키, 같은 이름은 건너뛴다.
     /// </summary>
     public int ImportAudio(bool bgm, IEnumerable<string> files)
@@ -281,7 +280,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 앱에 내장된 기본 튜닝(런타임 실측 덤프의 스냅샷)을 프로젝트 옆 규약 폴더에 만든다 (W46).
+    /// 앱에 내장된 기본 튜닝(런타임 실측 덤프의 스냅샷)을 프로젝트 옆 규약 폴더에 만든다.
     /// 이미 내용이 있는 폴더는 덮어쓰지 않는다 — 교체는 <see cref="ConnectTuningFolder"/>가 한다.
     /// </summary>
     public void CreateDefaultTuning()
@@ -327,7 +326,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 기존 튜닝 폴더를 골라 프로젝트 옆 규약 폴더로 복사해 연결한다 (W46).
+    /// 기존 튜닝 폴더를 골라 프로젝트 옆 규약 폴더로 복사해 연결한다.
     /// 같은 이름의 파일은 덮어쓴다 — "통째 교체"가 튜닝 관리 규약이다(io-reference §1-3).
     /// </summary>
     public void ConnectTuningFolder(string sourceDirectory)
@@ -380,7 +379,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 아무 곳의 배경 PNG를 배경 루트로 복제해 들여온다 (W48) — "폴더에 채워 넣는" 느낌의
+    /// 아무 곳의 배경 PNG를 배경 루트로 복제해 들여온다 — "폴더에 채워 넣는" 느낌의
     /// 짧은 길. 파일명이 곧 키이므로 이름 그대로 복사하고, 같은 이름이 있으면 건너뛴다
     /// (덮어쓰면 기존 배경이 소리 없이 바뀐다).
     /// </summary>
@@ -418,8 +417,8 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 아무 곳의 PNG를 초상화 규약 자리({캐릭터}/{변형}/{표정 2자리}.png)로 복제해 들여온다
-    /// (W48). 표정 번호는 그 폴더의 빈 번호부터 차례로 붙는다 — 이름 규약을 몰라도
+    /// 아무 곳의 PNG를 초상화 규약 자리({캐릭터}/{변형}/{표정 2자리}.png)로 복제해 들여온다.
+    /// 표정 번호는 그 폴더의 빈 번호부터 차례로 붙는다 — 이름 규약을 몰라도
     /// 채워 넣는 순서대로 01, 02…가 된다.
     /// </summary>
     public int ImportPortraits(string characterKey, char variant, IEnumerable<string> files)
@@ -504,11 +503,11 @@ internal sealed class AuthoringSession
     public event EventHandler<ProjectChangedEventArgs>? Changed;
 
     /// <summary>
-    /// 상태줄 글자가 바뀌었을 때. <b><see cref="Changed"/>와 갈라 둔 이유가 성능이다</b>
-    /// (2026-08-18): 예전에는 <see cref="SetStatus"/>가 프로젝트 변경으로 방송돼서,
+    /// 상태줄 글자가 바뀌었을 때. <b><see cref="Changed"/>와 갈라 둔 이유가 성능이다</b>:
+    /// <see cref="SetStatus"/>가 프로젝트 변경으로 방송되면
     /// "에피소드 3개를 반영했습니다" 한 줄이 챕터 전체 재읽기 + 판 재구성을
-    /// 불렀다. 동기화가 상태를 여러 번 적으면 그만큼 되풀이됐고, 그 되풀이가 다시
-    /// 상태를 적어 스스로를 먹였다 — 노드 60개에서 첫 화면이 58초 걸리던 정체다.
+    /// 부른다. 동기화가 상태를 여러 번 적으면 그만큼 되풀이되고, 그 되풀이가 다시
+    /// 상태를 적어 스스로를 먹인다 — 노드 60개에서 첫 화면이 58초 걸리는 고리다.
     ///
     /// 상태줄은 프로젝트가 아니다. 듣는 쪽은 글자만 갈아 끼운다.
     /// </summary>
@@ -519,9 +518,9 @@ internal sealed class AuthoringSession
     /// <summary>
     /// <see cref="Definition"/>이 갈렸을 때 — 기획자의 어휘가 바뀌었다는 알림이다.
     ///
-    /// ⚠ <b>프로젝트 변경(<see cref="Changed"/>)과 갈라 둔다.</b> 정의 파일은 프로젝트
-    /// 바깥에 살고, 저것으로 방송하면 챕터 재읽기·판 재구성이 딸려 온다(2026-08-18
-    /// 성능 항목의 그 고리다). 듣는 쪽은 <b>제가 그리는 목록만</b> 다시 세운다.
+    /// 주의: <b>프로젝트 변경(<see cref="Changed"/>)과 갈라 둔다.</b> 정의 파일은 프로젝트
+    /// 바깥에 살고, 저것으로 방송하면 챕터 재읽기·판 재구성이 딸려 온다(<see cref="StatusChanged"/>와
+    /// 같은 고리다). 듣는 쪽은 <b>제가 그리는 목록만</b> 다시 세운다.
     /// </summary>
 
     /// <summary>
@@ -546,7 +545,7 @@ internal sealed class AuthoringSession
 
     /// <summary>
     /// 원고 manifest나 이 툴의 파일을 연다 — 둘을 합쳐 한 프로젝트로(<see cref="CompositionStore.Load"/>).
-    /// ⚠ 원고는 <b>맞추지 않는다</b> — 카드 없는 에피소드에 카드를 세우는 일 같은 원고 쓰기는 director의 몫이다.
+    /// 주의: 원고는 <b>맞추지 않는다</b> — 카드 없는 에피소드에 카드를 세우는 일 같은 원고 쓰기는 director의 몫이다.
     /// </summary>
     public void Open(string path)
     {
@@ -561,7 +560,7 @@ internal sealed class AuthoringSession
         SimulationValues.Clear();
         _tuningLibrary = null;
 
-        // 열 때 저절로 다시 묶는다 (2026-11-04) — director가 대사를 고쳤으면 연출 채널을 갱신하고 결과만 말한다.
+        // 열 때 저절로 다시 묶는다 — director가 대사를 고쳤으면 연출 채널을 갱신하고 결과만 말한다.
         // 스냅샷은 그 뒤에 뜬다: 다시 묶은 것은 저장할 거리다(저장하면 남는다).
         var refresher = new ProjectEditor(project);
         CompositionRefresh.Report refresh = CompositionRefresh.Apply(refresher, Definition);
@@ -613,7 +612,7 @@ internal sealed class AuthoringSession
     /// 원고를 아직 안 열었으면 쓸 자리가 없다: 이 툴의 파일은 원고 옆에 산다.
     /// </summary>
     /// <summary>
-    /// 게임 폴더 설정 (2026-11-04) — 프로젝트 폴더의 <c>runtime.target.json</c>, director와 같은 파일. 풀린 폴더가 실제로
+    /// 게임 폴더 설정 — 프로젝트 폴더의 <c>runtime.target.json</c>, director와 같은 파일. 풀린 폴더가 실제로
     /// 있을 때만 <see cref="GameFolder"/>가 있다.
     /// </summary>
     public RuntimeTarget? RuntimeTarget { get; private set; }
@@ -633,8 +632,8 @@ internal sealed class AuthoringSession
 
         bool firstSave = !File.Exists(ProjectPath);
 
-        // 첫 저장 (W48): 에셋 폴더 규약을 미리 심는다 — 루트가 저장본에 들어가야 하므로 디스크에 쓰기 전에
-        // 지정한다. 오디오도 같은 구조 (W59).
+        // 첫 저장: 에셋 폴더 규약을 미리 심는다 — 루트가 저장본에 들어가야 하므로 디스크에 쓰기 전에
+        // 지정한다. 오디오도 같은 구조다.
         if (firstSave && Project.AssetRoots.IsEmpty)
         {
             Editor.SetAssetRoots("assets/backgrounds", "assets/portraits", "assets/bgm", "assets/sfx");
@@ -655,7 +654,7 @@ internal sealed class AuthoringSession
     }
 
     /// <summary>
-    /// 프로젝트 폴더의 기본 살림 (W48·W60) — <b>매 저장마다</b> 없는 에셋 폴더를 만들고,
+    /// 프로젝트 폴더의 기본 살림 — <b>매 저장마다</b> 없는 에셋 폴더를 만들고,
     /// 튜닝 폴더가 통째로 없으면 기본 튜닝을 깐다. 첫 저장뿐 아니라 다른 이름으로 저장한
     /// 새 위치, 실수로 폴더를 지운 경우까지 복구한다. 내용이 있는 폴더는 불가침이다.
     /// 무언가 실제로 만들었을 때만 true — 조용한 저장이 시끄러워지지 않는다.

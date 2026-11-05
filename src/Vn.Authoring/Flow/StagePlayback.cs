@@ -1,7 +1,7 @@
 namespace Vn.Authoring.Flow;
 
 /// <summary>
-/// 무대 재생의 진행 모델 (W31·W32) — 시간의 계산만 있고 타이머·UI가 없다(테스트 가능).
+/// 무대 재생의 진행 모델 — 시간의 계산만 있고 타이머·UI가 없다(테스트 가능).
 ///
 /// 라인 하나의 진행은 세 단계다:
 ///   타자(글자 단위 노출) → 여운(전문 표시 후 잠깐) → 다음 라인.
@@ -10,25 +10,25 @@ namespace Vn.Authoring.Flow;
 ///
 /// 시간의 원천은 호스트가 부르는 <see cref="Tick"/> 하나이고, 라인 이동은
 /// <see cref="MoveRequested"/>(delta)로 기존 편집기 선택 경로에 위임한다 —
-/// 재생용 별도 상태 경로를 만들지 않는다(지시서 W31-1). 이동이 실제로 반영되면
+/// 재생용 별도 상태 경로를 만들지 않는다. 이동이 실제로 반영되면
 /// 새 프리뷰 요청이 <see cref="OnRequest"/>로 돌아와 다음 라인의 타자가 시작된다.
 ///
-/// 재생 위치는 뷰 상태다 — 저장하지 않는다(원칙 E).
+/// 재생 위치는 뷰 상태다 — 저장하지 않는다.
 /// </summary>
 public sealed class StagePlayback
 {
     /// <summary>타자 속도(문자/초) 기본값 — 툴 편의 설정(게임 사양이 아니다). 체감 속도는 배율이 조절한다.</summary>
     public const double CharactersPerSecond = 30;
 
-    /// <summary>배율 순환 순서 (W34-a) — 컨트롤 버튼이 이 순서로 돈다.</summary>
+    /// <summary>배율 순환 순서 — 컨트롤 버튼이 이 순서로 돈다.</summary>
     public static readonly double[] SpeedSteps = [0.5, 1, 1.5, 2];
 
     private double _speedMultiplier = 1;
 
     /// <summary>
-    /// 재생 속도 배율 (W34-a) — 타자·여운·전이 전부에 일괄 적용된다(시간의 원천이 하나라
+    /// 재생 속도 배율 — 타자·여운·전이 전부에 일괄 적용된다(시간의 원천이 하나라
     /// 배율도 한 곳이다). 툴 편의 설정이라 세션을 넘어 기억된다(AppSettings).
-    /// <b>실제 게임에도 배속이 있어 남긴다</b> (2026-08-21 소유자).
+    /// <b>실제 게임에도 배속이 있어 남긴다</b>.
     /// </summary>
     public double SpeedMultiplier
     {
@@ -68,7 +68,7 @@ public sealed class StagePlayback
     private bool _isChoice;
     private double _elapsed;
 
-    // 전이 (W33) — 직전 라인의 정지 프레임에서 이 라인의 정지 프레임으로 보간 중인가.
+    // 전이 — 직전 라인의 정지 프레임에서 이 라인의 정지 프레임으로 보간 중인가.
     private bool _transitionActive;
     private double _transitionDuration;
     private double _transitionElapsed;
@@ -86,8 +86,7 @@ public sealed class StagePlayback
     public bool CanPlay => LineCount > 0 && LineIndex >= 0;
 
     /// <summary>
-    /// 전체 재생 중 — [▶] 버튼만 ⏸로 선다 (2026-08-21 소유자: "라인만 재생을 눌렀는데
-    /// 재생버튼이 일시정지로 바뀌는 것도 불편"). 두 버튼이 각자 제 모드만 비춘다.
+    /// 전체 재생 중 — [▶] 버튼만 ⏸로 선다. 두 버튼이 각자 제 모드만 비춘다.
     /// </summary>
     public bool IsPlayingAll => IsPlaying && !_lineOnly;
 
@@ -95,7 +94,7 @@ public sealed class StagePlayback
     public bool IsPlayingLine => IsPlaying && _lineOnly;
 
     /// <summary>
-    /// 대사창에 보일 글자 수 (W32). null이면 전문 — 타자 중일 때만 값이 있다.
+    /// 대사창에 보일 글자 수. null이면 전문 — 타자 중일 때만 값이 있다.
     /// 일시정지·정지·선택지 화면에서는 전문이다(조작 모드는 타자를 하지 않는다).
     /// </summary>
     public int? VisibleCharacters =>
@@ -104,8 +103,8 @@ public sealed class StagePlayback
             : null;
 
     /// <summary>
-    /// 전이 진행도 (W33). <b>null = 정지 화면</b> — 뷰는 라인 시작의 정지 프레임을 보인다
-    /// (이동 슬롯은 출발 자리, W66 소유자 결정). 값 0..1은 재생 중의 보간이고,
+    /// 전이 진행도. <b>null = 정지 화면</b> — 뷰는 라인 시작의 정지 프레임을 보인다
+    /// (이동 슬롯은 출발 자리). 값 0..1은 재생 중의 보간이고,
     /// <b>전이가 끝나도 재생 중에는 1로 남는다</b> — null로 떨어지면 이동 슬롯이
     /// 출발 자리로 되돌아가 버린다.
     /// </summary>
@@ -127,7 +126,7 @@ public sealed class StagePlayback
     public event Action<int>? MoveRequested;
 
     /// <summary>
-    /// 문서 끝에서 호스트에게 묻는다 (W39): 실행 출구를 따라 다음 노드로 이어질 수 있는가.
+    /// 문서 끝에서 호스트에게 묻는다: 실행 출구를 따라 다음 노드로 이어질 수 있는가.
     /// true = 전환이 시작됐다 — <see cref="OnNodeSwitch"/>가 대기를 걸고 새 노드의 첫
     /// 프리뷰 요청이 푼다. null/false = 기존대로 끝에서 멈춘다.
     /// </summary>
@@ -161,7 +160,7 @@ public sealed class StagePlayback
             _textLength = lineText?.Length ?? 0;
             _isChoice = isChoice;
 
-            // 이 라인의 전이 시간도 기억한다 (W66) — ▶가 현재 라인의 이동을 다시
+            // 이 라인의 전이 시간도 기억한다 — ▶가 현재 라인의 이동을 다시
             // 태우려면(아래 Play) 라인 이동 없이도 시간이 최신이어야 한다.
             _transitionDuration = transitionSeconds;
         }
@@ -214,7 +213,7 @@ public sealed class StagePlayback
     }
 
     /// <summary>
-    /// 이 라인만 재생하고 멈춘다 (2026-08-21 소유자: "현재 라인만 재생기능") —
+    /// 이 라인만 재생하고 멈춘다 —
     /// 진행 경로는 전체 재생과 완전히 같고(전이·타자·여운), 다음 라인으로 넘어가는
     /// 문턱에서만 멈춘다. 연출 하나를 다듬으며 반복해서 돌려 보는 용도다.
     /// </summary>
@@ -247,9 +246,8 @@ public sealed class StagePlayback
     private bool _pausedMidRun;
 
     /// <summary>
-    /// <b>현재 라인부터 끝까지</b> 재생한다 (2026-08-21 소유자 지시). 예전에는 마지막
-    /// 라인에서 누르면 첫 라인으로 되감아 다시 틀었는데, 그 되감기는 [⏮] 버튼과 한 쌍의
-    /// 규칙이었다 — 버튼이 걷힌 지금은 ▶가 있는 자리에서 앞으로만 간다.
+    /// <b>현재 라인부터 끝까지</b> 재생한다 — ▶는 있는 자리에서 앞으로만 간다
+    /// (마지막 라인에서 눌러도 첫 라인으로 되감지 않는다).
     /// </summary>
     public void Play()
     {
@@ -277,7 +275,7 @@ public sealed class StagePlayback
         _phase = _isChoice ? Phase.WaitInput : Phase.Typing;
         IsPlaying = true;
 
-        // 이 라인의 이동도 처음부터 (W66) — 타자를 되감으면서 연출만 끝 상태로 두면
+        // 이 라인의 이동도 처음부터 — 타자를 되감으면서 연출만 끝 상태로 두면
         // "재생"이 아니다. 시간이 0이면 탈 것이 없다.
         _transitionElapsed = 0;
         _transitionActive = _transitionDuration > 0;
@@ -295,7 +293,7 @@ public sealed class StagePlayback
 
     /// <summary>
     /// 새 전체 재생이 지금 줄에서 시작됐다(일시정지 재개는 아니다) — 상태가 다 선 뒤에 운다. 호스트는 여기서
-    /// 그 줄 앞의 <c>&lt;&lt;detour&gt;&gt;</c>를 먼저 다녀올 수 있다(2026-11-04).
+    /// 그 줄 앞의 <c>&lt;&lt;detour&gt;&gt;</c>를 먼저 다녀올 수 있다.
     /// </summary>
     public event Action? RunStarted;
 
@@ -313,9 +311,8 @@ public sealed class StagePlayback
         StateChanged?.Invoke();
     }
 
-    // [⏮ 처음부터]는 2026-08-21에 걷혔다 (소유자: 배속과 함께 "거의 쓰지도 않는게 너무
-    // 큰 위치를 차지"). 첫 라인으로 가려면 터미널에서 그 라인을 고르면 된다 — 재생 모델이
-    // 따로 질 일이 아니었다(이동은 어차피 편집기 선택 경로로 나갔다).
+    // 처음부터 재생하는 단추는 없다. 첫 라인으로 가려면 터미널에서 그 라인을 고르면 된다 —
+    // 재생 모델이 따로 질 일이 아니다(이동은 어차피 편집기 선택 경로로 나간다).
 
     /// <summary>
     /// 재생 중 무대 클릭 — 타자 중이면 전문을 즉시 완성하고, 그 뒤면 다음 라인으로.
@@ -333,7 +330,7 @@ public sealed class StagePlayback
             return true; // 이동 반영 대기 중의 연타는 소비만 한다
         }
 
-        // 1차 클릭 = 이 라인의 화면을 즉시 완성한다 — 전이도 타자도 한꺼번에 (W33).
+        // 1차 클릭 = 이 라인의 화면을 즉시 완성한다 — 전이도 타자도 한꺼번에.
         bool typingIncomplete = _phase == Phase.Typing && _typedCharacters < _textLength;
 
         if (_transitionActive || typingIncomplete)
@@ -367,7 +364,7 @@ public sealed class StagePlayback
             return;
         }
 
-        deltaSeconds *= _speedMultiplier; // 배율은 시간의 입구 한 곳에서만 (W34-a)
+        deltaSeconds *= _speedMultiplier; // 배율은 시간의 입구 한 곳에서만
 
         // 전이는 타자와 나란히 흐른다 — 움직이면서 대사가 찍히는 쪽이 재생답다.
         if (_transitionActive)
@@ -433,7 +430,7 @@ public sealed class StagePlayback
 
         if (LineIndex >= LineCount - 1)
         {
-            // 문서 끝 — 실행 출구로 이어질 수 있는지 호스트에게 묻는다 (W39). 전환이
+            // 문서 끝 — 실행 출구로 이어질 수 있는지 호스트에게 묻는다. 전환이
             // 시작되면 OnNodeSwitch가 대기를 걸고, 새 노드의 첫 요청이 푼다(그 요청이
             // 이 호출 안에서 동기로 이미 도착했을 수도 있으므로 여기서는 더 만지지 않는다).
             if (NodeExitRequested?.Invoke() == true)
@@ -453,7 +450,7 @@ public sealed class StagePlayback
     }
 
     /// <summary>
-    /// 노드 전환 직전에 호스트가 부른다 (W39) — 위치를 초기화해 새 노드의 첫 요청이
+    /// 노드 전환 직전에 호스트가 부른다 — 위치를 초기화해 새 노드의 첫 요청이
     /// 같은 인덱스여도 새 라인으로 취급되게 하고(타자가 다시 시작된다), 노드를 넘는
     /// 전이 보간은 하지 않는다. 요청이 올 때까지 틱은 대기한다.
     /// </summary>
@@ -466,7 +463,7 @@ public sealed class StagePlayback
     }
 
     /// <summary>
-    /// 경로가 문서 끝 전에 끝났는데 이어질 노드가 없다 (W39) — 갈래 출구 뒤 라인은
+    /// 경로가 문서 끝 전에 끝났는데 이어질 노드가 없다 — 갈래 출구 뒤 라인은
     /// 실행되지 않으므로 여기서 멈춘다. 이동은 일어나지 않았으니 대기도 푼다.
     /// </summary>
     public void StopAtEnd()
@@ -481,19 +478,17 @@ public sealed class StagePlayback
         StateChanged?.Invoke();
     }
 
-    // ── detour 복귀 (2026-08-22 소유자 보고: "detour로 중간에 다른 노드로 넘어가는 건
-    //    구현이 되는데, 끝까지 재생한 뒤에 원래 노드로 돌아오지가 않네") ─────────────
+    // ── detour 복귀 ─────────────
     //
     // 계약(§A2-1)에서 조건 갈래의 커스텀 씬 출구는 <<jump>>가 아니라 <<detour>>다 —
-    // <b>씬을 재생하고 갈래로 돌아와 나머지 대본을 계속한다</b>. 프리뷰 재생은 나가는
-    // 절반만 하고 있었다. 돌아올 자리를 쌓아 두는 것이 이 스택이고, 스택이 비면 예전처럼
-    // 거기서 끝난다(기본 출구 = jump는 애초에 돌아오지 않는다).
+    // <b>씬을 재생하고 갈래로 돌아와 나머지 대본을 계속한다</b>. 돌아올 자리를 쌓아 두는
+    // 것이 이 스택이고, 스택이 비면 거기서 끝난다(기본 출구 = jump는 애초에 돌아오지 않는다).
 
     /// <param name="NodeId">돌아갈 대사 노드.</param>
     /// <param name="ResumeAfterLineId">그 노드에서 <b>이 줄 다음</b>부터 잇는다 — <paramref name="ResumeAtLine"/>이면 <b>이 줄부터</b>.</param>
     /// <param name="ExitOwnerLineId">
-    /// 다녀온 detour를 소유한 줄 — 다시 타지 않도록 표시한다. 갈래 출구는 그 줄의 Id, 줄 앞 분기(<c>&lt;&lt;detour&gt;&gt;</c> 표식,
-    /// 2026-11-04)는 <c>줄Id→대상노드Id</c> — 한 줄에 분기가 여럿이면 하나씩 다녀오며 각각 표시된다.
+    /// 다녀온 detour를 소유한 줄 — 다시 타지 않도록 표시한다. 갈래 출구는 그 줄의 Id, 줄 앞 분기(<c>&lt;&lt;detour&gt;&gt;</c> 표식)는
+    /// <c>줄Id→대상노드Id</c> — 한 줄에 분기가 여럿이면 하나씩 다녀오며 각각 표시된다.
     /// </param>
     /// <param name="ResumeAtLine">
     /// true면 돌아와서 <paramref name="ResumeAfterLineId"/> <b>그 줄을</b> 재생한다(줄 앞 분기는 줄을 아직 안 읽고 나갔다).
@@ -563,9 +558,9 @@ public sealed class StagePlayback
         RunReset?.Invoke();
     }
 
-    // ── 에피소드 끝 선택지 (2026-08-27 소유자 보고: 에피소드가 끝나도 선택지가 안 선다) ──
+    // ── 에피소드 끝 선택지 ──
     //
-    // 전이 규칙 v9①: 에피소드 대본이 끝나면 챕터 `간선`의 선택지가 제시된다. 간선에 자유
+    // 전이 규칙: 에피소드 대본이 끝나면 챕터 `간선`의 선택지가 제시된다. 간선에 자유
     // 씬(ViaNode)이 매달려 있으면 런타임은 그 씬을 재생한 뒤 도착 에피소드로 간다 — 그
     // "씬 다음 자리"를 여기 적어 두고, 나갈 곳 없는 노드 끝에서 detour 복귀 다음 순서로
     // 소비한다. detour 스택과 같은 수명이라 청소도 같은 자리다(ResetDetours).
@@ -608,11 +603,11 @@ public sealed class StagePlayback
         LineIndex + delta < LineCount;
 
     /// <summary>
-    /// 사람이 라인을 옮긴다 (2026-08-22 소유자 — 타임라인 오른쪽의 [◀ 이전]·[다음 ▶]).
+    /// 사람이 라인을 옮긴다(타임라인 오른쪽의 [◀ 이전]·[다음 ▶]).
     /// 이동 자체는 자동 진행과 <b>같은 통로</b>(<see cref="MoveRequested"/>)를 지난다 —
     /// 선택을 실제로 옮기는 것은 활성 편집기의 몫이라는 규칙이 그대로다.
     ///
-    /// ⚠ <b>재생 중이면 먼저 멈춘다.</b> 자동 진행은 제가 부른 이동을 기다리는 중
+    /// <b>재생 중이면 먼저 멈춘다.</b> 자동 진행은 제가 부른 이동을 기다리는 중
     /// (<c>_awaitingMove</c>)인데 거기에 사람의 이동이 끼어들면 둘이 같은 자리를 다투고,
     /// 어느 쪽이 이겼는지 화면이 말하지 못한다.
     /// </summary>

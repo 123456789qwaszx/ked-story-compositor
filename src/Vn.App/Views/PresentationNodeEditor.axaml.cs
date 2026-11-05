@@ -45,7 +45,7 @@ public partial class PresentationNodeEditor : UserControl
             }
         };
 
-        // 입력·공급 콤보와 [연출 발행]은 2026-08-21에 사라졌다 — 채널이 자동이다
+        // 입력·공급과 발행은 채널이 자동으로 한다
         // (ProjectEditor.EnsurePresentationChannel). 이 편집기는 상태를 보여 줄 뿐이다.
     }
 
@@ -102,8 +102,8 @@ public partial class PresentationNodeEditor : UserControl
             PresentationCommandCatalog catalog = available.Catalog;
             _available = available;
 
-            // Setup 편집은 우측이 아니라 무대 프리뷰 작업대의 몫이다 (2026-08-21 소유자:
-            // "Setup 역시 우측에서 제거") — 터미널의 Setup 구획 클릭이 입구다.
+            // Setup 편집은 우측이 아니라 무대 프리뷰 작업대의 몫이다 — 터미널의 Setup 구획
+            // 클릭이 입구다.
 
             bool deferred = false;
 
@@ -125,14 +125,14 @@ public partial class PresentationNodeEditor : UserControl
                     _selectedLineId = dialogue.Lines.FirstOrDefault()?.LineId;
                 }
 
-                // 재생 중 진입 (2026-11-04) — 경로의 첫 줄 · 줄 앞 분기 · 읽을 줄 없음을 여기서 가른다.
+                // 재생 중 진입 — 경로의 첫 줄 · 줄 앞 분기 · 읽을 줄 없음을 여기서 가른다.
                 if (entering)
                 {
                     deferred = DeferEntryDetour(dialogue);
                 }
 
-                // 라인별 커맨드 편집은 2026-08-20에 무대 프리뷰 탭(터미널 아래 디테일)으로
-                // 갔다 — 여기는 노드 수준(입력·Setup·발행·고아)만 남는다.
+                // 라인별 커맨드 편집은 무대 프리뷰 탭(터미널 아래 디테일)의 몫이다 —
+                // 여기는 노드 수준(입력·Setup·발행·고아)만 다룬다.
             }
 
             IReadOnlyList<ResolvedPresentationBinding> orphaned = workspace.Orphans.ToArray();
@@ -215,10 +215,10 @@ public partial class PresentationNodeEditor : UserControl
 
         DialogueResultLine? line = dialogue.FindLine(_selectedLineId) ?? dialogue.Lines.FirstOrDefault();
 
-        // 조건 값 시뮬 (W36-b): 수동 선택 + 값 기반 자동 판정을 합친 유효 선택을 쓴다.
+        // 조건 값 시뮬: 수동 선택 + 값 기반 자동 판정을 합친 유효 선택을 쓴다.
         ConditionSimulation.Result simulation = SimulateBranches(dialogue);
 
-        // 갈래 인식 (W35) — 유효 선택된 갈래의 라인만 접는다. 미결정 블록은 근사 + 표시.
+        // 갈래 인식 — 유효 선택된 갈래의 라인만 접는다. 미결정 블록은 근사 + 표시.
         BranchAwareLines.Result branch = BranchAwareLines.UpTo(
             dialogue, draft.Bindings, line?.LineId, simulation.Effective);
 
@@ -237,7 +237,7 @@ public partial class PresentationNodeEditor : UserControl
             : dialogue.Lines.ToList().FindIndex(item =>
                 string.Equals(item.LineId, line.LineId, StringComparison.Ordinal));
 
-        // 스탯 HUD (X3): (시뮬 시작값 반영) 발행 시점 설정값 + 유효 갈래 기준의 set 누적.
+        // 스탯 HUD: (시뮬 시작값 반영) 발행 시점 설정값 + 유효 갈래 기준의 set 누적.
         IReadOnlyList<StatFold.StatValue> stats = StatFold.Fold(
             dialogue.Assignments.Select(assignment => (
                 assignment.Variable,
@@ -249,7 +249,7 @@ public partial class PresentationNodeEditor : UserControl
                     (operation.Variable, operation.Operator, operation.Value)))
                 .ToList());
 
-        // 이동 편집(W66)의 원료 — 요청을 만들기 전에 한 번만 계산한다.
+        // 이동 편집의 원료 — 요청을 만들기 전에 한 번만 계산한다.
         IReadOnlyList<StageMotionCue>? motionCues = StageMotionCues.Of(
             catalog,
             draft.SetupCommands,
@@ -258,7 +258,7 @@ public partial class PresentationNodeEditor : UserControl
             _session.TuningLibrary.Tuning,
             _session.Project.EaseCurves);
 
-        // 이 라인의 시간 흐름 (2026-08-21) — 시간을 가진 커맨드가 저마다 바꾼 노드를
+        // 이 라인의 시간 흐름 — 시간을 가진 커맨드가 저마다 바꾼 노드를
         // 자기 duration·이징으로 끈다. 이동·배치·뎁스가 같은 규칙 하나를 지난다.
         StageMotionPlan? motionPlan = StageMotionPlan.Build(
             catalog,
@@ -268,8 +268,8 @@ public partial class PresentationNodeEditor : UserControl
             _session.TuningLibrary.Tuning,
             _session.Project.EaseCurves);
 
-        // ⛔ 대사 안 선택지 버튼 묶음(ChoiceOptionBundle)은 2026-11-04에 걷혔다 — 선택지는 에피소드 끝에서
-        //    무대(TryPresentEpisodeChoices)가 간선으로 세운다. 줄 요청의 ChoiceOptions는 언제나 비어 있다.
+        // 선택지는 대사 안이 아니라 에피소드 끝에서 무대(TryPresentEpisodeChoices)가 간선으로
+        // 세운다. 줄 요청의 ChoiceOptions는 언제나 비어 있다.
         StagePreview.Show(new MiniStagePreviewRequest(
             $"연출: {presentation.Name}",
             state,
@@ -284,21 +284,21 @@ public partial class PresentationNodeEditor : UserControl
             Stats: stats,
             CoreState: fold.CoreState,
             BranchBlocks: branch.Blocks,
-            // 전이(W33): 이 라인으로 넘어가는 시간 = 라인 커맨드 duration의 최댓값.
+            // 전이: 이 라인으로 넘어가는 시간 = 라인 커맨드 duration의 최댓값.
             TransitionSeconds: StageTransitions.SecondsFor(catalog, lineBinding?.Commands),
-            // 페이드는 제 duration으로 흐른다 (2026-08-26) — 라인 시계와 따로 센다.
+            // 페이드는 제 duration으로 흐른다 — 라인 시계와 따로 센다.
             Fades: StageFades.Of(catalog, lineBinding?.Commands, state),
-            // 소리 표시(W34-b): 정지 프레임에 없는 오디오를 ♪ 칩으로.
+            // 소리 표시: 정지 프레임에 없는 오디오를 ♪ 칩으로.
             AudioCues: StageAudioCues.Of(catalog, lineBinding?.Commands),
             AutoBranchBlocks: simulation.AutoBlocks.ToArray(),
-            // 소리 실재생(W62): 재생이 이 라인에 도달하면 칩의 원본 커맨드가 울린다.
+            // 소리 실재생: 재생이 이 라인에 도달하면 칩의 원본 커맨드가 울린다.
             AudioCommands: StageAudioCues.AudioOf(catalog, lineBinding?.Commands),
-            // 이동 편집(W66): 모션 선언이 있는 커맨드만 무대에서 수치를 만질 수 있다.
+            // 이동 편집: 모션 선언이 있는 커맨드만 무대에서 수치를 만질 수 있다.
             MotionCues: motionCues,
-            // 시간 흐름(2026-08-21): 정지·스크럽·재생이 이 계획 하나를 본다.
+            // 시간 흐름: 정지·스크럽·재생이 이 계획 하나를 본다.
             MotionPlan: motionPlan,
-            // 대본 패널(2026-08-20): 시나리오 전체 텍스트 — 커맨드 목록·편집 입구가 이쪽이다.
-            // 발행 초안이 아니라 작업 중 커맨드로 짓는다 (2026-08-21): 꺼진 커맨드도
+            // 대본 패널: 시나리오 전체 텍스트 — 커맨드 목록·편집 입구가 이쪽이다.
+            // 발행 초안이 아니라 작업 중 커맨드로 짓는다: 꺼진 커맨드도
             // 행으로 남아야 점(켜고 끄기)으로 다시 켤 수 있다 — 초안은 꺼진 것을 걸러낸다.
             ScriptRows: PresentationScriptModel.Build(
                 catalog,
@@ -333,7 +333,7 @@ public partial class PresentationNodeEditor : UserControl
     }
 
     /// <summary>
-    /// 조건 값 시뮬 (W36-b) — 수동 선택 위에 "값이 이렇다면 이 갈래"의 자동 판정을 얹는다.
+    /// 조건 값 시뮬 — 수동 선택 위에 "값이 이렇다면 이 갈래"의 자동 판정을 얹는다.
     /// 시작값 = 발행 시점 설정값 + 세션 시뮬 오버라이드. 프리뷰와 재생 경로가 같은 판정을 쓴다.
     /// </summary>
     private ConditionSimulation.Result SimulateBranches(DialogueResult dialogue)
@@ -350,13 +350,13 @@ public partial class PresentationNodeEditor : UserControl
                 _session!.SimulationValues.TryGetValue(assignment.Variable, out string? overridden)
                     ? overridden
                     : assignment.Value))
-                // 챕터 런의 스탯 (2026-11-04) — stat("키")로 읽는 첫머리 조건이 런 값으로 판정된다.
+                // 챕터 런의 스탯 — stat("키")로 읽는 첫머리 조건이 런 값으로 판정된다.
                 .Concat(_session!.ChapterStatValues.Select(pair => (pair.Key, pair.Value))),
             _session!.BranchSelection);
     }
 
     /// <summary>프리뷰 창의 이전/다음. 선택은 이 편집기의 것 하나뿐이다.
-    /// 재생 중에는 타는 경로만 걷는다 (W39) — 안 타는 갈래 라인은 건너뛰고,
+    /// 재생 중에는 타는 경로만 걷는다 — 안 타는 갈래 라인은 건너뛰고,
     /// 경로 끝에서는 실행 출구를 따라 다음 노드로 넘어간다.</summary>
     internal void MoveStageLine(int delta)
     {
@@ -384,7 +384,7 @@ public partial class PresentationNodeEditor : UserControl
         SelectStageLine(dialogue.Lines[next].LineId);
     }
 
-    /// <summary>재생 경로 이동 (W39). 현재 라인이 경로 밖(출구 뒤 등)이면 false —
+    /// <summary>재생 경로 이동. 현재 라인이 경로 밖(출구 뒤 등)이면 false —
     /// 문서 순서 이동으로 계속해 조용히 버리지 않는다.</summary>
     private bool TryMoveAlongPath(DialogueResult dialogue, int delta)
     {
@@ -422,11 +422,11 @@ public partial class PresentationNodeEditor : UserControl
         return true;
     }
 
-    // ── 줄 앞 분기 (2026-11-04 소유자: "분기를 타야 하는데 분기는 안 타는 것 같아") ─────────────
+    // ── 줄 앞 분기 ─────────────
     //
     // 런타임의 <<detour 카드>>는 줄 <b>앞</b>에 선다 — 카드로 갔다가(카드 첫머리 <<if>>가 안 맞으면 아무것도 안 읽고)
-    // 돌아와 그 줄을 읽는다. 한 줄에 여럿이면 차례대로. 재생 경로(PlaybackPath)는 조건 갈래의 출구만 알았고 줄의
-    // 표식(DialogueResultLine.DetourTargetNodeIds)은 보지 않았다 — 그래서 샘플의 분기 카드가 한 번도 재생되지 않았다.
+    // 돌아와 그 줄을 읽는다. 한 줄에 여럿이면 차례대로. 재생 경로(PlaybackPath)는 조건 갈래의 출구만 알므로 줄의
+    // 표식(DialogueResultLine.DetourTargetNodeIds)은 여기서 따로 본다 — 안 보면 분기 카드가 한 번도 재생되지 않는다.
     // 복귀는 갈래 출구와 같은 스택(StagePlayback.DetourReturn)을 쓰되 ResumeAtLine=true로 "그 줄부터"다.
 
     /// <summary>
@@ -574,10 +574,10 @@ public partial class PresentationNodeEditor : UserControl
     }
 
     /// <summary>
-    /// 문서 끝 도달 (W39) — 실행 출구를 따라 다음 노드로 전환하면 true.
+    /// 문서 끝 도달 — 실행 출구를 따라 다음 노드로 전환하면 true.
     ///
-    /// ⚠ <b>갈래 출구는 detour다</b> (계약 §A2-1, 2026-08-22 소유자 보고: 넘어가기는
-    /// 되는데 돌아오지 않는다). 나가기 전에 돌아올 자리를 쌓고, 나갈 곳이 없는 노드
+    /// 주의: <b>갈래 출구는 detour다</b>(계약 §A2-1) — 넘어간 뒤 돌아오지 않으면 안 된다.
+    /// 나가기 전에 돌아올 자리를 쌓고, 나갈 곳이 없는 노드
     /// 끝에서는 쌓아 둔 자리로 돌아간다. 기본 출구는 jump라 그대로 나가고 끝이다.
     /// </summary>
     internal bool TryExitPlaybackNode()
@@ -602,7 +602,7 @@ public partial class PresentationNodeEditor : UserControl
         DetourReturnPlayback.Exit(_session, StagePreview, _nodeId, path, TryEnterNextNode);
 
     /// <summary>
-    /// 실행 출구의 대사 노드로 재생을 넘긴다 (W39). 노드 선택이 바뀌면 대사 편집기가
+    /// 실행 출구의 대사 노드로 재생을 넘긴다. 노드 선택이 바뀌면 대사 편집기가
     /// 그 노드를 열고 첫 라인 프리뷰를 밀어 재생이 이어진다. 대사 노드가 아니면 알리고 멈춘다.
     /// </summary>
     private bool TryEnterNextNode(string? targetNodeId)
@@ -669,11 +669,10 @@ public partial class PresentationNodeEditor : UserControl
     private Control? _detailControl;
 
     /// <summary>
-    /// 선택 커맨드 하나의 Inspector (2026-08-21 소유자: "점의 세부 조절창과 연출
-    /// 편집창이 합쳐지는 게 맞겠네 … 일종의 Inspector") — 커맨드 편집 행(활성 체크·칩·
-    /// 병기 텍스트) 아래에 무대의 수치 조절(슬라이더·이징·곡선·선택기)이 함께 선다.
-    /// sceneContent는 무대 뷰의 <c>BuildInspectorContent</c>다(MainWindow 배선).
-    /// 라인의 커맨드 전체 나열은 걷혔다 — "전부 표시해주는 건 별 의미가 없네".
+    /// 선택 커맨드 하나의 Inspector — 점의 세부 조절창과 연출 편집창을 하나로 합친다.
+    /// 커맨드 편집 행(활성 체크·칩·병기 텍스트) 아래에 무대의 수치 조절(슬라이더·이징·
+    /// 곡선·선택기)이 함께 선다. sceneContent는 무대 뷰의 <c>BuildInspectorContent</c>다
+    /// (MainWindow 배선). 라인의 커맨드를 전부 나열하지 않는다 — 선택한 하나만 보인다.
     /// </summary>
     internal Control? BuildCommandInspector(
         string commandId, Func<PresentationResultCommand, Control?>? sceneContent)
@@ -761,7 +760,7 @@ public partial class PresentationNodeEditor : UserControl
         return null;
     }
 
-    // ── 커맨드 행 — 갤러리·칩·텍스트 입력 (W19) ───────────────────────────
+    // ── 커맨드 행 — 갤러리·칩·텍스트 입력 ───────────────────────────
 
     private static readonly FontFamily MonoFont = new("Consolas,Cascadia Mono,monospace");
 
@@ -860,8 +859,8 @@ public partial class PresentationNodeEditor : UserControl
         RefreshCommandText();
         body.Children.Add(commandTextBlock);
 
-        // 자리 이동·제거 버튼은 없다 (2026-08-21 소유자: "▲▼ · ✕는 사용하지 않으니
-        // 제거") — 이동은 터미널 드래그, 제거는 터미널 행 우측 X가 진다.
+        // 자리 이동·제거 버튼(▲▼ · ✕)은 없다 — 이동은 터미널 드래그, 제거는 터미널 행
+        // 우측 X가 진다.
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         enabled.Margin = new Thickness(0, 2, 6, 0);
         Grid.SetColumn(enabled, 0);
@@ -1058,9 +1057,8 @@ public partial class PresentationNodeEditor : UserControl
     // ── 연출 추가 콘솔과 직접 입력 ──────────────────────────────────────
 
     /// <summary>
-    /// 연출 추가 콘솔 (2026-08-21 소유자: "아래쪽에서 보이게 한다는 느낌 대신에 연출
-    /// 추가용 콘솔을 띄운다는 느낌으로 … 최근 사용·검색은 유지하되 종류별로 탭으로") —
-    /// 터미널 우클릭 [＋ 연출 추가]가 플라이아웃으로 띄운다. 후보 범위는
+    /// 연출 추가 콘솔 — 아래쪽에 펼치는 대신 추가용 콘솔을 띄우고, 최근 사용·검색과 함께
+    /// 종류별 탭을 둔다. 터미널 우클릭 [＋ 연출 추가]가 플라이아웃으로 띄운다. 후보 범위는
     /// <see cref="AvailablePresentationCommandResolver"/>가 정한 것 그대로다(사본 금지).
     ///
     /// 구성: 검색(입력하면 탭을 덮고 전 범위 평면 결과 — 종류를 몰라도 찾는 길) ·

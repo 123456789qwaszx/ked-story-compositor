@@ -15,14 +15,14 @@ using Vn.Authoring.Script;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 무대 조절창 [★ 자주 쓰는] 탭 (2026-08-22 소유자: "비개발자가 보기에 직접 연출을
-/// 추가하는 건 부담이 커 … 일종의 핫키 느낌으로").
+/// 무대 조절창 [★ 자주 쓰는] 탭 — 비개발자에게는 연출을 직접 추가하는 부담이 커서,
+/// 일종의 핫키처럼 쓰는 자리다.
 ///
 /// 담기 흐름이 여기서 닫힌다: <b>[편집]이 터미널 판 전체를 활성으로 바꾸고</b>(행마다
 /// 글리프를 갈지 않는다 — 줄 높이가 흔들린다) · <b>커맨드 행을 그냥 클릭하면 인자가
 /// 통째로(슬롯·duration 포함) 담기고</b> · <b>담긴 칩의 수치를 그 자리에서 조절한다</b>.
 ///
-/// <b>구역이 둘이고 편집도 둘이다</b> (2026-08-24) — `커맨드`(하나짜리, 단추) ·
+/// <b>구역이 둘이고 편집도 둘이다</b> — `커맨드`(하나짜리, 단추) ·
 /// `묶음`(여럿, 표). 각자 제 [편집]을 켜고, 터미널 클릭의 목적지는 <b>담을 대상 묶음이
 /// 있으면 거기, 없으면 새 커맨드 칩</b> 하나로 갈린다.
 /// </summary>
@@ -118,9 +118,9 @@ public sealed class StageQuickTabTests
             ["★ 자주 쓰는", "슬롯", "캐릭터", "배경", "오디오"],
             tabs.Items.OfType<TabItem>().Select(item => ((TextBlock)item.Header!).Text!).ToArray());
 
-        // 기본 칩 = shot_to · shot_reset. 나머지는 사람이 담는다 (2026-08-22 소유자).
-        // ⚠ `shot_zoom` 칩은 2026-08-26에 걷혔다 — 같은 날 `shot_to`의 zoom이 슬라이더로
-        //   열리면서 [카메라 이동] 하나에서 줌·이동·시간을 함께 만지게 됐다.
+        // 기본 칩 = shot_to · shot_reset. 나머지는 사람이 담는다.
+        // 줌 전용 칩은 없다 — `shot_to`의 zoom이 슬라이더로 열려 [카메라 이동] 하나에서
+        //   줌·이동·시간을 함께 만진다.
         //   재는 것은 "샷 말고는 없다"이지 개수가 셋이라는 것이 아니다.
         Assert.Equal(
             ["shot.shot_to", "shot.shot_reset"],
@@ -130,9 +130,9 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 등장_퇴장_줄은_슬롯_탭에서만_선다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자: 캐릭터·오디오에서도 등장·퇴장을 없애 달라 — 무대에 세우고
+        // 캐릭터·오디오 탭에는 등장·퇴장이 없다 — 무대에 세우고
         // 거두는 일은 슬롯의 일이라, 캐스팅·자리와 함께 [슬롯] 탭에만 선다.
-        // ([자주 쓰는]은 2026-08-24부터 숨김 — 칩이 제 대상을 자기가 들고 있다.
+        // ([자주 쓰는]은 숨김 — 칩이 제 대상을 자기가 들고 있다.
         // 배경은 애초에 슬롯이 아니다.)
         (AuthoringSession session, string nodeId, string lineId) = Stage();
         StageSceneView view = SceneOf(
@@ -241,8 +241,8 @@ public sealed class StageQuickTabTests
         Assert.Equal(new Avalonia.Thickness(2), frame.BorderThickness);
         Assert.Same(Brushes.Transparent, frame.BorderBrush);
 
-        // [편집] = 판 전체가 활성으로 바뀐다. ⚠ 행의 글리프는 안 바뀐다 — 글리프가 바뀌면
-        // 줄 높이가 흔들린다(2026-08-22 소유자).
+        // [편집] = 판 전체가 활성으로 바뀐다. 행의 글리프는 안 바뀐다 — 글리프가 바뀌면
+        // 줄 높이가 흔들린다.
         preview.Scene.SetCommandEditModeProbe(true);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -253,7 +253,7 @@ public sealed class StageQuickTabTests
         // 행 자체가 단추다 — 그냥 클릭하면 담긴다.
         LeftClick(CommandRowOf(preview, "gesture"));
 
-        // 인자가 통째로 담긴다 — 슬롯도 duration도 그대로 (소유자: "그대로 복사하는게 포인트").
+        // 인자가 통째로 담긴다 — 슬롯도 duration도 그대로 복사하는 것이 요점이다.
         StageQuickCommand pinned = session.Project.EffectiveQuickCommands[^1];
         Assert.Equal("char_rig_staging.gesture", pinned.Steps[0].DefinitionId);
         Assert.Equal("c1", pinned.Steps[0].Arguments["slot"]);
@@ -269,7 +269,7 @@ public sealed class StageQuickTabTests
     });
 
 
-    // ── 묶음 칩 (2026-08-24 소유자: "여러개의 커맨드 단위로 커스텀") ──────────
+    // ── 묶음 칩 (여러 커맨드를 한 단위로 커스텀) ──────────
     //
     // 담기의 규칙은 하나다: <b>펼친 칩이 있으면 거기 이어 붙고, 없으면 새 칩이다.</b>
     // 입구가 둘(터미널 행 · [＋ 이 라인 통째로])이어도 규칙은 그 하나라, 안내 줄이
@@ -312,7 +312,7 @@ public sealed class StageQuickTabTests
     {
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
-        // ⚠ 줄에 커맨드가 <b>둘</b>이다. 두 번째 다리("대상을 놓으면 새 칩")를 같은 커맨드로
+        // 줄에 커맨드가 <b>둘</b>이다. 두 번째 다리("대상을 놓으면 새 칩")를 같은 커맨드로
         //    치면 <see cref="ProjectEditor.PinQuickCommand"/>의 중복 거르개에 걸린다 —
         //    방금 그것을 묶음에 담았으므로 <b>단계가 똑같은 칩이 이미 있다</b>. 그러면
         //    "새 칩으로 간다"가 아니라 "중복이라 안 담는다"를 재는 시험이 된다.
@@ -349,9 +349,9 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 이미_담긴_것을_또_담으면_담지_않았다고_말한다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 중복 거르개가 <b>조용히</b> 돌고 있었다. 담기지 않았는데 상태줄은 "'…' 칩을
-        //    담았습니다"라고 답해, 사람은 담긴 줄 알고 [자주 쓰는]을 뒤지게 된다.
-        //    거르개 자체는 옳다(같은 것을 두 번 담는 것은 실수다) — 틀린 것은 <b>보고</b>다.
+        // 중복 거르개가 <b>조용히</b> 돌면 안 된다. 담기지 않았는데 상태줄이 "'…' 칩을
+        //    담았습니다"라고 답하면, 사람은 담긴 줄 알고 [자주 쓰는]을 뒤지게 된다.
+        //    거르개 자체는 옳다(같은 것을 두 번 담는 것은 실수다) — 지킬 것은 <b>보고</b>다.
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         MiniStagePreview preview = PreviewWith(session, nodeId, lineId, Command(
@@ -372,8 +372,7 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 커맨드_편집만_켜면_터미널_클릭은_묶음으로_안_간다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 두 조작을 가른 이유가 여기다 (2026-08-24 3차 소유자: "개별 커맨드와 묶음
-        //    커맨드의 조작을 분리"). 커맨드 칩을 담으려는 손이 묶음을 건드리면 안 된다.
+        // 개별 커맨드와 묶음 커맨드의 조작을 가른 이유가 여기다 — 커맨드 칩을 담으려는 손이 묶음을 건드리면 안 된다.
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         MiniStagePreview preview = PreviewWith(session, nodeId, lineId, Command(
@@ -458,8 +457,8 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 커맨드와_묶음이_구역으로_갈린다() => HeadlessUi.Run(() =>
     {
-        // 소유자: "칩커맨드와 단일 커맨드가 구별되도록 둘의 영역을 구분" +
-        //         "두 종류의 프리셋 사이에 구분선을 추가" (2026-08-24 2차).
+        // 묶음 칩과 단일 커맨드가 구별되도록 둘의 영역을 나누고,
+        // 두 종류의 프리셋 사이에 구분선을 둔다.
         (AuthoringSession session, string nodeId, string lineId) = Stage();
         StageSceneView view = SceneOf(session, nodeId, lineId);
 
@@ -470,7 +469,7 @@ public sealed class StageQuickTabTests
 
         Control tab = view.BuildQuickTabProbe(null);
 
-        // ⚠ [묶음] 구역은 <b>비어도 선다</b> — [＋ 묶음]이 거기 있기 때문이다.
+        // [묶음] 구역은 <b>비어도 선다</b> — [＋ 묶음]이 거기 있기 때문이다.
         //    만들 입구가 목록이 비었다는 이유로 사라지면 첫 묶음을 만들 길이 없다.
         Assert.Equal(["커맨드", "묶음"], Headings(tab));
         Assert.Contains(
@@ -526,7 +525,7 @@ public sealed class StageQuickTabTests
         StageSceneView view = SceneOf(session, nodeId, lineId);
         Control tab = view.BuildQuickTabProbe(null);
 
-        // 묶음은 단추가 아니라 표다 (2026-08-24 2차) — 실행은 머리 줄의 [붙이기]다.
+        // 묶음은 단추가 아니라 표다 — 실행은 머리 줄의 [붙이기]다.
         // 그리고 <b>평소 모드에서도 세부내역이 보인다</b>: 담긴 커맨드가 표의 행으로 선다.
         string[] rows = tab.GetLogicalDescendants().OfType<TextBlock>()
             .Select(text => text.Text ?? string.Empty)
@@ -540,7 +539,7 @@ public sealed class StageQuickTabTests
             ["char_rig_presentation.fade_out", "common_control.pause"],
             LineCommands(session, nodeId, lineId).Select(command => command.DefinitionId).ToArray());
 
-        // ⛔ 단추 하나를 누른 것은 조작 하나다 — Ctrl+Z 한 번이 두 커맨드를 함께 원복한다.
+        // 단추 하나를 누른 것은 조작 하나다 — Ctrl+Z 한 번이 두 커맨드를 함께 원복한다.
         session.Editor.Undo();
         Assert.Empty(LineCommands(session, nodeId, lineId));
     });
@@ -548,7 +547,7 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 묶음_표는_접었다_펼_수_있다() => HeadlessUi.Run(() =>
     {
-        // 소유자: "물론 접기도 가능해야하고." 기본은 펼침이다 — 언제든 세부내역이 보여야 한다.
+        // 접을 수도 있다. 기본은 펼침이다 — 언제든 세부내역이 보여야 한다.
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         session.Project.QuickCommands =
@@ -582,7 +581,7 @@ public sealed class StageQuickTabTests
     [Fact]
     public void 한_단계라도_못_내면_칩이_회색으로_서고_이유를_말한다() => HeadlessUi.Run(() =>
     {
-        // ⛔ 나머지만 조용히 붙이면 사람은 다 붙은 줄 안다 — 묶음은 전부 아니면 전무다.
+        // 나머지만 조용히 붙이면 사람은 다 붙은 줄 안다 — 묶음은 전부 아니면 전무다.
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         session.Project.QuickCommands =
@@ -620,8 +619,7 @@ public sealed class StageQuickTabTests
         view.SetCommandEditModeProbe(true);
 
         // ▸ 하나가 칩 하나 — 첫 칩(카메라 이동 = shot_to)을 편다.
-        // ⚠ 2026-08-26에 `줌 인` 칩이 걷히며 첫 칩이 바뀌었다. shot_to도 zoom 슬라이더를
-        //   갖는다(같은 날 카탈로그 선언 추가) — 그래서 이 시험이 재는 것은 그대로다.
+        //   shot_to는 zoom 슬라이더를 갖는다(카탈로그 선언).
         Control collapsed = view.BuildQuickTabProbe(null);
         Assert.Empty(collapsed.GetLogicalDescendants().OfType<Slider>());
         collapsed.GetLogicalDescendants().OfType<Button>()
@@ -659,8 +657,8 @@ public sealed class StageQuickTabTests
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
         // 편집 중에는 칩이 [▸][이름 칸][✕] 줄이다 — 담기는 터미널 행 클릭이 진다.
-        // ⚠ 이름을 글자로 박지 않는다 — 기본 칩 목록이 바뀔 때마다 이 시험이 깨진다
-        //   (2026-08-26 `줌 인` 삭제가 그랬다). 재는 것은 "첫 칩의 이름 칸이 선다"이다.
+        // 이름을 글자로 박지 않는다 — 기본 칩 목록이 바뀔 때마다 이 시험이 깨진다.
+        //   재는 것은 "첫 칩의 이름 칸이 선다"이다.
         TextBox first = tab.GetLogicalDescendants().OfType<TextBox>().First();
         Assert.Equal(StageQuickCommands.Default[0].DisplayName, first.Text);
 

@@ -5,7 +5,7 @@ using NAudio.Wave;
 namespace Vn.App.Services;
 
 /// <summary>
-/// 툴 안 오디오 재생 (W62) — 미리 듣기(에셋 탐색기·오디오 탭)와 프리뷰 재생 연동이
+/// 툴 안 오디오 재생 — 미리 듣기(에셋 탐색기·오디오 탭)와 프리뷰 재생 연동이
 /// 같은 출구 하나를 쓴다. 게임 런타임 오디오가 아니라 저작 확인용 근사다:
 /// 페이드·볼륨 커브 없음, BGM은 단순 루프, 일시정지 후 재개는 곡 처음부터.
 ///
@@ -38,7 +38,7 @@ internal static class AudioPreview
     }
 
     /// <summary>
-    /// BGM 볼륨 0..1 (W63) — 재생 중인 소리에도 즉시 적용된다. 툴 편의 설정이라
+    /// BGM 볼륨 0..1 — 재생 중인 소리에도 즉시 적용된다. 툴 편의 설정이라
     /// 세션을 넘어 기억된다(AppSettings). 게임 출력에는 아무 영향이 없다.
     /// </summary>
     public static double BgmVolume
@@ -58,7 +58,7 @@ internal static class AudioPreview
         }
     }
 
-    /// <summary>효과음 볼륨 0..1 (W63) — 울리고 있는 원샷에도 즉시 적용된다.</summary>
+    /// <summary>효과음 볼륨 0..1 — 울리고 있는 원샷에도 즉시 적용된다.</summary>
     public static double SfxVolume
     {
         get => _sfxVolume;

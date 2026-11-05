@@ -6,8 +6,7 @@ namespace Vn.App.Tests;
 
 /// <summary>
 /// 변경 한 번이 화면에 무엇을 다시 하게 하는가 — 다시 만드는 순간 사람이 누르던 칸이 사라지므로,
-/// 꼭 필요한 것만 다시 한다. (⛔ 그래프 · 대사 편집기 쪽 계약은 2026-10-29에 그 화면들과 함께
-/// ked-story-director에 남았다.)
+/// 꼭 필요한 것만 다시 한다.
 /// </summary>
 public class ProjectRefreshPlannerTests
 {

@@ -22,18 +22,18 @@ internal static class AppSettingsService
     };
 
     /// <summary>
-    /// 테스트 격리의 손잡이 (2026-08-26) — <b>피해가 양방향이었다.</b> 헤드리스
+    /// 테스트 격리의 손잡이 — <b>피해가 양방향이다.</b> 헤드리스
     /// MainWindow가 이 파일을 진짜 %APPDATA%에서 읽으면 개발자의 실제 최근 프로젝트를
     /// 열어 버리고(OnOpened — 그 프로젝트의 그날 상태에 따라 무관한 테스트들이 무작위로
     /// 죽고, 세션이 실제 원고 폴더에 감시자를 걸고 노드를 더한다), 반대로 테스트가 여는
-    /// 임시 프로젝트가 <b>사용자의 진짜 최근 프로젝트를 덮어썼다</b> — 실제로 사용자의
-    /// settings.json이 이미 지워진 임시 폴더를 가리키고 있었다.
+    /// 임시 프로젝트가 <b>사용자의 진짜 최근 프로젝트를 덮어쓴다</b> — 사용자의
+    /// settings.json이 이미 지워진 임시 폴더를 가리키게 된다.
     ///
     /// 돌려세우는 자리는 <see cref="Vn.App.Tests.TestProcessIsolation"/> 하나다(어셈블리가
-    /// 실리는 순간 = 어떤 테스트보다 먼저). ⚠ 경로를 바꾸는 것만으로는 모자란다 —
+    /// 실리는 순간 = 어떤 테스트보다 먼저). 주의: 경로를 바꾸는 것만으로는 모자란다 —
     /// 복원 자체를 끄는 <see cref="MainWindow.RestoreRecentProjectOnOpen"/>이 짝이다.
-    /// 임시 경로가 비어 있어 복원이 <b>조용히 실패하던 것</b>에 기대고 있었을 뿐이라,
-    /// 그 폴더에 프로젝트가 남으면 같은 흔들림이 돌아온다.
+    /// 임시 경로가 비어 있어 복원이 <b>조용히 실패하는 것</b>에만 기대면,
+    /// 그 폴더에 프로젝트가 남을 때 같은 흔들림이 돌아온다.
     /// </summary>
     internal static string? SettingsPathOverride { get; set; }
 
@@ -82,7 +82,7 @@ internal static class AppSettingsService
         Save(settings);
     }
 
-    /// <summary>재생 속도 배율 (W34-a). 형식이 깨져 있으면 1배로 돌아간다.</summary>
+    /// <summary>재생 속도 배율. 형식이 깨져 있으면 1배로 돌아간다.</summary>
     public static double LoadPlaybackSpeed()
     {
         double speed = Load(SettingsPath).PlaybackSpeed ?? 1;
@@ -96,7 +96,7 @@ internal static class AppSettingsService
         Save(settings);
     }
 
-    /// <summary>미리 듣기 볼륨 (W63) — 0..1. 형식이 깨져 있으면 1(원음)로 돌아간다.</summary>
+    /// <summary>미리 듣기 볼륨 — 0..1. 형식이 깨져 있으면 1(원음)로 돌아간다.</summary>
     public static (double Bgm, double Sfx) LoadAudioVolumes()
     {
         AppSettings settings = Load(SettingsPath);
@@ -114,15 +114,15 @@ internal static class AppSettingsService
     private static double ClampVolume(double? volume) =>
         volume is { } value && double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 1;
 
-    // ── 탐색기 접힘 (R6 S-4) ────────────────────────────────────────────────
+    // ── 탐색기 접힘 ────────────────────────────────────────────────
 
     /// <summary>
-    /// <b>탐색기의 접힘</b> — 프로젝트별로 (<c>docs/plans/R6-explorer.md</c> §4).
+    /// <b>탐색기의 접힘</b> — 프로젝트별로.
     ///
-    /// ⚠ <b>왜 프로젝트 파일이 아닌가.</b> 프로젝트 파일은 <b>팀의 것</b>이고 커밋된다 —
+    /// 주의: <b>왜 프로젝트 파일이 아닌가.</b> 프로젝트 파일은 <b>팀의 것</b>이고 커밋된다 —
     /// 내가 접어 둔 것이 남의 화면을 접으면 안 된다. 재생 속도·음량이 이미 이 자리에 산다.
     ///
-    /// ⚠ <b>편 것과 접은 것을 둘 다</b> 싣는다. 트리는 <i>"고른 에피소드가 든 마디는 저절로
+    /// 주의: <b>편 것과 접은 것을 둘 다</b> 싣는다. 트리는 <i>"고른 에피소드가 든 마디는 저절로
     /// 펴진다"</i>를 기본값으로 쓰므로, 접은 것만 기억하면 사람이 <b>일부러 편</b> 마디가
     /// 안 돌아오고, 편 것만 기억하면 <b>접은 것이 안 남는다</b>.
     /// </summary>
@@ -175,7 +175,7 @@ internal static class AppSettingsService
     /// <summary>
     /// 사라진 프로젝트의 접힘을 버린다 — 설정 파일이 <b>자라기만</b> 하면 안 된다.
     ///
-    /// ⚠ <b>못 읽는 경로는 남긴다.</b> 없는 것과 못 읽는 것은 다르다 — 네트워크 드라이브가
+    /// 주의: <b>못 읽는 경로는 남긴다.</b> 없는 것과 못 읽는 것은 다르다 — 네트워크 드라이브가
     /// 잠깐 안 붙었다고 그 프로젝트의 접힘을 버리면 돌아왔을 때 트리가 통째로 펴져 있다.
     /// </summary>
     private static void Prune(Dictionary<string, ExplorerState> explorers)
@@ -277,13 +277,13 @@ internal static class AppSettingsService
         /// <summary>재생 속도 배율. null이면 1배 — 없던 설정 파일과의 호환.</summary>
         public double? PlaybackSpeed { get; set; }
 
-        /// <summary>미리 듣기 BGM 볼륨 0..1 (W63). null이면 원음.</summary>
+        /// <summary>미리 듣기 BGM 볼륨 0..1. null이면 원음.</summary>
         public double? BgmVolume { get; set; }
 
-        /// <summary>미리 듣기 효과음 볼륨 0..1 (W63). null이면 원음.</summary>
+        /// <summary>미리 듣기 효과음 볼륨 0..1. null이면 원음.</summary>
         public double? SfxVolume { get; set; }
 
-        /// <summary>프로젝트 경로 → 탐색기 접힘 (R6 S-4). null이면 기억한 것이 없다.</summary>
+        /// <summary>프로젝트 경로 → 탐색기 접힘. null이면 기억한 것이 없다.</summary>
         public Dictionary<string, ExplorerState>? Explorers { get; set; }
     }
 

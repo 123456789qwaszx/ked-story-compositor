@@ -136,7 +136,7 @@ public static class PresentationStageActions
 
     /// <summary>
     /// 커맨드 여러 개를 <b>순서대로, 한 번의 편집으로</b> 라인에 반영한다
-    /// (2026-08-24 — 자주 쓰는 칩이 묶음이 되면서 생긴 통로).
+    /// (자주 쓰는 칩 묶음이 지나는 통로).
     ///
     /// <b>합치기 규칙은 <see cref="Apply"/>와 같은 하나다</b>: 같은 outputCommand + 같은
     /// 대상이면 쌓지 않고 값을 바꾼다. 그 규칙이 <b>묶음 안에서도</b> 돈다 — 앞 단계가

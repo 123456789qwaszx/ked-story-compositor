@@ -4,7 +4,7 @@ using Vn.Authoring.Definition;
 namespace Vn.Authoring.Tests;
 
 /// <summary>
-/// W17 에셋 탐색기 뷰모델. 배경은 폴더 구조 그대로, 초상화는 캐릭터→variant→emotion
+/// 에셋 탐색기 뷰모델. 배경은 폴더 구조 그대로, 초상화는 캐릭터→variant→emotion
 /// 키 구조로 묶이고, 세 종류의 문제(파일 없음·고아·초상화 없는 화자)가 항목으로 보인다.
 /// </summary>
 public class AssetExplorerModelTests

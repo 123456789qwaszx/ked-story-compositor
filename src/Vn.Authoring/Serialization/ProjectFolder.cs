@@ -1,13 +1,12 @@
 namespace Vn.Authoring.Serialization;
 
 /// <summary>
-/// <b>프로젝트는 폴더다</b> (2026-11-04 소유자: *"마야든 3dmax든 폴더 단위로 프로젝트를 관리하는데, 그 프로젝트 전체를
-/// 다른 이름으로 저장한다는 생각이 얼마나 관행과 다른 행동인지"*).
+/// <b>프로젝트는 폴더다</b> — 마야·3ds Max처럼 폴더 단위로 관리하고, 프로젝트 전체를 다른 이름으로 저장하지 않는다.
 ///
-/// 그 전에는 프로젝트가 <b>manifest 파일 하나</b>였고 사용자가 이름을 지었다 — 저장 창이 `.vnproject.json` 대신
-/// `.json`만 붙여 compositor의 연출 파일 짝이 어긋났고(실사례 `Festival_Fix.json`), 같은 폴더에 둘을 저장하면
-/// `story/` 판 파일을 두 manifest가 공유했다. 이제 사람은 <b>폴더</b>만 고른다: 새 프로젝트는 그 안에 고정 이름으로
-/// 깔리고, 열 때는 폴더 안의 유일한 manifest를 찾는다. 복제는 탐색기, 버전은 git이 한다.
+/// 사람은 <b>폴더</b>만 고른다: 새 프로젝트는 그 안에 고정 이름으로 깔리고, 열 때는 폴더 안의 유일한 manifest를
+/// 찾는다. 복제는 탐색기, 버전은 git이 한다. manifest 파일 이름을 사용자가 지으면 저장 창이 `.vnproject.json` 대신
+/// `.json`만 붙여 compositor의 연출 파일 짝이 어긋나고, 같은 폴더에 둘을 저장하면 `story/` 판 파일을 두 manifest가
+/// 공유한다.
 ///
 /// ked-story-director와 ked-story-compositor가 <b>같은 폴더</b>를 연다 — 같은 규칙이 두 저장소에 사본으로 있다.
 /// </summary>

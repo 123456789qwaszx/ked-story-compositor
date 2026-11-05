@@ -3,7 +3,7 @@ using Vn.App.Services;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// W62 — clipKey → 파일 경로 역해석. 파일명(확장자 제외)=키 규약의 역방향이며,
+/// clipKey → 파일 경로 역해석. 파일명(확장자 제외)=키 규약의 역방향이며,
 /// 미리 듣기와 재생 연동이 이 하나를 쓴다.
 /// </summary>
 public class AudioClipResolutionTests

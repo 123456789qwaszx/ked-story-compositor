@@ -15,7 +15,7 @@ namespace Ked.Presentation.Core
     // 자리에서 전 항목 × 257샘플 오차 < 1e-4를 고정한다.
     //
     // 호스트 트윈 경로(SetEase)는 이 함수를 쓰지 않는다 — DOTween이 그대로
-    // 시간의 세계를 진다. 첫 고객은 VnTool 프리뷰(W66b 시간 재현)다.
+    // 시간의 세계를 진다. 첫 고객은 VnTool 프리뷰(시간 재현)다.
     // ─────────────────────────────────────────────────────────────────
     public static class EaseFunctions
     {

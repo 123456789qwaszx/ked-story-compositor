@@ -7,7 +7,7 @@ namespace Vn.Authoring.Serialization;
 public static class StoryFileJson
 {
     /// <summary>
-    /// <b>2</b> — 카드의 대본이 카드 JSON 안에 든다(2026-10-29 · 원고 형식 4). 형식 <b>1</b>(대본을 Id로 가리킨다)은
+    /// <b>2</b> — 카드의 대본이 카드 JSON 안에 든다(원고 형식 4). 형식 <b>1</b>(대본을 Id로 가리킨다)은
     /// 원고 형식 3과 함께 읽는다.
     /// </summary>
     public const int CurrentFormatVersion = 2;

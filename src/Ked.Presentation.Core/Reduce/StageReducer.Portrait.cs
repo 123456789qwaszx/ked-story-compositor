@@ -6,10 +6,10 @@ namespace Ked.Presentation.Core
     /// 어느 커맨드가 어느 축을 건드리는지가 이 묶음의 전부다:
     ///
     ///   커맨드                          변형    표정    사이징
-    ///   cast (slot, char, var, emo)     갱신    인자    ✅
-    ///   show (target, faceToken)        유지    인자    ✅
-    ///   face / face_swap (target, emo)  유지    인자    ✅
-    ///   pose (target, variant)          갱신    —       ❌
+    ///   cast (slot, char, var, emo)     갱신    인자    함
+    ///   show (target, faceToken)        유지    인자    함
+    ///   face / face_swap (target, emo)  유지    인자    함
+    ///   pose (target, variant)          갱신    —       안 함
     ///
     /// **pose가 사이징을 다시 계산하지 않는 것은 런타임 실동작이다** —
     /// SetPortraitPoseCommandCharR의 스프라이트 교체가 지금 비활성이라 이 시점엔

@@ -12,8 +12,7 @@ namespace Vn.Authoring.Editing;
 /// </summary>
 public sealed partial class ProjectEditor
 {
-    // ⛔ `AddScript` · `EnsureDialogueScript` · `SetDialogueScript`는 2026-10-29에 걷혔다 — 카드가 제 대본을 든다
-    //    (director `docs/plans/script-merge.md`). 대본을 고르거나 잇는 길이 없다. 줄 명령은 카드 Id로 부른다.
+    // 카드가 제 대본을 든다 — 대본을 고르거나 잇는 길이 없다. 줄 명령은 카드 Id로 부른다.
 
     /// <summary>카드의 대본에 빈 줄 하나를 끼워 넣는다. 새 LineId를 발급한다.</summary>
     public ScriptLine InsertScriptLine(string dialogueNodeId, int? index = null, string? locale = null)

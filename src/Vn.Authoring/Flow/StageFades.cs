@@ -8,8 +8,7 @@ namespace Vn.Authoring.Flow;
 public readonly record struct StageFade(double Seconds, bool FadeIn);
 
 /// <summary>
-/// 이 라인의 페이드 — slotKey → 그 슬롯의 fade_in/fade_out
-/// (2026-08-26 소유자: "fade_in역시 동일한 원인으로 같은 문제가 있는 것 같아").
+/// 이 라인의 페이드 — slotKey → 그 슬롯의 fade_in/fade_out.
 ///
 /// 페이드 불투명도는 <b>라인 시계(커맨드 duration 최댓값)가 아니라 그 페이드 커맨드
 /// 자신의 duration</b>으로 흘러야 런타임과 같다 — 라인 시계를 타면 같은 라인에 더 긴

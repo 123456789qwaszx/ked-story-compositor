@@ -4,7 +4,7 @@ using Ked.Presentation.Core;
 namespace Vn.Authoring.Model;
 
 /// <summary>
-/// 작가가 만든 커스텀 이징 곡선 하나 (W67 후속 — 커스텀 곡선). 커맨드의 다섯째 인자가
+/// 작가가 만든 커스텀 이징 곡선 하나. 커맨드의 다섯째 인자가
 /// <c>@이름</c>으로 참조한다.
 ///
 /// <b>프로젝트에 산다</b> — 커브는 작가 자산이라 game.definition(기획자 전용)이 아니라
@@ -22,7 +22,7 @@ public sealed class EaseCurve
     public List<CurveKey> Keys { get; set; } = new();
 
     /// <summary>
-    /// 이 곡선을 소유한 커맨드의 Id (2026-08-20 소유자 결정 — "커맨드 단위로 customEase").
+    /// 이 곡선을 소유한 커맨드의 Id — customEase는 커맨드 단위다.
     /// null이면 <b>보관함</b> 곡선이다: 작가가 이름 붙여 모아 두는 편집 공간으로,
     /// 커맨드와는 <b>복사로만</b> 오간다(참조 공유 없음 — 한 커맨드를 만져도 다른
     /// 커맨드가 안 변하는 것이 이 설계의 목적이다).

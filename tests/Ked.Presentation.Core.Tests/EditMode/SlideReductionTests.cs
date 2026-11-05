@@ -4,8 +4,7 @@ using NUnit.Framework;
 namespace Ked.Presentation.Core.Tests
 {
     /// <summary>
-    /// 슬라이드(등장·퇴장)의 폴드 (2026-08-24 — 소유자: "SlideOut, SlideIn이 지금 동작하지
-    /// 않는데"). 리듀서·프리뷰에 케이스가 없어 둘 다 "반영 안 된 연출"로만 남던 자리다.
+    /// 슬라이드(등장·퇴장)의 폴드.
     ///
     /// <b>둘은 대칭이 아니다.</b> 런타임 <c>SlideCommandBase</c>가 등장·퇴장의 차이를
     /// "현재 위치가 도착점이냐 출발점이냐" 하나로 환원하기 때문이다:
@@ -96,8 +95,8 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void slide_out은_나간_자리에_남는다()
         {
-            // ⛔ 이것이 접히지 않으면 정착 상태가 <b>틀린다</b> — 나갔는데 프리뷰는
-            //    제자리에 그려 놓는다. 슬라이드 둘 중 진짜 구멍은 이쪽이었다.
+            // 이것이 접히지 않으면 정착 상태가 <b>틀린다</b> — 나갔는데 프리뷰는
+            // 제자리에 그려 놓는다. 슬라이드 둘 중 정착 상태가 달라지는 것은 이쪽이다.
             StageState state = Fold(
                 Cmd("slot", "c1"),
                 Cmd("slide_out", "c1", "right", "12u"));
@@ -246,8 +245,8 @@ namespace Ked.Presentation.Core.Tests
             // 런타임 `YarnUnitParser.Parse`도 이쪽과 같은 `UnitToken.TryParsePixels`를
             // 지나고 그 안에서 `Math.Max(0f, units)`가 걸린다("음수는 0으로 클램프").
             //
-            // ⚠ 그래서 오류로 세우면 <b>런타임보다 엄해진다</b> — 게임에서는 그냥 안
-            //    움직이는 줄이 툴에서만 빨간 줄이 된다. 방향은 direction 인자만이 정한다.
+            // 그래서 오류로 세우면 <b>런타임보다 엄해진다</b> — 게임에서는 그냥 안
+            // 움직이는 줄이 툴에서만 빨간 줄이 된다. 방향은 direction 인자만이 정한다.
             StageState state = Fold(
                 Cmd("slot", "c1"),
                 Cmd("slide_out", "c1", "right", "-3u"));

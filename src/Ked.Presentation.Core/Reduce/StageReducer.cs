@@ -68,7 +68,7 @@ namespace Ked.Presentation.Core
     /// 명시적 한계: 오버레이/이펙트/오디오/트랜지션 리그, 대사창,
     ///   절차적 연기 커맨드(목표값이 정의되지 않음).
     ///
-    /// ⚠ v1 가정 — 등가성 하네스가 판정한다:
+    /// v1 가정 — 등가성 하네스가 판정한다:
     /// 1. 스테이지/레이어 컨테이너는 항등 트랜스폼(스트레치 풀)이라 리그를 루트 직속으로
     ///    세워도 좌표가 같다. 컨테이너 스키마는 덤프에 없다 — 어긋나면 덤프에 추가한다.
     /// 2. 커맨드 기본값은 브리지 시그니처에서 옮겨 박았다(각 case의 주석 참조).
@@ -159,7 +159,7 @@ namespace Ked.Presentation.Core
 
                 // place 계열 — focus 지점을 화면 지점으로 (SettledFocusMath.SolveFocusPlacement).
                 // 파서 표: place(role, focus="bust", screenPoint="center") /
-                //          place_left·center·right(role, focus="face") — 화면 지점이 이름에 박힌 것은 이 셋만 남겼다(소유자 결정).
+                //          place_left·center·right(role, focus="face") — 화면 지점이 이름에 박힌 것은 이 셋뿐이다.
                 case "place": return ApplyPlace(state, cmd, tuning, cmd.Arg(2, "center"), "bust", out reason);
                 case "place_left": return ApplyPlace(state, cmd, tuning, "left", "face", out reason);
                 case "place_center": return ApplyPlace(state, cmd, tuning, "center", "face", out reason);

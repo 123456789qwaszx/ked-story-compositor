@@ -12,9 +12,8 @@ using Vn.Authoring.Script;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// <b>무대에서 넣은 조작이 그 자리에서 무대에 서는가</b> (2026-08-26 소유자 보고:
-/// "duration을 0으로 설정했는데도 즉각적으로 반영이 안되고 다른 에피소드를 클릭했다
-/// 돌아오면 그제서야 반영이 제대로 되는 버그").
+/// <b>무대에서 넣은 조작이 그 자리에서 무대에 서는가</b> — 다른 에피소드를 다녀와야만
+/// 반영되면 안 된다.
 ///
 /// 조절창의 조작은 <see cref="PresentationStageActions"/>를 지나 편집이 되고, 편집은
 /// 세션 Changed(PresentationContent)로 셸에 닿아 무대 요청이 새로 접혀야 한다 —

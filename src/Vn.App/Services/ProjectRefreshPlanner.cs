@@ -8,9 +8,6 @@ namespace Vn.App.Services;
 ///
 /// 이 판단을 MainWindow의 switch 안에 흩어 놓으면 변경 종류를 추가할 때마다 편집 컨트롤을
 /// 불필요하게 다시 만드는 회귀가 생긴다 — 다시 만드는 순간 사람이 누르던 칸이 사라진다.
-///
-/// ⛔ 그래프 · 대사 편집기 · 카드 글 칸의 갱신은 2026-10-29에 걷혔다 — 두 그래프와 대사 편집이
-/// ked-story-director의 것이 되면서 이 창은 무대 하나다(docs/plans/compositor-split.md C1).
 /// </summary>
 internal static class ProjectRefreshPlanner
 {

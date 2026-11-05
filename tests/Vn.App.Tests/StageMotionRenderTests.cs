@@ -14,13 +14,11 @@ using Path = System.IO.Path;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// W66 — 이동 커맨드가 <b>실제로 무대에 그려지는지</b>를 사람 눈 없이 닫는다.
+/// 이동 커맨드가 <b>실제로 무대에 그려지는지</b>를 사람 눈 없이 닫는다.
 ///
 /// 접힌 자리는 이동이 <em>끝난</em> 자리라, 그것만 그리면 화면에서 캐릭터가 움직였다는
 /// 사실 자체가 안 보인다. 그래서 정지 프레임을 <b>출발 자리</b>로 세우고 타임라인·재생이
 /// 그 길을 태운다 — 그 두 가지가 진짜 시각 트리에서 일어나는지 확인하는 것이 이 테스트다.
-/// (출발·도착을 겹쳐 그리던 노란 고스트와 점선 궤적은 2026-08-21에 걷혔다 — 그때 궤적
-/// 전용 테스트 둘도 함께 삭제됐다.)
 /// </summary>
 public sealed class StageMotionRenderTests
 {
@@ -78,9 +76,9 @@ public sealed class StageMotionRenderTests
     [Fact]
     public void 정지는_출발_자리이고_재생_보간이_실제_이징_곡선을_탄다() => HeadlessUi.Run(() =>
     {
-        // W66 소유자 결정 — 정지 화면은 "이 라인이 시작되는 순간"이라 이동 슬롯이 출발
+        // 정지 화면은 "이 라인이 시작되는 순간"이라 이동 슬롯이 출발
         // 자리에 서고, 진행 t가 흐르면 도착으로 미끄러지며, 1이면 도착에 남는다.
-        // 모양은 코어 EaseFunctions(W66b) — move_by의 기본 OutCubic 곡선 그대로다.
+        // 모양은 코어 EaseFunctions — move_by의 기본 OutCubic 곡선 그대로다.
         var view = new StageSceneView();
         var window = new Window { Content = view, Width = 800, Height = 600 };
         window.Show();
@@ -125,8 +123,8 @@ public sealed class StageMotionRenderTests
     [Fact]
     public void 프레임_타임라인을_끌면_그_프레임의_자리가_보인다() => HeadlessUi.Run(() =>
     {
-        // W66b 소유자 요청 — "먹고가는 프레임별로 상태를 확인" → 2026-08-21 무대 아래
-        // 재생 줄로 이사. 스크럽은 재생과 같은 보간·같은 곡선에 진행도를 흘릴 뿐이다.
+        // 프레임별 상태 확인은 무대 아래 재생 줄의 스크럽이 맡는다.
+        // 스크럽은 재생과 같은 보간·같은 곡선에 진행도를 흘릴 뿐이다.
         var view = new StageSceneView();
         var window = new Window { Content = view, Width = 800, Height = 600 };
         window.Show();
@@ -168,9 +166,8 @@ public sealed class StageMotionRenderTests
     [Fact]
     public void 스물네_프레임을_넘는_이동도_끝까지_흐른다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "24프레임 넘어가는 건 그냥 바로 끊긴다음 snap시키는데,
-        // 실제 커맨드가 사용하는 프레임을 쓰도록". 라인 시계에 1초(=24fr) 상한이
-        // 있어 그보다 긴 커맨드는 중간에 잘리고 확정 자리로 튀었다.
+        // 라인 시계는 실제 커맨드가 쓰는 프레임 수를 따른다. 1초(=24fr) 상한을 두면
+        // 그보다 긴 커맨드가 중간에 잘리고 확정 자리로 튄다.
         var view = new StageSceneView();
         var window = new Window { Content = view, Width = 800, Height = 600 };
         window.Show();
@@ -192,8 +189,7 @@ public sealed class StageMotionRenderTests
             .Where(entry => !double.IsNaN(entry.Left))
             .ToArray();
 
-        // 진행 0.5 = 24프레임 지점. 예전에는 여기서 이미 도착해 있었다(상한 탓).
-        // 이제는 OutCubic이 24fr에 놓는 자리 — 도착(+80px)보다 앞이다.
+        // 진행 0.5 = 24프레임 지점. OutCubic이 24fr에 놓는 자리 — 도착(+80px)보다 앞이다.
         view.SetTransitionProgress(0.5);
         double eased = 80 * EaseFunctions.Evaluate(EaseKind.OutCubic, 0.5f);
         (Control moved, double restLeft) = Assert.Single(
@@ -235,8 +231,7 @@ public sealed class StageMotionRenderTests
     [Fact]
     public void place와_depth도_duration만큼_시간에_따라_움직인다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "place랑 depth의 경우에도 move랑 마찬가지로 … snap 되는게
-        // 아니라 실제 코어쪽과 동일하게 시간에 따라서 움직이도록". 배치는 자리를,
+        // place·depth도 move처럼 snap되지 않고 코어와 같이 시간에 따라 움직인다. 배치는 자리를,
         // 뎁스는 크기를 바꾸므로 둘 다 정지(라인 시작)와 도착이 달라야 한다.
         var view = new StageSceneView();
         var window = new Window { Content = view, Width = 800, Height = 600 };
@@ -289,7 +284,7 @@ public sealed class StageMotionRenderTests
     [Fact]
     public void 타임라인은_시간이_없는_라인에서도_비활성으로_선다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "어떨 때는 나오고 어떨때는 안 나오는데 상시 표기되도록".
+        // 재생 줄은 상시 선다.
         // 있다 없다 하면 재생 줄이 라인마다 다른 얼굴이 되고, 없는 날에는 이 도구가
         // 있다는 사실 자체가 안 보인다.
         var view = new StageSceneView();

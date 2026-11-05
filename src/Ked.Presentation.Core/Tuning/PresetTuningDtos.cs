@@ -209,7 +209,7 @@ namespace Ked.Presentation.Core
     /// <summary>
     /// focus 프리셋 어휘. 런타임 CharacterFocusPreset과의 대응은 값으로 잇는다.
     ///
-    /// ⚠ 호스트 파서(CharacterFocusPresetParser)에는 별칭 표가 크다(p3·torso·x1 …).
+    /// 호스트 파서(CharacterFocusPresetParser)에는 별칭 표가 크다(p3·torso·x1 …).
     /// 코어는 정규 이름만 안다 — 실측 결과 원문이 정규 이름만 쓰기 때문이다
     /// (bust·body·face, 별칭 0건). 별칭이 오면 조용히 넘기지 않고 Unhandled로 소리를 낸다.
     /// </summary>

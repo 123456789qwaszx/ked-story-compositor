@@ -5,11 +5,10 @@ using Vn.Authoring.Results;
 namespace Vn.Authoring.Tests;
 
 /// <summary>
-/// W35 — 갈래 인식. 선택된 갈래의 라인만 접히고, 미선택 블록은 기존 근사(전부) +
+/// 갈래 인식. 선택된 갈래의 라인만 접히고, 미선택 블록은 기존 근사(전부) +
 /// Unresolved 표시로 남으며, 커서가 있는 갈래는 선택을 덮는다(보고 있는 라인은 사라지지 않는다).
 ///
-/// ⛔ 선택 블록(BeginChoice…EndChoice)과 조건 안 선택지(W54)의 사례는 대사 안 선택지와 함께 2026-11-04에 걷혔다 —
-/// 남은 갈래는 조건(if · elseif · endif)뿐이고 프레임은 0~1개다.
+/// 갈래는 조건(if · elseif · endif)뿐이고 프레임은 0~1개다.
 /// </summary>
 public class BranchFlowTests
 {

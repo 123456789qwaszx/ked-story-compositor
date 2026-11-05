@@ -10,15 +10,14 @@ using Vn.Authoring.Model;
 namespace Vn.App.Views;
 
 /// <summary>
-/// <b>[루트] 탭 — 설문</b> (2026-11-04 소유자: *"에피소드별 선택지가 별도 탭에서 아주 정확하게 일종의 설문처럼 표시가 되어 있고,
-/// 그걸 원하는 대로 세팅해 두는 방식 … 스탯이랑, 도달 가능한지, 스탯 변화가 진짜 실제로 어떻게 되는지 … 수기로 체크 …
-/// 순서랑 목차랑 표"*).
+/// <b>[루트] 탭 — 설문</b>. 에피소드별 선택지를 별도 탭에 설문처럼 펼쳐 놓고 원하는 대로 정해 둔다 —
+/// 스탯, 도달 가능 여부, 스탯이 실제로 어떻게 바뀌는지를 순서 · 목차 · 표로 손수 확인한다.
 ///
 /// 세 칸이다. ① 루트 — 고르기 · 만들기 · 이름 · 시작 스탯 · 결론. ② 경로 표 — 루트가 지나는 에피소드를 <b>순서대로</b> 한 줄씩:
 /// 장면 · 에피소드 · 도착 스탯 · 다녀오는 분기와 판정 · 선택(라디오) · 변화 → 결과. ③ 루트 밖 — 길이 안 닿는 에피소드와 분기 카드.
 /// 고르면 아래 줄들이 그 길로 다시 계산된다. 루트는 여기서 <b>완전히</b> 정하고 지도는 보여 주기만 한다.
 ///
-/// 글자색은 테마의 것을 쓴다(밝은 테마에서 흰 글자가 사라졌던 2026-11-04 실사례) — 뜻이 있는 셋(가능 · 막힘 · 루트)만 색이고,
+/// 글자색은 테마의 것을 쓴다(흰 글자는 밝은 테마에서 사라진다) — 뜻이 있는 셋(가능 · 막힘 · 루트)만 색이고,
 /// 둘 다에서 읽히는 중간 명도다. 모델은 <see cref="RouteSurvey"/>(순수)이고 여기는 그리기와 편집 명령 호출뿐이다.
 /// </summary>
 public sealed class RouteSurveyView : UserControl
@@ -452,7 +451,7 @@ public sealed class RouteSurveyView : UserControl
                 _ => ("? 평가 불가 — 무대에서 고른다", null)
             };
 
-            // 어느 줄 앞에서 갈라지는지 — 줄 번호는 무대의 줄 번호와 같다 (2026-11-04 소유자: "정확히 어떤 줄에서 생기는지").
+            // 어느 줄 앞에서 갈라지는지 — 줄 번호는 무대의 줄 번호와 같다. 정확히 어느 줄에서 생기는지 보여야 한다.
             string at = string.IsNullOrWhiteSpace(detour.Speaker) && string.IsNullOrWhiteSpace(detour.Text)
                 ? $"{detour.LineNumber}줄 앞"
                 : $"{detour.LineNumber}줄 앞 — {(string.IsNullOrWhiteSpace(detour.Speaker) ? string.Empty : detour.Speaker + ": ")}“{Excerpt(detour.Text, 24)}”";

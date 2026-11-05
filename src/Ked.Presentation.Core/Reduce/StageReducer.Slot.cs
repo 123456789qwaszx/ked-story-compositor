@@ -25,8 +25,7 @@ namespace Ked.Presentation.Core
         /// **같은 키 재선언은 리그를 새로 세운다.** 런타임 SetupCharRigCommand는 매번 새 리그를 짓고
         /// CharacterRigRegistry.Register가 옛 리그를 부순다 — 노드는 스키마 초기값으로, 가시성은 스키마 α로
         /// 돌아간다. 배역·변형·별칭은 CastRegistry 쪽이라 남는다. 그래서 여기서도 노드와 α만 되돌린다.
-        /// (예전 주석은 "런타임은 기존 리그를 재사용한다"였다 — 사실이 아니었다. 배경을 합치며 같은 키의
-        ///  `bg_spawn` 재선언을 검토하다 드러나 바로잡았다, 2026-10-29. 배경 그림만 바꾸는 것은 `bg_sprite`다.)
+        /// 배경 그림만 바꾸는 것은 `bg_sprite`다.
         /// </summary>
         private static bool SpawnSlot(
             StageState state, string slotKey, StageReducerTuning tuning,

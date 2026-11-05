@@ -4,12 +4,12 @@ using System.Text.Json.Nodes;
 namespace Vn.Authoring.Serialization;
 
 /// <summary>
-/// <b>게임 폴더</b> — 프로젝트 폴더의 <c>runtime.target.json</c> 하나 (2026-11-04).
+/// <b>게임 폴더</b> — 프로젝트 폴더의 <c>runtime.target.json</c> 하나.
 ///
 /// 두 툴(ked-story-director · ked-story-compositor)이 <b>같은 파일을 읽고</b>, 각자 제 산출물을 그 폴더에 쓴다 —
 /// director는 진행 JSON(<c>{챕터}.progression.json</c>), compositor는 Yarn. 한 파일에는 내는 쪽이 하나(K4)이므로
 /// 서로의 파일은 건드리지 않는다. articy:draft가 "Unity Assets 안으로 내보내기"를 하는 것과 같은 자리다 — 사람이
-/// 중간 폴더에서 손으로 나르던 일(2026-11-04 실사례)을 없앤다.
+/// 중간 폴더에서 손으로 나르는 일을 없앤다.
 ///
 /// 경로는 프로젝트 폴더 기준 상대 또는 절대. 저장소가 나란히 있으면(<c>GitHub/ked-story-director</c> ·
 /// <c>GitHub/ked-presentation-runtime</c>) 상대 경로가 PC 사이에서도 통한다.

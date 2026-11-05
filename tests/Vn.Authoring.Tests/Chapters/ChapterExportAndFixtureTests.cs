@@ -16,7 +16,7 @@ public sealed class ChapterExportAndFixtureTests
     /// <summary>견본 챕터(ch05 복도) — <see cref="SampleChapters.Corridor"/>.</summary>
     private static ChapterGraphModel Sample() => SampleChapters.Model(SampleChapters.Corridor);
 
-    // ── G8 — 내보내기 ───────────────────────────────────────────────────────
+    // ── 내보내기 ───────────────────────────────────────────────────────
 
     [Fact]
     public void 견본이_런타임_필드와_일대일로_내보내진다()
@@ -48,17 +48,15 @@ public sealed class ChapterExportAndFixtureTests
         Assert.Equal("main05.01", start.GetProperty("EpisodeId").GetString());
         Assert.Equal("닫힌 문 앞에서", start.GetProperty("Title").GetString());
 
-        // ⚠ 2026-08-25 — `Kind`(Main/Attachment)가 계약에서 사라졌다. 코어가 `EpisodeKind`를
-        // 통째로 지웠으므로 실으면 조용히 버려지는 칸이 하나 늘 뿐이다.
+        // `Kind`(Main/Attachment)는 계약에 없다. 코어에 `EpisodeKind`가 없으므로
+        // 실으면 조용히 버려지는 칸이 하나 늘 뿐이다.
         Assert.False(start.TryGetProperty("Kind", out _));
         Assert.False(start.TryGetProperty("Attachments", out _));
-        // ⚠ 견본의 `대사엔트리`가 `Story_ch05_01`이다 — 이름 규칙이 어디에도 없던
-        // 시절 사람이 접두를 손으로 적어 둔 것이다(§4 가운데 줄의 그 방식). 이미터를
-        // 통과하면 접두가 한 번 더 붙고, **그 값이 맞다**: 이미터가 그 노드에 붙이는 yarn
-        // 타이틀도 `Story_Story_ch05_01`이라 둘이 같고, 그래야 재생된다.
+        // 견본의 `대사엔트리`가 `Story_ch05_01`이다 — 사람이 접두를 손으로 적어 둔 것이고,
+        // 대사엔트리는 글자 그대로 yarn 타이틀이 되므로 **그 값이 맞다**.
         //
-        // ⛔ 이 값을 보고 "이미 Story_로 시작하면 안 붙인다"는 가드를 넣지 말 것. 규칙의
-        // 둘째 사본이 생겨 이 수정의 목적을 되돌리고, 진짜로 Story_로 시작하는 이름을
+        // 이 값을 보고 `Story_`로 시작하는 이름을 따로 다루는 가드를 넣지 말 것. 규칙의
+        // 둘째 사본이 생기고, 진짜로 Story_로 시작하는 이름을
         // 영영 못 쓰게 된다. 고칠 것이 있다면 코드가 아니라 견본 데이터다
         // (`docs/work-orders/dialogue-entry-naming-orders.md` §3.3).
         Assert.Equal("Story_ch05_01", start.GetProperty("DialogueEntryId").GetString());   // 접두 폐지 — 대사엔트리 그대로
@@ -70,7 +68,7 @@ public sealed class ChapterExportAndFixtureTests
         Assert.Equal(1, options.GetArrayLength());
         Assert.Equal("main05.03", options[0].GetProperty("TargetEpisodeId").GetString());
 
-        // 2026-08-25 — 부착이라는 종류가 계약에서 사라졌다. `attach05.02s`는 이제 들어오는
+        // 부착이라는 종류는 계약에 없다. `attach05.02s`는 들어오는
         // 간선이 없는 <b>보통 에피소드</b>로 나가고, 의도임은 저작 쪽 `도달불가 허용`이
         // 적는다(산출물에는 안 실린다 — 저작의 사정이다).
         JsonElement island = nodes.EnumerateArray()
@@ -78,10 +76,10 @@ public sealed class ChapterExportAndFixtureTests
         Assert.False(island.TryGetProperty("Kind", out _));
         Assert.Equal(0, island.GetProperty("VisibleConditions").GetArrayLength());
 
-        // v14 (2026-08-26) — `EndingKey`·`IsChapterEndingCandidate`는 안 실리고(간선의
-        // 엔딩키가 개념째 폐지 — 코어 DTO는 빈 값을 기본으로 받는다), 대신 에피소드의
-        // `이벤트키`가 `EventKey`로 실린다(유니티 전용 패스스루 — 견본의 옛 엔딩 간선
-        // 키가 도착 에피소드에 옮겨 와 있다).
+        // `EndingKey`·`IsChapterEndingCandidate`는 안 실리고(간선의 엔딩키라는 개념이
+        // 없다 — 코어 DTO는 빈 값을 기본으로 받는다), 대신 에피소드의
+        // `이벤트키`가 `EventKey`로 실린다(유니티 전용 패스스루 — 견본에서는 엔딩
+        // 키가 도착 에피소드에 붙어 있다).
         JsonElement ending = nodes.EnumerateArray()
             .Single(node => node.GetProperty("EpisodeId").GetString() == "main05.end");
         Assert.False(ending.TryGetProperty("IsChapterEndingCandidate", out _));
@@ -234,7 +232,7 @@ public sealed class ChapterExportAndFixtureTests
     [Fact]
     public void 보이지_않는_기본_칸은_보이는_선택지와_공존한다()
     {
-        // 방어장치 (2026-08-16) — 어떤 선택지 조건도 만족 못 할 때 빠지는 빈 칸(보이지 않는
+        // 방어장치 — 어떤 선택지 조건도 만족 못 할 때 빠지는 빈 칸(보이지 않는
         // 기본)은 에피소드당 하나 허용이고, 조건 없는 간선과 짝이면 조용하다. 견본
         // (보이는 칸 둘 + 빈 칸들)이 오류 0으로 검증되는 것이 그 계약이다.
         ChapterGraphModel chapter = Sample();
@@ -248,9 +246,8 @@ public sealed class ChapterExportAndFixtureTests
     [Fact]
     public void 간선이_없는_선택지_칸은_오류도_경고도_아니다()
     {
-        // 2026-08-16 소유자 — "선택지는 간선의 숫자보다 많아도 된다. 간선이랑 연결이 안
-        // 되어 있으면 그냥 안 쓰고 종료시키면 되니까." 그 길을 고르면 챕터가 거기서 끝난다.
-        // v9 뒤로 그 칸은 어느 간선도 안 쓰는 사전 낱말이다.
+        // 선택지는 간선의 숫자보다 많아도 된다 — 간선과 연결되지 않은 선택지는 쓰이지 않고,
+        // 그 길을 고르면 챕터가 거기서 끝난다. 그 칸은 어느 간선도 안 쓰는 사전 낱말이다.
         ChapterDocument document = SampleChapters.Load(SampleChapters.Corridor);
         document.ChoiceOptions.Add(new ChapterChoiceOption("999", "아직 안 이은 문구", Memo: null, SourceRow: 0));
 
@@ -267,13 +264,11 @@ public sealed class ChapterExportAndFixtureTests
     [Fact]
     public void 대사엔트리가_이미터의_이름_규칙을_그대로_지난다()
     {
-        // 2026-08-23 — 진행 JSON은 `new01`이라 하고 yarn은 `Story_new01`이라 했다. 로드·
-        // 검증·도달성 증명이 전부 통과하는데 **재생만** 안 됐다. 호스트의 사전 대조가
-        // 잡았고, 뿌리는 `Story_` 조립이 이미터 안에서 세 자리로 흩어져 있는데 내보내기가
-        // 그 셋 중 어디에도 안 끼어 있던 것이었다.
+        // 진행 JSON의 대사엔트리와 yarn 타이틀이 어긋나면 로드·검증·도달성 증명이 전부
+        // 통과하는데 **재생만** 안 된다. 그래서 내보내기는 이미터의 이름 규칙을 그대로 지난다.
         //
-        // 규칙은 접두 하나가 아니라 두 단계다 — `Story_` + SanitizeNodeName. 그래서 공백이
-        // 든 이름을 케이스로 든다: 접두만 붙이는 구현은 `new01`에서는 멀쩡해 보이고
+        // 규칙은 글자 그대로가 아니라 SanitizeNodeName을 지난 이름이다. 그래서 공백이
+        // 든 이름을 케이스로 든다: 정규화를 빼먹은 구현은 `new01`에서는 멀쩡해 보이고
         // `장면 1`에서 비로소 갈린다.
         var chapter = new ChapterGraphModel(
             "naming",
@@ -297,7 +292,7 @@ public sealed class ChapterExportAndFixtureTests
         JsonElement nodes = document.RootElement.GetProperty("Nodes");
 
         // 공백이 밑줄로 — 정규화를 안 지나면 `장면 1`이 되어 저쪽이 노드를 못 찾는다.
-        // ⛔ `Story_` 접두는 2026-08-24에 폐지됐다 — 타이틀은 곧 대사엔트리다.
+        // `Story_` 접두는 없다 — 타이틀은 곧 대사엔트리다.
         Assert.Equal("장면_1", nodes[0].GetProperty("DialogueEntryId").GetString());
         Assert.Equal("new01", nodes[1].GetProperty("DialogueEntryId").GetString());
 
@@ -308,13 +303,13 @@ public sealed class ChapterExportAndFixtureTests
             nodes[0].GetProperty("DialogueEntryId").GetString());
     }
 
-    // ── G6 — 픽스처 경로 ────────────────────────────────────────────────────
+    // ── 픽스처 경로 ────────────────────────────────────────────────────
 
     [Fact]
     public void 수입기가_믿어야_하는_JSON_규약을_고정한다()
     {
-        // 런타임 계약서 §G (2026-08-17) — 수입기가 없는 동안 조용히 어긋날 자리 셋을 못 박는다.
-        // 여기가 깨지면 계약서 G1~G5도 함께 고쳐야 한다.
+        // 런타임 계약서 — 수입기 쪽에서 조용히 어긋날 자리 셋을 못 박는다.
+        // 여기가 깨지면 계약서도 함께 고쳐야 한다.
         var editor = new ProjectEditor(new StoryProject());
         ChapterDocument chapter = editor.EnsureChapter("gd");
         chapter.Stats.Add(new ChapterStat("trust", "신뢰", 0, 0, 10, SourceRow: 0));
@@ -337,27 +332,26 @@ public sealed class ChapterExportAndFixtureTests
         JsonElement option = document.RootElement.GetProperty("Nodes")[0]
             .GetProperty("NextOptions")[0];
 
-        // G5 — 관문은 노드가 아니라 길이 갖는다. 노드 쪽 둘은 언제나 비어 나간다.
+        // 관문은 노드가 아니라 길이 갖는다. 노드 쪽 둘은 언제나 비어 나간다.
         JsonElement node = document.RootElement.GetProperty("Nodes")[0];
         Assert.Empty(node.GetProperty("VisibleConditions").EnumerateArray());
         Assert.Empty(node.GetProperty("UnlockConditions").EnumerateArray());
         Assert.Equal(1, option.GetProperty("VisibleConditions").GetArrayLength());
 
-        // G2 — 값이 0이면 IntValue 키 자체가 없다. 수입기가 0으로 안 읽으면 조건이 어긋난다.
+        // 값이 0이면 IntValue 키 자체가 없다. 수입기가 0으로 안 읽으면 조건이 어긋난다.
         JsonElement zero = option.GetProperty("VisibleConditions")[0];
         Assert.Equal("GreaterOrEqual", zero.GetProperty("Op").GetString());
         Assert.False(zero.TryGetProperty("IntValue", out _));
 
-        // G3 — `>`가 열리며 생긴 새 Op. 런타임 enum에 아직 없다.
+        // `>`의 Op.
         Assert.Equal("GreaterThan", option.GetProperty("Conditions")[0].GetProperty("Op").GetString());
     }
 
     [Fact]
     public void 스탯_정의가_최상위로_실려_나간다()
     {
-        // 계약서 §G-1 (2026-08-18) — 이 칸이 비어 있어서 Gate D가 막혀 있었다.
-        // 초기값·최소·최대가 어느 런타임 입력에도 없었고, 툴의 도달성 증명만 clamp하며
-        // 걸었다. `Ked.Progression.ChapterDefinition`은 정의되지 않은 스탯을 가리키는
+        // 계약서 §G-1 — 스탯의 초기값·최소·최대가 런타임에 가는 길은 이 칸뿐이다.
+        // 툴의 도달성 증명은 그 경계로 clamp하며 걷고, `Ked.Progression.ChapterDefinition`은 정의되지 않은 스탯을 가리키는
         // 조건을 만나면 생성을 거부하므로, 이것이 없으면 실데이터를 아예 못 싣는다.
         // 모델을 직접 세운다 — 겨누는 것은 내보내기다.
         var chapter = new ChapterGraphModel(
@@ -393,7 +387,7 @@ public sealed class ChapterExportAndFixtureTests
         Assert.Equal(1, trust.GetProperty("Initial").GetInt32());
         Assert.Equal(5, trust.GetProperty("Maximum").GetInt32());
 
-        // ⚠ 이름 번역 — 이쪽은 Int, 저쪽(Ked.Progression.StatType)은 Number다.
+        // 주의: 이름 번역 — 이쪽은 Int, 저쪽(Ked.Progression.StatType)은 Number다.
         // enum이 이름 문자열로 나가므로 그대로 내면 수입기가 모르는 이름을 만난다.
         Assert.Equal("Number", trust.GetProperty("Type").GetString());
         Assert.Equal("Bool", stats[1].GetProperty("Type").GetString());

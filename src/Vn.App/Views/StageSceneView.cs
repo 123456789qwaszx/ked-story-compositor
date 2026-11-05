@@ -57,14 +57,14 @@ internal sealed class StageSceneView : UserControl
     /// <summary>조절창 탭 선택. 적용 후 재구성돼도 보던 탭이 유지된다.</summary>
     private int _popoverTabIndex;
 
-    // 조작 콘솔 팝업 (W37) — 위치 고정 + 드래그 이동. 뷰 좌상단 기준 오프셋으로 자리를 잡는다.
+    // 조작 콘솔 팝업 — 위치 고정 + 드래그 이동. 뷰 좌상단 기준 오프셋으로 자리를 잡는다.
     private readonly Popup _consolePopup;
     private Point _consoleOpenAt;
     private Point? _consoleUserPosition;
 
     /// <summary>
-    /// 열려 있는 조절창의 재구성 손잡이 (2026-08-22). 바깥(터미널에서 칩을 담는 길)이
-    /// <b>팝업을 닫지 않고</b> 내용만 새로 그리게 한다 — 소유자: "추가되는게 바로바로 보이도록".
+    /// 열려 있는 조절창의 재구성 손잡이. 바깥(터미널에서 칩을 담는 길)이
+    /// <b>팝업을 닫지 않고</b> 내용만 새로 그리게 한다 — 담긴 것이 바로 보여야 한다.
     /// </summary>
     private Action? _consoleRebuild;
 
@@ -81,13 +81,11 @@ internal sealed class StageSceneView : UserControl
     internal void RefreshConsole() => _consoleRebuild?.Invoke();
 
     /// <summary>
-    /// 무대 조절창을 <b>붙박이 판</b>으로 짓는다 (2026-08-22 소유자: "화면을 클릭했을 때
-    /// 나오는 콘솔이 연출 프리뷰 오른쪽에 상시 표시되면 좋겠어 — 챕터그래프와
-    /// 연출그래프에서처럼").
+    /// 무대 조절창을 <b>붙박이 판</b>으로 짓는다 — 콘솔이 연출 프리뷰 오른쪽에 상시
+    /// 표시된다(챕터 그래프·연출 그래프와 같은 방식).
     ///
-    /// 내용은 팝업 시절과 <b>같은 함수</b>(<see cref="BuildStagePopover"/>)가 짓는다 —
-    /// 담는 그릇만 바뀌었다. 딸려 죽은 것: 끌기 손잡이·✕·우클릭 닫기·라이트 디스미스.
-    /// 닫히지 않는 판에는 닫는 손짓이 없다.
+    /// 내용은 <b>같은 함수</b>(<see cref="BuildStagePopover"/>)가 짓고 이 판은 그릇일 뿐이다.
+    /// 끌기 손잡이·✕·우클릭 닫기·라이트 디스미스는 없다 — 닫히지 않는 판에는 닫는 손짓이 없다.
     /// </summary>
     internal Control BuildDockedConsole()
     {
@@ -111,7 +109,6 @@ internal sealed class StageSceneView : UserControl
                 }
 
                 // 잠긴 화면(공급된 발행본)에서는 누를 것이 없다 — 이유를 적고 만다.
-                // 예전에는 팝업이 아예 안 열려 이 상태를 말할 자리가 없었다.
                 if (!CanManipulate())
                 {
                     content.Children.Add(new TextBlock
@@ -174,39 +171,38 @@ internal sealed class StageSceneView : UserControl
     internal event Action? ManipulationApplied;
 
     /// <summary>
-    /// 재생 진행 입력 (W31) — 재생 중이면 true를 돌려주고 클릭을 소비한다(타자 중이면 전문
+    /// 재생 진행 입력 — 재생 중이면 true를 돌려주고 클릭을 소비한다(타자 중이면 전문
     /// 완성, 그 뒤면 다음 라인). false면 클릭은 기존 조작(조절창·캐릭터 팝오버)으로 흐른다.
     /// 도킹·분리 창의 무대가 같은 재생 모델의 이 판정 하나를 본다.
     /// </summary>
     internal Func<bool>? PlaybackAdvance;
 
-    /// <summary>갈래 선택이 바뀌었다 (W35) — 편집이 아니지만 다시 접어야 하므로 편집기가 재렌더한다.</summary>
+    /// <summary>갈래 선택이 바뀌었다 — 편집이 아니지만 다시 접어야 하므로 편집기가 재렌더한다.</summary>
     internal event Action? BranchSelectionChanged;
 
-    // 타자기 (W32) — 대사창 텍스트만 갱신하기 위한 핸들. 캔버스 재렌더 시 다시 잡힌다.
+    // 타자기 — 대사창 텍스트만 갱신하기 위한 핸들. 캔버스 재렌더 시 다시 잡힌다.
     private TextBlock? _dialogueText;
     private string? _dialogueFullText;
 
-    // 전이 (W33) — 직전 렌더의 자리들과 이번 렌더의 보간 대상. 코어가 낸 두 정지 프레임
+    // 전이 — 직전 렌더의 자리들과 이번 렌더의 보간 대상. 코어가 낸 두 정지 프레임
     // 사이를 뷰가 선형 보간으로 잇는다 — 좌표 계산이 아니라 자리 옮기기다(H-5).
     private Dictionary<string, StageRect> _portraitRects = new(StringComparer.Ordinal);
     private Dictionary<string, StageRect> _previousPortraitRects = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 슬롯이 <b>보이는 상태였는지</b> — 자리(<see cref="_portraitRects"/>)와 따로 기억한다
-    /// (2026-08-24 소유자 보고: "fade_in이 종종 안 먹는다").
+    /// 슬롯이 <b>보이는 상태였는지</b> — 자리(<see cref="_portraitRects"/>)와 따로 기억한다.
     ///
-    /// ⛔ <b>자리로 등장을 판정하면 안 된다.</b> 숨김 슬롯도 고스트 윤곽으로 자리를
-    /// 등록하므로(W28), 무대에 이미 서 있던 슬롯의 <c>fade_in</c>이 "자리가 있었으니
-    /// 이동"으로 읽혀 불투명도 1로 튀어 올랐다 — 페이드가 도는 것은 슬롯이 그 라인에서
-    /// <b>처음 생길 때</b>뿐이었고, 그래서 "종종" 먹었다. 등장은 <b>가시성이 바뀐 것</b>이다.
+    /// 주의: <b>자리로 등장을 판정하면 안 된다.</b> 숨김 슬롯도 고스트 윤곽으로 자리를
+    /// 등록하므로, 무대에 이미 서 있던 슬롯의 <c>fade_in</c>이 "자리가 있었으니
+    /// 이동"으로 읽혀 불투명도 1로 튀어 오른다 — 페이드가 슬롯이 그 라인에서
+    /// <b>처음 생길 때</b>만 돈다. 등장은 <b>가시성이 바뀐 것</b>이다.
     /// </summary>
     private Dictionary<string, bool> _portraitVisible = new(StringComparer.Ordinal);
     private Dictionary<string, bool> _previousPortraitVisible = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 직전 렌더의 <b>보이는 초상 컨트롤</b> — 퇴장 크로스페이드가 다시 얹을 그림이다
-    /// (2026-08-24 소유자: "퇴장도 같은 결로").
+    /// (퇴장도 등장과 같은 결이다).
     ///
     /// <c>fade_out</c>이 든 라인에서 이 슬롯은 고스트 윤곽으로 다시 그려지므로, 나가는
     /// 초상은 이미 캔버스에서 내려가 있다. 페이드하려면 <b>다시 얹어야</b> 한다.
@@ -223,13 +219,11 @@ internal sealed class StageSceneView : UserControl
     /// 지금 무대에 선 <b>프레임의 정체</b> — 어느 노드의 어느 라인인가. 전이 기준선
     /// (직전 자리·가시성·초상 컨트롤·배경)을 미룰지 밀지가 이 값 하나로 갈린다.
     ///
-    /// ⛔ <b>렌더 한 번이 전이 한 번이 아니다</b> (2026-08-24 소유자 2차 보고: "커맨드를
-    /// 추가했을 때 재생을 시켜도 Fade가 안 먹고, 다른 데 나갔다 오면 된다"). 같은 라인을
+    /// 주의: <b>렌더 한 번이 전이 한 번이 아니다</b>. 같은 라인을
     /// 다시 그리는 일은 늘 있다 — 커맨드 추가·커맨드 선택·[＋ 연출 추가] 플라이아웃·스탯
     /// HUD 토글·에셋 루트 변경이 전부 <see cref="Render"/>를 부른다. 그때마다 기준선을
-    /// 밀면 <b>직전 라인이 지워지고 이번 라인이 그 자리에 앉아</b> 등장·퇴장·배경
-    /// 크로스페이드의 근거가 통째로 사라진다(직전 = 이번이면 바뀐 것이 없다).
-    /// "다른 데 나갔다 오면 된다"가 그 증거다 — 다른 라인이 기준선을 제대로 채워 줬을 뿐이다.
+    /// 밀면 <b>직전 라인이 지워지고 이번 라인이 그 자리에 앉아</b> 등장·퇴장의
+    /// 근거가 통째로 사라진다(직전 = 이번이면 바뀐 것이 없다).
     ///
     /// 그래서 <b>기준선의 단위는 렌더가 아니라 프레임</b>이다. 같은 프레임을 몇 번을 다시
     /// 그리든 출발점은 직전 라인 하나로 남는다.
@@ -237,16 +231,11 @@ internal sealed class StageSceneView : UserControl
     private (string? NodeId, string? ContextLabel, string? LineId)? _renderedFrame;
 
     private readonly List<(string SlotKey, Control Control, StageRect To)> _transitionEntries = new();
-    // ⛔ 배경 크로스페이드(_backgroundOverlay·_previousBackgroundImagePath)는 2026-08-27에
-    //   걷었다 (소유자: "지금은 bg가 순차적으로 스르르 바뀌는데, 그냥 탁탁 바뀌어도
-    //   괜찮을 것 같아"). 걷기 전에는 출발점이 렌더 기준선이라, 첫 라인을 재생하면
-    //   <b>둘째 라인의 배경에서 첫 배경으로</b> 거꾸로 스르르 바뀌는 버그도 함께 있었다 —
-    //   배경 교체는 이제 라인이 바뀌는 순간 즉시 선다.
+    // 배경은 크로스페이드하지 않는다 — 배경 교체는 라인이 바뀌는 순간 즉시 선다.
 
     /// <summary>
-    /// 카메라를 타는 배경 (2026-08-27 소유자: "shot_to … bg역시도 크기를 받아야") —
-    /// shot이 흐르면 이 컨트롤의 rect가 초상들과 같은 규약으로 따라간다. 교체
-    /// 크로스페이드가 아니다(그건 같은 날 걷혔다).
+    /// 카메라를 타는 배경 — shot_to 등으로 shot이 흐르면 배경도 크기를 받아, 이 컨트롤의
+    /// rect가 초상들과 같은 규약으로 따라간다. 교체 크로스페이드가 아니다.
     /// </summary>
     private Image? _backgroundImage;
 
@@ -257,12 +246,11 @@ internal sealed class StageSceneView : UserControl
     private StageRect? _motionStartBackground;
 
     /// <summary>
-    /// 전이 진행도 적용 (W33). null/1 이상 = 확정 상태(모든 자리 최종값·오버레이 제거).
-    /// 0..1 = 직전 자리 → 새 자리 선형 보간, <b>등장한 슬롯은 페이드 인, 퇴장한 슬롯은
-    /// 나가는 초상이 페이드 아웃</b>(2026-08-24), 배경이 바뀌었으면 옛 배경을 위에 얹어
-    /// 크로스페이드.
+    /// 전이 진행도 적용. null/1 이상 = 확정 상태(모든 자리 최종값·오버레이 제거).
+    /// 0..1 = 모션 계획에 든 슬롯은 그 시각의 자리로, <b>등장한 슬롯은 페이드 인, 퇴장한 슬롯은
+    /// 나가는 초상이 페이드 아웃</b>.
     ///
-    /// ⚠ 등장·퇴장의 근거는 언제나 <b>가시성 변화</b>다(<see cref="Appeared"/>·
+    /// 주의: 등장·퇴장의 근거는 언제나 <b>가시성 변화</b>다(<see cref="Appeared"/>·
     /// <see cref="Departed"/>) — "직전에 자리가 있었나"가 아니다. 숨김 슬롯도 고스트로
     /// 자리를 등록하므로 그 판정은 무대에 이미 선 슬롯의 fade를 통째로 삼킨다.
     /// </summary>
@@ -274,9 +262,9 @@ internal sealed class StageSceneView : UserControl
 
         if (progress is not { } t || t >= 1)
         {
-            // null = 정지 화면 (W66 소유자 결정): 시간을 가진 커맨드의 슬롯은 이 라인이
+            // null = 정지 화면: 시간을 가진 커맨드의 슬롯은 이 라인이
             // 시작되는 순간의 자리·크기 — 곧 출발이다. 어디로 가는지는 타임라인을 끌거나
-            // ▶로 태워서 본다(도착을 겹쳐 그리던 궤적·고스트는 2026-08-21에 걷혔다).
+            // ▶로 태워서 본다(도착을 겹쳐 그리는 궤적·고스트는 없다).
             // 1 = 재생이 끝까지 태웠다 — 도착에 남는다.
             IReadOnlyDictionary<string, StageRect>? rest = progress is null ? _motionStartRects : null;
 
@@ -288,7 +276,7 @@ internal sealed class StageSceneView : UserControl
                 control.Opacity = 1;
             }
 
-            // 배경도 카메라를 탄다 (2026-08-27) — 정지는 출발의 샷, 확정(1)은 도착의 샷이다.
+            // 배경도 카메라를 탄다 — 정지는 출발의 샷, 확정(1)은 도착의 샷이다.
             if (_backgroundImage is not null &&
                 (progress is null ? _motionStartBackground ?? _backgroundFinalRect : _backgroundFinalRect)
                     is { } backgroundRest)
@@ -302,15 +290,15 @@ internal sealed class StageSceneView : UserControl
             return;
         }
 
-        // 시간을 가진 커맨드가 있는 라인은 그 시각의 무대를 다시 합성한다 (2026-08-21) —
+        // 시간을 가진 커맨드가 있는 라인은 그 시각의 무대를 다시 합성한다 —
         // 커맨드마다 제 duration·이징으로 흐르고(라인 최대가 아니다), 자리도 크기도
         // 코어가 낸 상태에서 나온다. 모양은 코어 EaseFunctions/CurveFunctions —
-        // 런타임과 등가 고정된 그 곡선이다(W66b).
+        // 런타임과 등가 고정된 그 곡선이다.
         (IReadOnlyDictionary<string, StageRect> Slots, StageRect? Background)? motion =
             ComposeMotionFrame(t * lineSeconds);
         IReadOnlyDictionary<string, StageRect>? frame = motion?.Slots;
 
-        // 배경도 카메라를 탄다 (2026-08-27) — 그 시각의 샷이 낸 무대 rect 그대로다.
+        // 배경도 카메라를 탄다 — 그 시각의 샷이 낸 무대 rect 그대로다.
         if (motion is { Background: { } movingBackground } && _backgroundImage is not null)
         {
             ApplyRect(_backgroundImage, movingBackground);
@@ -320,19 +308,17 @@ internal sealed class StageSceneView : UserControl
         {
             bool hadRect = _previousPortraitRects.TryGetValue(slotKey, out StageRect? from) && from is not null;
 
-            // 페이드 인의 근거는 <b>가시성이 켜진 것</b>이다 (2026-08-24) — 자리가 없었다는
+            // 페이드 인의 근거는 <b>가시성이 켜진 것</b>이다 — 자리가 없었다는
             // 것만으로 판정하면, 숨김 고스트로 이미 자리를 갖고 있던 슬롯의 fade_in이
-            // 불투명도 1로 튀어 오른다(소유자 보고: "fade_in이 종종 안 먹는다"). 무대에
-            // 처음 서는 슬롯은 자리도 가시성 기록도 없으니 어느 쪽으로도 페이드 인이다.
+            // 불투명도 1로 튀어 오른다. 무대에 처음 서는 슬롯은 자리도 가시성 기록도
+            // 없으니 어느 쪽으로도 페이드 인이다.
             //
-            // ⚠ 진행도는 라인 시계(t)가 아니라 <b>그 페이드의 duration</b>이다 (2026-08-26
-            // 소유자: "fade_in역시 동일한 원인으로 같은 문제") — 라인 시계는 가장 긴
-            // 커맨드의 것이라, 그것을 타면 0fr 페이드도 그 시간만큼 천천히 밝아진다.
+            // 주의: 진행도는 라인 시계(t)가 아니라 <b>그 페이드의 duration</b>이다 — 라인
+            // 시계는 가장 긴 커맨드의 것이라, 그것을 타면 0fr 페이드도 그 시간만큼 천천히 밝아진다.
             //
-            // ⚠ 이 라인에 fade_in이 적혀 있으면 기준선과 무관하게 등장이다 (같은 날
-            // 소유자: "첫번째 말하는 거는 … 즉시 보이는") — 씬에 처음 들어올 때 첫
-            // 라인이 정체가 다른 요청으로 두 번 그려지며 기준선이 "이미 보임"으로 굳어,
-            // 첫 라인의 fade_in만 삼켜졌다. 재생은 그 라인의 커맨드를 처음부터 다시
+            // 주의: 이 라인에 fade_in이 적혀 있으면 기준선과 무관하게 등장이다 — 씬에
+            // 처음 들어올 때 첫 라인이 정체가 다른 요청으로 두 번 그려지며 기준선이 "이미 보임"으로 굳으면
+            // 첫 라인의 fade_in만 삼켜진다. 재생은 그 라인의 커맨드를 처음부터 다시
             // 트는 것이니, 적힌 fade_in이 곧 등장의 근거다.
             control.Opacity = FadesIn(slotKey) || !hadRect || Appeared(slotKey)
                 ? FadeProgress(slotKey, t * lineSeconds)
@@ -346,14 +332,11 @@ internal sealed class StageSceneView : UserControl
             }
             else
             {
-                // ⛔ 직전 자리 → 새 자리 일괄 보간은 2026-08-26에 걷었다 (소유자 보고:
-                // "place … 0fr로 바꿧는데도 … 천천히 이동" · 끄면 "역으로 … 천천히 이동").
+                // 직전 자리 → 새 자리 일괄 보간은 하지 않는다.
                 // 시간에 따라 움직이는 것은 <b>모션 계획에 든 슬롯뿐</b>이고(위 갈래 —
                 // 커맨드가 제 duration·이징으로 끈다), 계획 밖의 자리 변화는 시간을 안 가진
-                // 커맨드(0fr)의 것이라 런타임처럼 <b>즉시 스냅</b>이다. 이 보간은 모션
-                // 계획(2026-08-21) 전에 라인 사이를 잇던 근사인데, 남아 있으니 0fr이
-                // 기준선과의 차이만큼 미끄러졌고 — 연출 그래프를 다녀오면 기준선이 비어
-                // 우연히 정상으로 보였다.
+                // 커맨드(0fr)의 것이라 런타임처럼 <b>즉시 스냅</b>이다. 일괄 보간을 하면 0fr이
+                // 기준선과의 차이만큼 미끄러진다.
                 ApplyRect(control, to);
             }
 
@@ -366,12 +349,10 @@ internal sealed class StageSceneView : UserControl
                 Canvas.SetTop(leaving, Canvas.GetTop(control));
                 leaving.Width = control.Width;
                 leaving.Height = control.Height;
-                // 퇴장도 제 duration으로 걷힌다 (2026-08-26) — 등장과 같은 규칙 하나다.
+                // 퇴장도 제 duration으로 걷힌다 — 등장과 같은 규칙 하나다.
                 leaving.Opacity = 1 - FadeProgress(slotKey, t * lineSeconds);
             }
         }
-
-        // ⛔ 배경 크로스페이드는 여기 살았다 — 2026-08-27에 걷었다(위 필드 자리의 주석 참조).
     }
 
     /// <summary>
@@ -392,8 +373,8 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이 슬롯 페이드의 진행도(0..1) — <b>그 페이드 커맨드 자신의 duration</b>으로 흐른다
-    /// (2026-08-26). 이 라인에 그 슬롯의 페이드가 없거나 0fr이면 <b>즉시(1)</b>다 —
+    /// 이 슬롯 페이드의 진행도(0..1) — <b>그 페이드 커맨드 자신의 duration</b>으로 흐른다.
+    /// 이 라인에 그 슬롯의 페이드가 없거나 0fr이면 <b>즉시(1)</b>다 —
     /// show 같은 즉시 가시성 변화가 여기로 온다(런타임도 태우지 않는다).
     /// </summary>
     private double FadeProgress(string slotKey, double elapsedSeconds) =>
@@ -430,7 +411,7 @@ internal sealed class StageSceneView : UserControl
     /// 걷히는 중인 초상을 준비한다 — 직전 렌더의 컨트롤을 <b>고스트 바로 위</b>에 다시
     /// 얹는다(한 번만). 얹을 그림이 없으면 null이고, 그때 퇴장은 그냥 사라짐이다.
     ///
-    /// ⚠ <b>손짓을 뗀다</b>(<c>IsHitTestVisible</c>) — 걷히는 중인 그림을 눌러 조절창이
+    /// 주의: <b>손짓을 뗀다</b>(<c>IsHitTestVisible</c>) — 걷히는 중인 그림을 눌러 조절창이
     /// 열리면, 사람은 이미 화면에 없는 것을 만지고 있는 셈이다.
     /// </summary>
     private Control? TakeDepartingPortrait(string slotKey, Control ghost)
@@ -476,7 +457,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 대사창에 보일 글자 수 (W32). null = 전문. 재생 타이머가 라인 전체를 다시 그리지 않고
+    /// 대사창에 보일 글자 수. null = 전문. 재생 타이머가 라인 전체를 다시 그리지 않고
     /// 이 한 곳으로 타자를 찍는다.
     /// </summary>
     internal void SetDialogueVisibleCharacters(int? count)
@@ -502,7 +483,7 @@ internal sealed class StageSceneView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        // 조작 콘솔 팝업 (W37) — 좌상단 고정 + 아래·오른쪽으로만 자라서 크기가 바뀌어도
+        // 조작 콘솔 팝업 — 좌상단 고정 + 아래·오른쪽으로만 자라서 크기가 바뀌어도
         // 자리가 튀지 않는다. 화면 밖으로 밀리면 미끄러지기만 한다(뒤집힘 없음).
         _consolePopup = new Popup
         {
@@ -513,14 +494,13 @@ internal sealed class StageSceneView : UserControl
             PlacementConstraintAdjustment =
                 Avalonia.Controls.Primitives.PopupPositioning.PopupPositionerConstraintAdjustment.SlideX |
                 Avalonia.Controls.Primitives.PopupPositioning.PopupPositionerConstraintAdjustment.SlideY,
-            // ⚠ 라이트 디스미스를 껐다 (2026-08-22 소유자: "열려있던 조작 콘솔은 닫히면
-            // 안되고"). 켜져 있으면 바깥 클릭 한 번이 곧 닫기라, 조절창을 띄워 놓고
-            // 터미널에서 커맨드를 담는 흐름 자체가 성립하지 않는다. 닫는 길은 헤더가
+            // 주의: 라이트 디스미스를 끈다 — 열려 있던 조작 콘솔이 닫히면 안 된다. 켜져
+            // 있으면 바깥 클릭 한 번이 곧 닫기라, 조절창을 띄워 놓고 터미널에서 커맨드를 담는 흐름 자체가 성립하지 않는다. 닫는 길은 헤더가
             // 이미 광고하는 둘이다 — ✕ 단추와 조절창 안 우클릭.
             IsLightDismissEnabled = false
         };
-        // 무대 위에 잠깐 뜨는 판(값 시뮬 등)의 팝업이다 — 조절창은 2026-08-22에 오른쪽
-        // 붙박이 기둥으로 갔으므로 여기서 `_consoleRebuild`·담기 모드를 건드리지 않는다.
+        // 무대 위에 잠깐 뜨는 판(값 시뮬 등)의 팝업이다 — 조절창은 오른쪽
+        // 붙박이 기둥이므로 여기서 `_consoleRebuild`·담기 모드를 건드리지 않는다.
         _consolePopup.Closed += (_, _) => _consolePopup.Child = null;
 
         // 레터박스 여백은 검정 — 창 어디를 늘려도 무대 비율은 변하지 않는다.
@@ -533,9 +513,8 @@ internal sealed class StageSceneView : UserControl
             }
         };
 
-        // 무대 빈 곳 좌클릭 → 무대 조절창(전역 슬롯 + 배경/슬롯/캐릭터 탭). 초상화 클릭은
-        // 자기 핸들러가 먼저 잡는다. 조절창은 적용해도 닫히지 않는다 — 우클릭이 닫는다.
-        // 클릭·드롭 경로는 전부 UiGuard 아래다 — 예외는 무동작 + 상태줄이 된다(X1, 불변식 4).
+        // 초상화 클릭은 자기 핸들러가 먼저 잡는다. 팝업은 적용해도 닫히지 않는다 — 우클릭이 닫는다.
+        // 클릭·드롭 경로는 전부 UiGuard 아래다 — 예외는 무동작 + 상태줄이 된다(불변식 4).
         _canvas.PointerPressed += (_, args) =>
         {
             if (args.Handled)
@@ -543,10 +522,8 @@ internal sealed class StageSceneView : UserControl
                 return;
             }
 
-            // 무대 우클릭 = 열려 있는 조절창 닫기 (2026-08-22). 라이트 디스미스를 끄면서
-            // "바깥을 누르면 닫힌다"는 손버릇이 갈 곳을 잃었다 — 우클릭만 그 자리를 잇는다
-            // (좌클릭은 여전히 조절창을 여는 손짓이라 겹치면 안 된다). 무대 우클릭은
-            // 지금까지 아무 뜻도 없었으므로 빼앗는 것이 없다.
+            // 무대 우클릭 = 열려 있는 팝업 닫기. 라이트 디스미스가 꺼져 있으므로
+            // "바깥을 누르면 닫힌다"는 손버릇을 우클릭이 잇는다.
             if (args.GetCurrentPoint(_canvas).Properties.IsRightButtonPressed)
             {
                 if (_consolePopup.IsOpen)
@@ -563,15 +540,15 @@ internal sealed class StageSceneView : UserControl
                 return;
             }
 
-            // 재생 중에는 클릭이 진행이다 — 조작 대신 이 라인 즉시 완료 → 다음 (W31).
+            // 재생 중에는 클릭이 진행이다 — 조작 대신 이 라인 즉시 완료 → 다음.
             if (PlaybackAdvance?.Invoke() == true)
             {
                 args.Handled = true;
                 return;
             }
 
-            // 빈 무대 좌클릭이 조절창을 열던 길은 2026-08-22에 사라졌다 — 판이 오른쪽에
-            // 늘 서 있으므로 열 것이 없다. 초상 클릭만 남는다(그 슬롯의 [캐릭터] 탭으로).
+            // 빈 무대 좌클릭은 아무것도 열지 않는다 — 조절창이 오른쪽에 늘 서 있다.
+            // 초상 클릭만 조절창의 그 슬롯 [캐릭터] 탭으로 간다.
         };
 
         DragDrop.SetAllowDrop(this, true);
@@ -594,9 +571,9 @@ internal sealed class StageSceneView : UserControl
         _dialogueText = null;
         _dialogueFullText = null;
 
-        // 전이 (W33): 이번 렌더가 "새 자리"가 되고 직전 <b>프레임</b>의 자리가 "출발점"이 된다.
+        // 전이: 이번 렌더가 "새 자리"가 되고 직전 <b>프레임</b>의 자리가 "출발점"이 된다.
         //
-        // ⛔ 출발점을 미는 것은 <b>다른 프레임으로 넘어갈 때뿐이다</b> (2026-08-24) — 같은
+        // 주의: 출발점을 미는 것은 <b>다른 프레임으로 넘어갈 때뿐이다</b> — 같은
         //    라인을 다시 그리는 것은 전이가 아니다. 자세한 이유는 _renderedFrame 참조.
         (string?, string?, string?) frame =
             (request?.EditContext?.PresentationNodeId, request?.ContextLabel, request?.SelectedLineId);
@@ -638,7 +615,7 @@ internal sealed class StageSceneView : UserControl
         PreviewAssetLibrary library = _session?.AssetLibrary ?? PreviewAssetLibrary.Empty;
         string? speakerCharacterId = _session?.Definition.FindSpeakerCharacterId(request.SpeakerName);
 
-        // 시간 흐름 (2026-08-21) — 라인 시작 자리를 <b>같은 컴포저</b>로 짓는다.
+        // 시간 흐름 — 라인 시작 자리를 <b>같은 컴포저</b>로 짓는다.
         // 이동·배치·뎁스가 저마다 다른 노드를 만져도 여기 한 번의 합성으로 합쳐진다.
         _composeContext = (request.State, request.SpeakerName, speakerCharacterId, width, height);
         _motionPlan = request.MotionPlan;
@@ -658,7 +635,7 @@ internal sealed class StageSceneView : UserControl
             request.CoreState,
             _session?.TuningLibrary.SurfaceLayouts);
 
-        // 배경도 카메라를 탄다 (2026-08-27) — 자리는 컴포저가 초상과 같은 규약으로 계산했다.
+        // 배경도 카메라를 탄다 — 자리는 컴포저가 초상과 같은 규약으로 계산했다.
         // 캔버스에 가장 먼저 얹혀야 하므로(맨 뒤) 컴포즈 직후·초상 앞이 이 호출의 자리다.
         _backgroundFinalRect = layout.Background;
         RenderBackground(
@@ -729,20 +706,19 @@ internal sealed class StageSceneView : UserControl
         ApplyMotionStartLayout();
         RenderStatsHud(request, width, em);
 
-        // 붙박이 조절창은 무대와 함께 간다 (2026-08-22) — 슬롯 목록·표정 썸네일·수치가
+        // 붙박이 조절창은 무대와 함께 간다 — 슬롯 목록·표정 썸네일·수치가
         // 전부 이 라인의 것이라, 라인이 바뀌었는데 판이 옛 라인을 들고 있으면 거짓말이다.
-        // 팝업 시절에는 다시 열 때 새로 지어져 이 문제가 없었다.
         _consoleRebuild?.Invoke();
     }
 
     /// <summary>
-    /// <b>흐르는 슬롯을 출발 자리에 세운다</b> — 정지 화면 = 이 라인이 시작되는 순간이다
-    /// (W66 소유자 결정). ▶가 그 길을 태우고, 무대 아래 타임라인이 중간 프레임을 짚는다.
+    /// <b>흐르는 슬롯을 출발 자리에 세운다</b> — 정지 화면 = 이 라인이 시작되는 순간이다.
+    /// ▶가 그 길을 태우고, 무대 아래 타임라인이 중간 프레임을 짚는다.
     /// 자리는 코어가 접은 상태를 컴포저에 통과시킨 결과이고, 이동뿐 아니라 배치(place)·
-    /// 뎁스(size)도 같은 규칙을 탄다 (2026-08-21).
+    /// 뎁스(size)도 같은 규칙을 탄다.
     ///
-    /// ⚠ <b>무대는 이것만 얹는다.</b> 도착 자리의 노란 고스트 윤곽·점선 궤적(2026-08-21
-    /// 걷힘 — "잘 안쓰게 되네"), 커맨드 칩, 프레임 스크럽은 전부 여기 없다: 목록·편집
+    /// 주의: <b>무대는 이것만 얹는다.</b> 도착 자리의 노란 고스트 윤곽·점선 궤적, 커맨드 칩,
+    /// 프레임 스크럽은 전부 여기 없다: 목록·편집
     /// 입구는 왼쪽 대본 패널이고 타임라인은 무대 아래 재생 줄이다. 상시로 겹쳐 그리면
     /// 정지 화면이 그만큼 시끄러워진다.
     /// </summary>
@@ -759,7 +735,7 @@ internal sealed class StageSceneView : UserControl
             }
         }
 
-        // 배경도 카메라를 탄다 (2026-08-27) — 정지 화면은 출발의 샷이다.
+        // 배경도 카메라를 탄다 — 정지 화면은 출발의 샷이다.
         if (_backgroundImage is not null && _motionStartBackground is { } backgroundStart)
         {
             ApplyRect(_backgroundImage, backgroundStart);
@@ -767,9 +743,8 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 선택 커맨드의 수치 조절 내용 (2026-08-21 소유자: "점의 세부 조절창과 연출
-    /// 편집창이 합쳐지는 게 맞겠네") — 예전 플라이아웃 대신 터미널 아래 작업대
-    /// (Inspector)에 얹을 컨트롤을 돌려준다. 이동 커맨드는 이동 편집기(슬라이더+이징+
+    /// 선택 커맨드의 수치 조절 내용 — 점의 세부 조절창과 연출 편집창을 합친 터미널
+    /// 아래 작업대(Inspector)에 얹을 컨트롤을 돌려준다. 이동 커맨드는 이동 편집기(슬라이더+이징+
     /// 곡선), 조절 가능한 파라미터가 선언된 커맨드는 파라미터 슬라이더·선택기다.
     /// 어느 것도 아니면 null — 커맨드 행(칩)만으로 충분한 커맨드다.
     /// </summary>
@@ -799,20 +774,17 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 프레임 타임라인 (W66b → 2026-08-21 무대 아래 이사, 소유자: "재생이 프리뷰
-    /// 아래쪽에 오는게 더 좋아보여. 타임라인이랑 같이") — 이 라인 배치의 내부 시간을
+    /// 프레임 타임라인 — 무대 아래 재생 줄에 재생 컨트롤과 함께 선다. 이 라인 배치의 내부 시간을
     /// 손으로 끈다. 기존 전이 보간(<see cref="SetTransitionProgress"/>)에 진행도를
     /// 흘릴 뿐이고, 곡선 모양도 재생과 같은 코어 이징이다. ▶ 재생이 돌면 재생 틱이
     /// 이 값을 덮는다.
     ///
-    /// <b>상시로 선다</b> (2026-08-21 소유자: "어떨 때는 나오고 어떨때는 안 나오는데
-    /// 상시 표기되도록") — 끌 시간이 없는 라인에서는 <b>비활성</b>으로 서고 사라지지
+    /// <b>상시로 선다</b> — 끌 시간이 없는 라인에서는 <b>비활성</b>으로 서고 사라지지
     /// 않는다. 있다 없다 하면 재생 줄이 라인마다 다른 얼굴이 되고, 없는 날에는 이
     /// 도구가 있다는 사실 자체가 안 보인다.
     /// </summary>
-    // 타임라인 손잡이 (2026-08-22 소유자: "프레임별로 눈금을 매기고, 재생될 때 핸들이
-    // 현재 재생 중인 프레임에 맞춰지도록. 핸들도 프레임 단위로 움직이도록") —
-    // 재생이 슬라이더를 밀고, 슬라이더가 다시 재생을 밀지 않도록 빗장 하나를 둔다.
+    // 타임라인 손잡이 — 프레임별로 눈금을 매기고, 재생될 때 핸들이 현재 재생 중인
+    // 프레임에 맞춰지며 프레임 단위로 움직인다. 재생이 슬라이더를 밀고, 슬라이더가 다시 재생을 밀지 않도록 빗장 하나를 둔다.
     private Slider? _timelineScrub;
     private TextBlock? _timelineLabel;
     private double _timelineFrames = 1;
@@ -831,8 +803,8 @@ internal sealed class StageSceneView : UserControl
             Width = 52,
             TextAlignment = TextAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
-            // 색은 평범하게 (2026-08-21 소유자) — 노란 강조가 이 숫자를 실제보다
-            // 중요해 보이게 했다. 진행 표시(1/3)와 같은 결이면 충분하다.
+            // 색은 평범하게 — 노란 강조는 이 숫자를 실제보다
+            // 중요해 보이게 한다. 진행 표시(1/3)와 같은 결이면 충분하다.
             Opacity = 0.75
         };
 
@@ -841,7 +813,7 @@ internal sealed class StageSceneView : UserControl
             Minimum = 0,
             Maximum = frames,
             Value = 0,
-            // 눈금 한 칸 = 한 프레임 (2026-08-22 소유자). 키보드·페이지 이동도 같은 걸음이라
+            // 눈금 한 칸 = 한 프레임. 키보드·페이지 이동도 같은 걸음이라
             // 어떤 손짓으로 움직여도 프레임 사이에 서는 일이 없다.
             TickFrequency = 1,
             IsSnapToTickEnabled = true,
@@ -858,7 +830,7 @@ internal sealed class StageSceneView : UserControl
 
         scrub.ValueChanged += (_, args) =>
         {
-            // ⚠ 프레임 단위로 못 박는다 — <c>IsSnapToTickEnabled</c>만으로는 끄는 동안
+            // 주의: 프레임 단위로 못 박는다 — <c>IsSnapToTickEnabled</c>만으로는 끄는 동안
             // 값이 프레임 사이에 서고, 그 자리를 무대가 그대로 그려 손잡이가 미끄러진다.
             double snapped = Math.Round(args.NewValue);
 
@@ -893,7 +865,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 재생이 흘린 진행도를 손잡이에 옮긴다 (2026-08-22) — <b>가장 가까운 프레임</b>에
+    /// 재생이 흘린 진행도를 손잡이에 옮긴다 — <b>가장 가까운 프레임</b>에
     /// 선다. null(정지 화면)이면 0프레임이다. 빗장은 되먹임을 막는다: 이 쓰기가 부르는
     /// <c>ValueChanged</c>가 다시 <see cref="SetTransitionProgress"/>를 부르면 재생의
     /// 보간이 프레임 격자로 덮이고, 두 값이 서로를 밀며 떨린다.
@@ -930,14 +902,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이동이 아닌 커맨드의 칩 — 카탈로그에 슬라이더 선언 파라미터가 있으면 수치 칩(⚙,
-    /// W68: scale_by·shot_zoom부터)이고, 없으면 커맨드가 있다는 사실을 알리는 표시 칩이다.
-    /// 무엇이 만질 수 있는 수치인지는 코드가 아니라 선언이 정한다.
-    /// </summary>
-    // (칩 스트립 제거 — 2026-08-20 소유자 정리: 커맨드 목록은 왼쪽 대본 패널로 갔다)
-
-    /// <summary>
-    /// 칩에서 상세 조절이 되는 파라미터인가 (W68b) — 슬라이더 선언(숫자축) ·
+    /// 칩에서 상세 조절이 되는 파라미터인가 — 슬라이더 선언(숫자축) ·
     /// duration(fr 슬라이더) · 후보 토큰이 선언된 타입(depthPreset·focusPreset·
     /// screenPoint 등 = 선택기). 무대 대상(slot/alias)은 여기서 안 바꾼다 —
     /// 대상 교체는 조작이 아니라 다른 커맨드다.
@@ -949,7 +914,7 @@ internal sealed class StageSceneView : UserControl
          ArgumentTokenCandidates.For(parameter.Type).Count > 0);
 
     /// <summary>
-    /// 파라미터 수치 편집 행들 (W68 → 2026-08-21 작업대 이사) — 슬라이더 선언이 있는
+    /// 파라미터 수치 편집 행들 — 슬라이더 선언이 있는
     /// 파라미터와 duration이 슬라이더로, 후보 토큰 타입은 선택기로 선다. 이동 편집기와
     /// 같은 규칙: 끄는 동안은 라벨만, 손을 뗄 때 한 번 저장, 확정 즉시 정지 프레임이
     /// 새 값으로 다시 접힌다.
@@ -969,7 +934,7 @@ internal sealed class StageSceneView : UserControl
                     ? value
                     : parameter.Default ?? string.Empty;
 
-                // u 토큰 슬라이더 (2026-08-21 소유자: 넛지 distance · 샷 x·y) — 값이
+                // u 토큰 슬라이더(넛지 distance · 샷 x·y) — 값이
                 // <c>3u</c>·<c>-2.5u</c> 같은 <b>토큰</b>이라 숫자 슬라이더로는 안 된다:
                 // 읽을 때도(`double.TryParse("3u")`가 0을 낸다) 쓸 때도 u를 알아야 한다.
                 // 그래서 <see cref="UnitToken"/>을 지나는 제 갈래를 두고 숫자 슬라이더보다
@@ -1020,9 +985,8 @@ internal sealed class StageSceneView : UserControl
                 }
                 else if (string.Equals(parameter.Type, "depthPreset", StringComparison.Ordinal))
                 {
-                    // 뎁스는 작업대에서 <b>레벨 슬라이더</b>로 만진다 (2026-08-21 소유자:
-                    // "조작 콘솔에서는 나쁘진 않은데, 터미널 아래의 연출 편집기에서는
-                    // -10 ~ 10까지의 Level을 슬라이더로 직접 조절"). 프리셋 키(close·far…)는
+                    // 뎁스는 작업대에서 <b>레벨 슬라이더</b>로 만진다 — 터미널 아래의 연출
+                    // 편집기에서 Level을 슬라이더로 직접 조절한다. 프리셋 키(close·far…)는
                     // 조작 콘솔과 인자 칩에 그대로 남는다 — 잃는 길은 없다.
                     AddDepthLevelRows(host, context.PresentationNodeId, command, parameter, written);
                 }
@@ -1042,7 +1006,7 @@ internal sealed class StageSceneView : UserControl
                 }
                 else if (string.Equals(parameter.Type, "ease", StringComparison.Ordinal))
                 {
-                    // 이징 칸 (2026-08-21 런타임이 place·size·회전에도 열었다) — 이동과
+                    // 이징 칸(place·size·회전에도 있다) — 이동과
                     // 같은 선택기다: 곡선 미리보기 + 커스텀 곡선(@이름) 편집까지.
                     // 미지정 기본은 런타임 스펙 그대로 EaseKindOf(null)가 말한다.
                     host.Children.Add(BuildEaseSelector(
@@ -1055,7 +1019,7 @@ internal sealed class StageSceneView : UserControl
                 }
                 else if (string.Equals(parameter.Type, "oscillation", StringComparison.Ordinal))
                 {
-                    // 진동 칸 (2026-08-21 증보) — 같은 선택기이되 <b>핑퐁</b>으로 그린다.
+                    // 진동 칸 — 같은 선택기이되 <b>핑퐁</b>으로 그린다.
                     // 표준 이징이 왕복의 절반으로 읽히므로 35종이 그대로 몸짓이 되고,
                     // [곡선 편집…]은 그 핑퐁을 구워 열어 준다(끝점이 (0,0)·(1,0)이라
                     // 구운 결과가 그대로 유효한 진동 곡선이다).
@@ -1074,7 +1038,7 @@ internal sealed class StageSceneView : UserControl
                 else if (!ArgumentTokenCandidates.IsStageTargetType(parameter.Type) &&
                          ArgumentTokenCandidates.For(parameter.Type) is { Count: > 0 } candidates)
                 {
-                    // 프리셋 토큰 파라미터 (W68b — Depth·Place가 첫 고객): 후보 선택기.
+                    // 프리셋 토큰 파라미터(Depth·Place 등): 후보 선택기.
                     // 후보는 제안이지 제약이 아니다 — 후보 밖 값(뎁스의 연속 레벨 숫자 등)은
                     // 선택 없음 + 현재 값 표시로 두고, 자유 입력은 기존 칩 텍스트 편집의 몫이다.
                     host.Children.Add(BuildTokenSelector(
@@ -1088,12 +1052,12 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 뎁스 레벨 슬라이더 (2026-08-21 소유자 지시) — 런타임은 <c>size</c>의 depth 자리에
+    /// 뎁스 레벨 슬라이더 — 런타임은 <c>size</c>의 depth 자리에
     /// <b>임의 실수 레벨</b>을 받아 커브로 푼다(설계 구간 0~10, 그 밖은 끝 키 기울기로
     /// 외삽 — 그래서 음수도 뜻이 있다). 프리셋 키가 적혀 있으면 슬라이더는 가운데(5)에
     /// 서고 무엇이 적혀 있는지 라벨이 말한다 — 끌기 전에는 아무것도 쓰지 않는다.
     ///
-    /// ⚠ 프리뷰 폴드는 아직 레벨을 모른다(코어 DTO가 level 커브를 안 읽는다 —
+    /// 주의: 프리뷰 폴드는 아직 레벨을 모른다(코어 DTO가 level 커브를 안 읽는다 —
     /// "레벨 수치는 커브 폴드 미지원"). 그래서 레벨을 쓴 커맨드는 무대에 "반영 안 됨"으로
     /// 선다. 재생·발행은 정상이다. 저쪽 코어가 커브 폴드를 열면 이 안내가 사라진다.
     /// </summary>
@@ -1105,7 +1069,7 @@ internal sealed class StageSceneView : UserControl
         string written)
     {
         // 적힌 것이 수치면 그 자리, 라벨(far·mid…)이면 <b>그 라벨의 눈금</b>이다
-        // (2026-08-21 런타임 개통: 라벨은 커브 위의 점 이름이 됐다 — DepthLevelLabels).
+        // (라벨은 커브 위의 점 이름이다 — DepthLevelLabels).
         // 둘 다 아니면 폴드도 거부하는 토큰이라 가운데에 세우고 원문을 보인다.
         bool known =
             double.TryParse(
@@ -1120,8 +1084,8 @@ internal sealed class StageSceneView : UserControl
             label: "뎁스",
             argumentName: parameter.Name,
             value: known ? level : DepthLevelLabels.Mid,
-            // 커브 설계 구간은 [0,20]이다 (2026-08-21 저쪽이 close 위로 늘렸다 — 배율
-            // 상한 2.2). 음수 쪽은 외삽이라 소유자가 정한 -10을 유지한다.
+            // 커브 설계 구간은 [0,20]이다(close 위까지 — 배율
+            // 상한 2.2). 음수 쪽은 외삽이라 -10까지만 연다.
             minimum: -10,
             maximum: 20,
             tick: 0.5,
@@ -1236,7 +1200,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이 라인의 시간 흐름 (2026-08-21) — 커맨드마다 자기 duration·이징으로 자기가 바꾼
+    /// 이 라인의 시간 흐름 — 커맨드마다 자기 duration·이징으로 자기가 바꾼
     /// 노드를 끈다. 이동·배치·뎁스가 한 라인에 같이 있어도 각자 흐른 뒤 컴포저가 합친다.
     /// </summary>
     private StageMotionPlan? _motionPlan;
@@ -1250,7 +1214,7 @@ internal sealed class StageSceneView : UserControl
 
     /// <summary>
     /// 라인 시작 후 <paramref name="elapsedSeconds"/> 시점의 자리들 — 슬롯들과 <b>배경</b>
-    /// (2026-08-27 — 카메라가 흐르면 배경도 같은 규약으로 흐른다). 계획이 없으면 null —
+    /// (카메라가 흐르면 배경도 같은 규약으로 흐른다). 계획이 없으면 null —
     /// 그때는 정지 화면이 곧 확정 상태다.
     ///
     /// 좌표를 여기서 손으로 더하지 않는다: <b>보간한 무대 상태를 컴포저에 그대로 넘긴다.</b>
@@ -1301,11 +1265,11 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이 라인의 소리 커맨드 ♪ 칩 (W34-b) — 정지 프레임에 그릴 것이 없는 오디오가
+    /// 이 라인의 소리 커맨드 ♪ 칩 — 정지 프레임에 그릴 것이 없는 오디오가
     /// 조용히 사라지지 않게 좌측에 알린다(규칙 14의 소리 판).
     /// </summary>
     /// <summary>
-    /// 시뮬 시작값 편집 (W36-b) — "이 변수가 이 값으로 시작한다고 치자". 뷰 상태라 저장되지
+    /// 시뮬 시작값 편집 — "이 변수가 이 값으로 시작한다고 치자". 뷰 상태라 저장되지
     /// 않고, 빈 값이면 등록 초기값으로 돌아간다. 적용해도 닫히지 않는다(우클릭 닫기).
     /// </summary>
     private void ShowSimulationFlyout(IReadOnlyList<StatFold.StatValue> stats)
@@ -1450,7 +1414,7 @@ internal sealed class StageSceneView : UserControl
 
             if (background.FilePath is { } path && _session?.ImageCache.Get(path) is { } bitmap)
             {
-                // 자리는 카메라를 탄 무대 rect다 (2026-08-27) — shot이 흐르면
+                // 자리는 카메라를 탄 무대 rect다 — shot이 흐르면
                 // SetTransitionProgress가 이 컨트롤을 같은 규약으로 옮긴다.
                 var backgroundImage = new Image
                 {
@@ -1484,7 +1448,7 @@ internal sealed class StageSceneView : UserControl
     {
         MiniStageSlot slot = portrait.Slot;
 
-        // 숨김/빈 슬롯도 자리와 크기가 보인다 — 네모 윤곽 + 슬롯명 태그 (소유자 지시 2026-08-06).
+        // 숨김/빈 슬롯도 자리와 크기가 보인다 — 네모 윤곽 + 슬롯명 태그.
         if (!slot.Visible)
         {
             RenderGhostSlot(portrait, em);
@@ -1537,10 +1501,10 @@ internal sealed class StageSceneView : UserControl
 
         if (portrait.IsSpeaker)
         {
-            // ⚠ 크기의 주인은 <b>맨 바깥 컨트롤 하나</b>다 — 전이·모션(ApplyRect)이
+            // 주의: 크기의 주인은 <b>맨 바깥 컨트롤 하나</b>다 — 전이·모션(ApplyRect)이
             // 리사이즈하는 것이 그것이기 때문이다. 안쪽 이미지가 명시 크기를 따로 들면
-            // 테두리만 줄고 그림은 최종 크기로 남는다 (2026-08-26 소유자: "depth는
-            // 최종완료상태를 preview에 반영하고 있어" — 화자 강조가 붙은 슬롯에서만 났다).
+            // 테두리만 줄고 그림은 최종 크기로 남는다(화자 강조가 붙은 슬롯에서 depth가
+            // 최종 상태로 보인다).
             image.Width = double.NaN;
             image.Height = double.NaN;
 
@@ -1582,7 +1546,7 @@ internal sealed class StageSceneView : UserControl
 
         Add(image, portrait.Rect);
 
-        // 전이(W33) 대상 — 이 슬롯의 자리. 보이는 초상이므로 가시성은 true다.
+        // 전이 대상 — 이 슬롯의 자리. 보이는 초상이므로 가시성은 true다.
         RegisterTransition(portrait.SlotKey, image, portrait.Rect, visible: true);
 
         if (caption is not null)
@@ -1639,7 +1603,7 @@ internal sealed class StageSceneView : UserControl
 
         Add(outline, portrait.Rect);
 
-        // 전이(W33) 대상 — 숨김 슬롯의 자리도 미끄러진다. ⚠ 자리는 등록하되 <b>가시성은
+        // 전이 대상 — 숨김 슬롯의 자리도 미끄러진다. 주의: 자리는 등록하되 <b>가시성은
         // false</b>다: 이 구분이 없으면 다음 라인의 fade_in이 등장이 아니라 이동으로 읽힌다.
         RegisterTransition(portrait.SlotKey, outline, portrait.Rect, visible: false);
 
@@ -1723,7 +1687,7 @@ internal sealed class StageSceneView : UserControl
         };
         Add(dialogueText, box.TextRect);
 
-        // 타자기(W32)가 이 텍스트만 갱신한다 — 전체 재렌더 없이.
+        // 타자기가 이 텍스트만 갱신한다 — 전체 재렌더 없이.
         _dialogueText = dialogueText;
         _dialogueFullText = request.LineText ?? string.Empty;
 
@@ -1786,15 +1750,15 @@ internal sealed class StageSceneView : UserControl
                 }
             };
 
-            // 지금 스탯으로 못 지나는 길 (2026-08-27) — 게임처럼 못 고르되, 지우는 대신
+            // 지금 스탯으로 못 지나는 길 — 게임처럼 못 고르되, 지우는 대신
             // 흐리게 남긴다(사유는 문구가 든다). 저작 도구에서 조용히 사라지는 것은 고장처럼 보인다.
             if (option.IsDisabled)
             {
                 optionBox.Opacity = 0.45;
             }
 
-            // 에피소드 끝 선택지 (2026-08-27) — 클릭의 뜻은 옵션이 스스로 든다(도착
-            // 에피소드로 씬 전환). 버튼 그리기는 갈래 선택과 한 벌, 배선만 갈린다.
+            // 에피소드 끝 선택지 — 클릭의 뜻은 옵션이 스스로 든다(도착
+            // 에피소드로 씬 전환).
             if (option.Choose is { } choose && _session is not null)
             {
                 optionBox.Cursor = new Cursor(StandardCursorType.Hand);
@@ -1809,7 +1773,7 @@ internal sealed class StageSceneView : UserControl
                     args.Handled = true;
                 };
             }
-            // ⛔ 대사 안 선택지의 갈래 고르기 클릭(W35)은 2026-11-04에 걷혔다 — 선택지는 간선뿐이라 Choose가 늘 있다.
+            // 선택지는 간선뿐이라 Choose가 늘 있다 — 대사 안 선택지의 갈래 고르기 클릭은 없다.
 
             Add(optionBox, new StageRect((width - optionWidth) / 2, y, optionWidth, optionHeight));
 
@@ -1818,9 +1782,9 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 스탯 HUD (X3·W35) — 등록 변수의 "이 라인까지" 누적 값. 선택된 갈래 기준이고,
+    /// 스탯 HUD — 등록 변수의 "이 라인까지" 누적 값. 선택된 갈래 기준이고,
     /// 미선택 갈래가 남아 있으면(요청의 근사 뱃지) 그 구간만 문서 순서 근사다(규칙 14).
-    /// <b>챕터 런 스탯도 같은 판에 선다</b> (2026-08-27) — 간선 선택이 커밋한 챕터 단위
+    /// <b>챕터 런 스탯도 같은 판에 선다</b> — 간선 선택이 커밋한 챕터 단위
     /// 누적값. 켜고 끄는 토글은 하나다(둘 다 "지금 값이 얼마인가"라는 같은 물음이다).
     /// </summary>
     private void RenderStatsHud(MiniStagePreviewRequest request, double width, double em)
@@ -1858,7 +1822,7 @@ internal sealed class StageSceneView : UserControl
 
         Add(toggle, new StageRect(width - em * 3.4, em * 0.5, em * 2.9, em * 1.2));
 
-        // 조건 값 시뮬 (W36-b) — 시작값을 바꿔 "이 값이면 어느 갈래인가"를 본다.
+        // 조건 값 시뮬 — 시작값을 바꿔 "이 값이면 어느 갈래인가"를 본다.
         // B계층 연출 변수의 것이라 그 변수가 있을 때만 선다(챕터 스탯은 간선 커밋이 정한다).
         if (stats.Count > 0)
         {
@@ -1897,7 +1861,7 @@ internal sealed class StageSceneView : UserControl
         var rows = new StackPanel { Spacing = em * 0.08 };
         int rowCount = 0;
 
-        // 챕터 런 스탯 (2026-08-27) — 간선 선택이 커밋한 챕터 단위 누적. 새 ▶가 처음값이다.
+        // 챕터 런 스탯 — 간선 선택이 커밋한 챕터 단위 누적. 새 ▶가 처음값이다.
         if (chapterStats.Count > 0)
         {
             rows.Children.Add(new TextBlock
@@ -2002,7 +1966,7 @@ internal sealed class StageSceneView : UserControl
         _canvas.Children.Add(control);
     }
 
-    // ── 직접 조작 (W20) — 인식 22종 어휘 = 조작 어휘 ─────────────────────
+    // ── 직접 조작 — 인식 22종 어휘 = 조작 어휘 ─────────────────────
 
     private bool CanManipulate() => _session is not null && _request?.EditContext?.Editable == true;
 
@@ -2031,8 +1995,8 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 커맨드 여럿을 <b>한 번의 편집으로</b> 라인에 반영한다 — 자주 쓰는 묶음 칩의 통로다
-    /// (2026-08-24). 되돌리기 한 번이 단추 한 번을 원복한다.
+    /// 커맨드 여럿을 <b>한 번의 편집으로</b> 라인에 반영한다 — 자주 쓰는 묶음 칩의 통로다.
+    /// 되돌리기 한 번이 단추 한 번을 원복한다.
     ///
     /// 상태줄도 한 번만 말한다: 단계마다 알리면 다섯 단계짜리 칩이 화면 아래를 다섯 번
     /// 갈아 치우고, 사람이 읽을 수 있는 것은 마지막 하나뿐이다.
@@ -2089,7 +2053,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이동 수치 편집기 본체 (W66 → 2026-08-21 작업대 Inspector로 이사) — 선언된 축(x·y)과
+    /// 이동 수치 편집기 본체(작업대 Inspector에 선다) — 선언된 축(x·y)과
     /// 시간을 슬라이더로 만진다. 축 슬라이더는 선언이 만든다: x·y를 코드에 박지 않는다.
     ///
     /// <b>끄는 동안은 편집이 아니다</b>(성능 규칙): 값 라벨만 따라 움직이고 프로젝트는
@@ -2164,7 +2128,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 이징 선택기 (W67) — 후보는 코어 <see cref="EaseKind"/> 어휘 그대로이고, 옆의 곡선
+    /// 이징 선택기 — 후보는 코어 <see cref="EaseKind"/> 어휘 그대로이고, 옆의 곡선
     /// 미리보기는 재생이 쓰는 그 <see cref="EaseFunctions"/>로 그린다(사본 없음 — 선택기가
     /// 보여 주는 모양 = 재생이 타는 모양). <b>기본값(OutCubic)을 고르면 인자를 지운다</b> —
     /// 다섯째 토큰이 생략돼 기존 대본과의 diff가 최소가 된다.
@@ -2179,7 +2143,7 @@ internal sealed class StageSceneView : UserControl
         CurveKind curveKind = CurveKind.Motion)
     {
         // 진동 칸은 같은 선택기를 쓰되 <b>모양을 핑퐁으로</b> 그린다 — 표준 이징이
-        // 왕복의 절반으로 읽히기 때문이다(2026-08-21 증보). 미리보기가 재생과 같은
+        // 왕복의 절반으로 읽히기 때문이다. 미리보기가 재생과 같은
         // 코어 함수를 지나므로 고를 때 보이는 것이 그대로 나온다.
         bool oscillation = curveKind == CurveKind.Oscillation;
         Func<EaseKind, float, float> Shape = oscillation
@@ -2194,8 +2158,8 @@ internal sealed class StageSceneView : UserControl
             Enum.TryParse(token, ignoreCase: true, out EaseKind parsed)
                 ? parsed
                 : oscillation ? EaseKind.OutSine : EaseKindOf(null);
-        // 커스텀(커맨드 소유 곡선)이면 콤보 첫 칸이 그것이다 — 예전처럼 선택 없음(-1)으로
-        // 두면 "지금 쓰이는 ease가 안 보이는" 화면이 된다(2026-08-20 소유자 보고).
+        // 커스텀(커맨드 소유 곡선)이면 콤보 첫 칸이 그것이다 — 선택 없음(-1)으로
+        // 두면 "지금 쓰이는 ease가 안 보이는" 화면이 된다.
         bool isCustom = ease is ['@', ..];
         string[] enumNames = Enum.GetNames<EaseKind>();
         string[] candidates = isCustom ? ["커스텀 곡선", .. enumNames] : enumNames;
@@ -2286,7 +2250,7 @@ internal sealed class StageSceneView : UserControl
             });
         };
 
-        // 곡선 편집 (W67 후속, 소유자: "마야처럼 키를 줘서 커스텀") — 선택한 이징에서
+        // 곡선 편집 — 마야처럼 키를 줘서 커스텀한다. 선택한 이징에서
         // 출발해 키를 만진다. 저장은 프로젝트 곡선 + 커맨드 인자 @이름이다.
         var editButton = new Button
         {
@@ -2325,8 +2289,8 @@ internal sealed class StageSceneView : UserControl
     private EaseCurveWindow? _curveWindow;
 
     /// <summary>
-    /// 곡선 편집을 별도 창으로 연다 (2026-08-20 소유자: "별도의 그래프로 빼줄래" —
-    /// 조작 콘솔 팝업 안에서는 캔버스가 스크롤 껍데기에 갇혀 동작하지 않았다).
+    /// 곡선 편집을 별도 창으로 연다 — 조작 콘솔 팝업 안에서는 캔버스가 스크롤 껍데기에
+    /// 갇혀 동작하지 않는다.
     /// 이미 열려 있으면 그 창이 새 커맨드로 갈아탄다. 편집 규칙(열면 소유 곡선 생성 ·
     /// 실시간 커밋 · 보관함 복사)은 창이 진다 — <see cref="EaseCurveWindow"/>.
     /// </summary>
@@ -2367,8 +2331,8 @@ internal sealed class StageSceneView : UserControl
 
     /// <summary>
     /// 시간 슬라이더의 오른쪽 끝. 기본은 프레임 별칭이 있는 48fr(2초)까지지만,
-    /// <b>이미 그보다 길게 적힌 값은 그 자리가 보이게</b> 늘린다 (2026-08-21 소유자:
-    /// "실제 커맨드가 사용하는 프레임을 쓰도록") — 48로 잘라 두면 슬라이더가 대본을
+    /// <b>이미 그보다 길게 적힌 값은 그 자리가 보이게</b> 늘린다
+    /// (실제 커맨드가 쓰는 프레임을 보인다) — 48로 잘라 두면 슬라이더가 대본을
     /// 잘못 말한다. 초 단위 토큰(예: 3s)이 이 자리로 온다.
     /// </summary>
     private static double DurationSliderMax(double frames) =>
@@ -2378,13 +2342,13 @@ internal sealed class StageSceneView : UserControl
     /// 값 하나짜리 슬라이더 줄. 끄는 동안은 라벨만 갱신하고, <b>손을 뗄 때 한 번</b> 저장한다.
     /// </summary>
     /// <summary>
-    /// 인자 하나를 <b>어디에</b> 쓸 것인가 (2026-08-22) — 노드의 커맨드냐, [자주 쓰는]
+    /// 인자 하나를 <b>어디에</b> 쓸 것인가 — 노드의 커맨드냐, [자주 쓰는]
     /// 칩이냐. 수치 편집기가 대상의 정체를 모르게 하는 유일한 이음매다: 슬라이더·선택기
     /// 한 벌이 두 곳을 섬긴다(사본 금지).
     /// </summary>
     private delegate void ArgumentSink(string argumentName, string value);
 
-    /// <summary>노드 커맨드에 쓰는 통로 — 예전 그대로 편집기를 지나고 화면을 다시 접는다.</summary>
+    /// <summary>노드 커맨드에 쓰는 통로 — 편집기를 지나고 화면을 다시 접는다.</summary>
     private ArgumentSink CommandSink(string presentationNodeId, string commandId) =>
         (argumentName, value) =>
         {
@@ -2488,10 +2452,10 @@ internal sealed class StageSceneView : UserControl
         pairs.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
     /// <summary>
-    /// 적용해도 닫히지 않는 조작 콘솔의 공통 틀 (소유자 지시 2026-08-06).
-    /// 조작 하나가 끝나면 내용만 현재 상태로 다시 그려지고, <b>우클릭·✕·바깥 클릭이 닫는다</b>.
+    /// 적용해도 닫히지 않는 조작 콘솔의 공통 틀.
+    /// 조작 하나가 끝나면 내용만 현재 상태로 다시 그려지고, <b>우클릭·✕가 닫는다</b>.
     ///
-    /// Flyout이 아니라 위치 고정 Popup이다 (W37): 탭 전환·내용 갱신으로 크기가 바뀌어도
+    /// Flyout이 아니라 위치 고정 Popup이다: 탭 전환·내용 갱신으로 크기가 바뀌어도
     /// 자리가 튀지 않고(좌상단 고정 + 아래·오른쪽으로만 자람), <b>윗부분 핸들을 잡아
     /// 원하는 위치로 끌 수 있다</b>. 끌어 둔 위치는 다음에 열 때도 유지된다.
     /// </summary>
@@ -2591,17 +2555,17 @@ internal sealed class StageSceneView : UserControl
 
         AttachConsoleCloseGestures(root);
 
-        // ⚠ 열려 있으면 <b>먼저 닫는다</b>. 라이트 디스미스를 끈 뒤로 바깥 클릭이 팝업을
-        // 닫지 않고 곧장 여기로 오므로 <b>열린 팝업의 Child를 갈아 끼우는</b> 길이 생겼는데,
-        // Avalonia는 그 교체를 온전히 반영하지 않아 옛 판과 새 판이 섞인다(2026-08-22
-        // 소유자 보고). 닫았다 여는 것이 유일하게 정의된 경로다.
+        // 주의: 열려 있으면 <b>먼저 닫는다</b>. 라이트 디스미스가 꺼져 있어 바깥 클릭이 팝업을
+        // 닫지 않고 곧장 여기로 오므로 <b>열린 팝업의 Child를 갈아 끼우는</b> 길이 생기는데,
+        // Avalonia는 그 교체를 온전히 반영하지 않아 옛 판과 새 판이 섞인다.
+        // 닫았다 여는 것이 유일하게 정의된 경로다.
         if (_consolePopup.IsOpen)
         {
             _consolePopup.IsOpen = false;
         }
 
-        // ⚠ 이 팝업은 <b>무대 조절창이 아니다</b> (2026-08-22 이후) — 조절창은 오른쪽
-        // 붙박이 기둥으로 갔고, 여기 남은 것은 값 시뮬처럼 무대 위에 잠깐 뜨는 판이다.
+        // 주의: 이 팝업은 <b>무대 조절창이 아니다</b> — 조절창은 오른쪽
+        // 붙박이 기둥이고, 여기 뜨는 것은 값 시뮬처럼 무대 위에 잠깐 뜨는 판이다.
         // 그래서 `_consoleRebuild`(붙박이 판의 손잡이)를 건드리지 않는다.
 
         // 끌어 둔 자리 우선, 처음이면 클릭한 지점.
@@ -2623,9 +2587,8 @@ internal sealed class StageSceneView : UserControl
     /// <summary>
     /// 우클릭 = 닫기 (헤더가 광고하는 두 길 중 하나) — 세 갈래로 잡는다.
     ///
-    /// ⚠ 2026-08-22에 소유자가 <b>두 번</b> "우클릭 닫기가 안 된다"고 보고했다. 처음엔
-    /// 버블 핸들러라 판 안쪽 컨트롤(탭 머리·내용 컨테이너·글자 칸)이 먼저 삼켰고, 터널로
-    /// 옮긴 뒤에도 실기에서 안 닫혔다. 헤드리스로는 재현되지 않는다(팝업이 창 안 오버레이로
+    /// 주의: 버블 핸들러만 걸면 판 안쪽 컨트롤(탭 머리·내용 컨테이너·글자 칸)이 먼저 삼키고,
+    /// 터널만 걸어도 실기에서 안 닫힌다. 헤드리스로는 재현되지 않는다(팝업이 창 안 오버레이로
     /// 서지만 실기 Windows에서는 <b>별도 네이티브 팝업 창</b>이라 입력 경로가 다르다).
     ///
     /// 그래서 <b>한 경로에 걸지 않는다</b>. 셋 다 같은 뜻이고 닫기는 멱등이다:
@@ -2671,8 +2634,8 @@ internal sealed class StageSceneView : UserControl
 
     /// <summary>
     /// 캐릭터(또는 빈 슬롯) 클릭 — <b>오른쪽 조절창</b>을 그 슬롯의 [캐릭터] 탭으로 돌린다.
-    /// 별도 팝오버가 아니라 같은 조절창 하나다 (소유자 지시 2026-08-06 2차). 판이 붙박이가
-    /// 된 2026-08-22 이후로는 여는 것이 아니라 <b>가리키는 것</b>이 됐다.
+    /// 별도 팝오버가 아니라 같은 조절창 하나다. 판이 붙박이라 여는 것이 아니라
+    /// <b>가리키는 것</b>이다.
     /// </summary>
     private void ShowCharacterPopover(string slotKey)
     {
@@ -2687,8 +2650,7 @@ internal sealed class StageSceneView : UserControl
     }
 
     /// <summary>
-    /// 캐릭터 탭 — <b>표정만</b>이다 (2026-08-26 소유자: "캐릭터에는 표정만 남기고,
-    /// 위치와 깊이는 슬롯으로 옮겨달라"): 표정 교체(스프라이트)·variant(pose)·미러.
+    /// 캐릭터 탭 — <b>표정만</b>이다(위치와 깊이는 슬롯 탭): 표정 교체(스프라이트)·variant(pose)·미러.
     /// 전부 이 라인의 커맨드가 되고, 같은 대상의 재조작은 값만 바뀐다. 표정은 보이는
     /// 캐릭터면 face_swap, 캐스팅만 된 캐릭터면 face다.
     /// 캐스팅·무대/레이어·위치(place)·깊이(size)는 [슬롯] 탭 — 누구를 세울지와 어디에
@@ -2841,7 +2803,7 @@ internal sealed class StageSceneView : UserControl
             }
         }
 
-        // ⛔ 위치(place)·깊이(size)는 2026-08-26에 [슬롯] 탭으로 이사했다 (소유자) —
+        // 위치(place)·깊이(size)는 [슬롯] 탭에 있다 —
         //    자리는 슬롯의 것이라서다. 격자·줄 함수는 그쪽이 그대로 쓴다(사본 금지).
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
@@ -3007,7 +2969,7 @@ internal sealed class StageSceneView : UserControl
                 }
             };
             host.Children.Add(slotCombo);
-            // 현재 조작 중인 슬롯 표시는 위 콤보가 이미 한다 — 별도 칩은 소유자 지시로 제거 (W47).
+            // 현재 조작 중인 슬롯 표시는 위 콤보가 이미 한다 — 별도 칩은 두지 않는다.
         }
 
         host.Children.Add(new Border
@@ -3019,10 +2981,10 @@ internal sealed class StageSceneView : UserControl
         // ── 탭 — 적용 후 재구성돼도 보던 탭이 유지된다 ──
         var tabs = new TabControl { MinWidth = 270 };
 
-        // [자주 쓰는]이 맨 앞이자 기본 탭이다 (2026-08-22 소유자) — 나머지 네 탭이 "누가·
+        // [자주 쓰는]이 맨 앞이자 기본 탭이다 — 나머지 네 탭이 "누가·
         // 어디·어떤 표정"을 명사로 말하는 동안, 시간·리액션·카메라·화면은 126종 목록으로
-        // 나가야 했다. 그 넷을 칩 한 줄로 당겨 온 자리다.
-        // ⚠ 순서가 규격이다 (2026-08-24 소유자) — 자주 쓰는 · 슬롯 · 캐릭터 · 배경 · 오디오.
+        // 나가야 한다. 그 넷을 칩 한 줄로 당겨 온 자리다.
+        // 주의: 순서가 규격이다 — 자주 쓰는 · 슬롯 · 캐릭터 · 배경 · 오디오.
         //   슬롯·캐릭터가 앞에 붙은 이유는 <b>둘이 한 손놀림</b>이기 때문이다: 슬롯을 세우고
         //   곧바로 그 슬롯의 캐릭터를 만진다. 배경·오디오는 그 뒤에 한 번씩 손대는 것이다.
         //   자리를 옮길 때는 아래 자리 상수(QuickTabIndex 등)를 함께 옮긴다.
@@ -3046,7 +3008,7 @@ internal sealed class StageSceneView : UserControl
             Header = new TextBlock { Text = "배경", FontSize = 11 },
             Content = BuildBackgroundTab(rebuild)
         });
-        // [이동] 탭은 없다 (2026-08-21 소유자: "이동도 결국 커맨드 하나일 뿐") —
+        // [이동] 탭은 없다 — 이동도 결국 커맨드 하나일 뿐이다.
         // 이동 편집은 터미널에서 그 커맨드를 고르는 정식 경로 하나로 간다.
         tabs.Items.Add(new TabItem
         {
@@ -3085,7 +3047,7 @@ internal sealed class StageSceneView : UserControl
 
     // ── 탭의 자리 ───────────────────────────────────────────────────────────
     //
-    // 번호가 아니라 이름으로 가리킨다 — 순서는 소유자가 옮기는 것이고, 그때 코드가
+    // 번호가 아니라 이름으로 가리킨다 — 순서는 사람이 옮기는 것이고, 그때 코드가
     // 조용히 엉뚱한 탭을 가리키면 안 된다. 순서를 바꿀 때 함께 고치는 자리는 여기뿐이다.
 
     private const int QuickTabIndex = 0;
@@ -3094,17 +3056,17 @@ internal sealed class StageSceneView : UserControl
     private const int BackgroundTabIndex = 3;
 
     /// <summary>
-    /// 등장/퇴장 줄을 숨기는 탭인가 — <b>[슬롯] 탭에서만 선다</b> (2026-08-26 소유자:
-    /// 캐릭터·오디오에서도 없애 달라).
+    /// 등장/퇴장 줄을 숨기는 탭인가 — <b>[슬롯] 탭에서만 선다</b>
+    /// (캐릭터·오디오 탭에도 없다).
     ///
     /// 무대에 세우고 거두는 일은 <b>슬롯의 일</b>이다 — 캐스팅·무대/레이어·위치·깊이가
-    /// 같은 날 전부 [슬롯] 탭으로 모였고(캐릭터 탭은 표정만), 등장/퇴장도 그 무리다.
-    /// 배경은 애초에 슬롯이 아니고(2026-08-06 2차), [자주 쓰는]의 칩은 제 대상을 자기가
-    /// 들고 있어(2026-08-24) 위 콤보의 슬롯을 겨누는 단추가 함께 서면 같은 것처럼 보인다.
+    /// 전부 [슬롯] 탭에 모여 있고(캐릭터 탭은 표정만), 등장/퇴장도 그 무리다.
+    /// 배경은 애초에 슬롯이 아니고, [자주 쓰는]의 칩은 제 대상을 자기가
+    /// 들고 있어 위 콤보의 슬롯을 겨누는 단추가 함께 서면 같은 것처럼 보인다.
     /// </summary>
     private static bool HidesVisibilityRow(int tabIndex) => tabIndex != SlotTabIndex;
 
-    // ── [자주 쓰는] 탭 (2026-08-22) ─────────────────────────────────────────
+    // ── [자주 쓰는] 탭 ─────────────────────────────────────────
 
     /// <summary>
     /// <b>두 구역의 편집은 따로 켠다</b> (2026-08-24 3차 소유자: "개별 커맨드와 묶음 커맨드의

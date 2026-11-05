@@ -4,7 +4,7 @@ using Vn.Authoring.Rendering;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// K1 ②안의 "보인다" 쪽 — 낡은 산출 파일은 조용히 남지 않고 상태줄에 오른다.
+/// 낡은 산출 파일은 조용히 남지 않고 상태줄에 오른다.
 /// 목록 자체가 실제 폴더와 맞는지는 Authoring 쪽 OutputManifestTests가 고정한다.
 /// </summary>
 public class LiveOutputReportTests

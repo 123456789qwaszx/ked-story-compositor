@@ -12,13 +12,11 @@ using Path = System.IO.Path;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// <b>duration 0 = 즉시</b> (2026-08-26 소유자 보고: "fade_in의 경우 분명 duration을
-/// 0으로 설정했는데도 즉각적으로 반영이 안되고 … place를 비롯한 이동계열 커맨드들은
-/// 현재 duration을 0으로 했는데 반영이 안되는 버그").
+/// <b>duration 0 = 즉시</b> — fade_in도, place를 비롯한 이동 계열 커맨드도 같다.
 ///
 /// 런타임은 duration 0을 <b>즉시 스냅</b>으로 돈다 — 정지 화면(진행 null)도 재생 어느
 /// 지점도 그 커맨드는 이미 적용된 채여야 한다. 시간을 가진 커맨드만이 "정지 = 출발
-/// 자리"(W66)의 대상이다.
+/// 자리"의 대상이다.
 /// </summary>
 public sealed class StageInstantCommandTests
 {
@@ -124,10 +122,9 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void duration_0의_place는_재생_중에도_미끄러지지_않고_스냅이다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 보고 — "place … 0fr로 바꿧는데도 … 라인재생을 누르면
-        // duration이 있는 상태로 천천히 이동". 직전 라인을 그려 기준선(직전 자리)을
-        // 세워 두는 것이 핵심이다 — 그 기준선과의 일괄 보간이 미끄러짐의 정체였고,
-        // 연출 그래프를 다녀오면 기준선이 비어 우연히 정상으로 보였다.
+        // 0fr place는 라인 재생에서도 천천히 이동하면 안 된다. 직전 라인을 그려 기준선(직전
+        // 자리)을 세워 두는 것이 핵심이다 — 그 기준선과의 일괄 보간이 미끄러짐을 만들고,
+        // 기준선이 비어 있으면 우연히 정상으로 보인다.
         Stage stage = Open();
 
         PresentationResultCommand[] setup =
@@ -155,9 +152,9 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void 전부_0fr인_라인의_전이_시간은_0이다()
     {
-        // ⛔ 예전에는 "시간 가진 커맨드 없음 = 기본 0.35초"가 전부 0fr인 라인까지 삼켰다 —
-        //    0fr은 작가가 "즉시"라고 적은 것이다. 기본 전이는 커맨드가 하나도 없는
-        //    라인의 것이다(W33).
+        // "시간 가진 커맨드 없음 = 기본 0.35초"가 전부 0fr인 라인까지 삼키면 안 된다 —
+        // 0fr은 작가가 "즉시"라고 적은 것이다. 기본 전이는 커맨드가 하나도 없는
+        // 라인의 것이다.
         PresentationResultCommand[] instant =
             [Command("char_rig_placement.place", ("slot", "c1"), ("duration", "0fr"))];
 
@@ -169,8 +166,8 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void show_없이_fade_in으로_세운_슬롯도_size가_크기를_바꾼다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 보고 — "<<size s1 close bust 0fr>> … 여전히 Y만 움직이네."
-        // 소유자의 yarn은 show 없이 slot+cast 뒤 fade_in으로 세운다 — 그 모양 그대로 잰다.
+        // `<<size s1 close bust 0fr>>`는 즉시다 — Y만 움직이면 안 된다.
+        // 실제 yarn처럼 show 없이 slot+cast 뒤 fade_in으로 세운 모양 그대로 잰다.
         Stage stage = Open();
 
         MiniStagePreviewRequest At(string depth) => Request(
@@ -197,10 +194,9 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void 화자_강조가_붙어도_size가_그림_크기를_끈다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 — "duration을 넣어뒀음에도 depth는 최종완료상태를 preview에
-        // 반영하고 있어." 화자 강조 테두리로 감싼 초상은 안쪽 그림이 최종 크기를 명시값으로
-        // 따로 들고 있어서, 전이·모션(ApplyRect)이 테두리만 줄이고 그림은 그대로였다 —
-        // 말하는 캐릭터에서만 나는 버그라 화자 없는 하네스가 못 봤다.
+        // duration이 있는 depth는 프리뷰에서도 시간에 따라 흘러야 한다. 화자 강조 테두리로
+        // 감싼 초상은 안쪽 그림이 최종 크기를 명시값으로 따로 들고 있어서, 전이·모션(ApplyRect)이
+        // 테두리만 줄이면 그림은 그대로 남는다 — 말하는 캐릭터에서만 나는 일이라 화자를 세워 잰다.
         string directory = Path.Combine(
             Path.GetTempPath(), "vn-stage-speaker", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -261,9 +257,8 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void duration_있는_size는_배율과_Y가_함께_흐른다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 — "duration이 들어가있더라도, Size는 최종상태로 적용되다보니,
-        // 실제 프리뷰에서는 Y값만 이동하는 것처럼 보이는 버그." 배율이 스냅되고 위치만
-        // 흐르면 그 그림이 된다 — 둘 다 제 시간에 흘러야 런타임과 같다.
+        // duration이 있는 size는 배율도 위치도 함께 흐른다. 배율이 스냅되고 위치만 흐르면
+        // Y값만 이동하는 것처럼 보인다 — 둘 다 제 시간에 흘러야 런타임과 같다.
         Stage stage = Open();
 
         PresentationResultCommand[] setup =
@@ -304,7 +299,7 @@ public sealed class StageInstantCommandTests
     [Fact]
     public void fade_in_0fr은_더_긴_커맨드와_같은_라인이어도_즉시_밝다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 — "fade_in역시 동일한 원인으로 같은 문제". 페이드 불투명도가
+        // 페이드 불투명도가
         // 라인 시계(커맨드 duration 최댓값)를 타면, 0fr 페이드가 같은 라인의 24fr 이동에
         // 끌려 1초 동안 천천히 밝아진다. 페이드는 제 duration으로 흐른다 — 0fr은 즉시다.
         Stage stage = Open();

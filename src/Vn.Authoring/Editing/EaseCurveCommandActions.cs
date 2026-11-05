@@ -5,7 +5,7 @@ using Vn.Authoring.Model;
 namespace Vn.Authoring.Editing;
 
 /// <summary>
-/// 커맨드 소유 곡선(customEase)의 흐름 (2026-08-20 소유자 결정) — UI가 아니라 여기가
+/// 커맨드 소유 곡선(customEase)의 흐름 —UI가 아니라 여기가
 /// 규칙이다:
 ///
 /// - <b>곡선 편집을 열면</b> 지금 골라져 있던 이징(Linear·OutCubic…)이 <b>복사되어

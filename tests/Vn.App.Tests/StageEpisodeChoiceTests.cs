@@ -8,8 +8,7 @@ using Vn.Authoring.Model;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 에피소드 끝의 챕터 간선 선택지 (2026-08-27 소유자 보고: "에피소드가 끝날 때 선택지가
-/// 제시되지 않고 있어"). 전이 규칙 v9①의 프리뷰 절반이다: 대본 끝(나갈 곳 없음)에서
+/// 에피소드 끝의 챕터 간선 선택지. 전이 규칙 v9①의 프리뷰 절반이다: 대본 끝(나갈 곳 없음)에서
 /// 챕터 간선의 선택지가 행 순서(<c>SourceRow</c>)대로 서고, 고르면 도착 에피소드의 씬으로
 /// 넘어간다 — 씬 선택기와 같은 길(SceneChosen) 하나를 지난다.
 /// </summary>
@@ -183,12 +182,9 @@ public sealed class StageEpisodeChoiceTests
     [Fact]
     public void 간선에_매단_씬은_이제_안_거친다() => HeadlessUi.Run(() =>
     {
-        // ⛔ <b>뒤집혔다</b> (2026-09-17 — 계약의 `ViaNodeId`가 양쪽에서 걷혔다). 전에는
-        //    간선에 매단 씬을 먼저 재생하고 도착 에피소드를 pending으로 들었다.
-        //
-        // 같은 재생 순서는 이제 <b>에피소드 한 칸</b>이 말한다: `A —문구→ 연출 —자동→ B`.
-        // 옛 프로젝트 호환은 안 본다(소유자: *"이전의 프로젝트들은 모두 버리고"*) — 그래서
-        // 남은 `ChoiceExits` 배선은 <b>그냥 무시</b>되고 곧장 도착으로 간다.
+        // 간선에 씬을 매다는 칸(`ViaNodeId`)은 계약에 없다. 선택 뒤에 연출을 끼우는 재생
+        // 순서는 <b>에피소드 한 칸</b>이 말한다: `A —문구→ 연출 —자동→ B`.
+        // 옛 프로젝트 호환은 보지 않는다 — 그래서 남은 `ChoiceExits` 배선은 <b>그냥 무시</b>되고 곧장 도착으로 간다.
         var (preview, session, fileId) = ShowPreview();
         DialogueNode ep01 = AddEpisodeNode(session, fileId, "EP01");
         DialogueNode ep02 = AddEpisodeNode(session, fileId, "EP02");

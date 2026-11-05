@@ -10,9 +10,8 @@ using Vn.Authoring.Results;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 작업대(Inspector)가 커맨드 하나를 어떤 조작으로 펼치는가 (2026-08-21).
-/// 여기서 지키는 것: <b>뎁스는 레벨 슬라이더</b>(소유자: "터미널 아래의 연출 편집기에서는
-/// -10 ~ 10까지의 Level을 슬라이더로 직접 조절")이고, 이징 칸은 곡선 선택기다.
+/// 작업대(Inspector)가 커맨드 하나를 어떤 조작으로 펼치는가.
+/// 여기서 지키는 것: <b>뎁스는 레벨 슬라이더</b>로 직접 조절하고, 이징 칸은 곡선 선택기다.
 /// </summary>
 public sealed class StageInspectorTests
 {
@@ -48,15 +47,15 @@ public sealed class StageInspectorTests
     {
         StageSceneView view = EditableView();
 
-        // 라벨이 적혀 있으면 <b>그 라벨의 눈금</b>에 선다 (2026-08-21 런타임 개통:
-        // 라벨은 커브 위의 점 이름이 됐다 — close = 레벨 20, 소유자 상향).
+        // 라벨이 적혀 있으면 <b>그 라벨의 눈금</b>에 선다 — 라벨은 커브 위의 점 이름이다
+        // (close = 레벨 20).
         Control inspector = Assert.IsAssignableFrom<Control>(
             view.BuildInspectorContent(Command(
                 "char_rig_depth.size", ("slot", "c1"), ("depth", "close"), ("duration", "10fr"))));
 
         Slider[] sliders = inspector.GetLogicalDescendants().OfType<Slider>().ToArray();
         Slider level = Assert.Single(sliders, slider => slider.Minimum == -10);
-        Assert.Equal(20, level.Maximum); // 커브 설계 구간 [0,20] (2026-08-21 확장)
+        Assert.Equal(20, level.Maximum); // 커브 설계 구간 [0,20]
         Assert.Equal(20, level.Value); // close = 눈금 20
 
         // 알 수 없는 토큰이면 가운데에 서고 원문을 보인다(폴드도 거부하는 값이다).
@@ -64,7 +63,7 @@ public sealed class StageInspectorTests
             view.BuildInspectorContent(Command(
                 "char_rig_depth.size", ("slot", "c1"), ("depth", "헛토큰"), ("duration", "10fr"))));
         Assert.Equal(
-            14, // 가운데 = mid 눈금 (2026-08-21 상향으로 14)
+            14, // 가운데 = mid 눈금(14)
             Assert.Single(
                 unknown.GetLogicalDescendants().OfType<Slider>(),
                 slider => slider.Minimum == -10).Value);
@@ -81,7 +80,7 @@ public sealed class StageInspectorTests
     [Fact]
     public void 이징_칸은_곡선_선택기로_선다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 런타임이 place·size에도 이징을 열었다 — 이동과 같은 편집이어야 한다.
+        // 런타임은 place·size에도 이징을 받는다 — 이동과 같은 편집이어야 한다.
         StageSceneView view = EditableView();
 
         Control inspector = Assert.IsAssignableFrom<Control>(
@@ -98,8 +97,8 @@ public sealed class StageInspectorTests
     [Fact]
     public void 넛지의_거리는_u_토큰_슬라이더로_선다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "nudge의 경우 … distance slide를 추가".
-        // ⚠ 값이 "3u" 같은 토큰이라 일반 숫자 슬라이더로는 안 된다 — 읽을 때도
+        // nudge는 distance 슬라이더를 갖는다.
+        // 주의: 값이 "3u" 같은 토큰이라 일반 숫자 슬라이더로는 안 된다 — 읽을 때도
         // 쓸 때도 u를 알아야 한다.
         StageSceneView view = EditableView();
 
@@ -148,7 +147,7 @@ public sealed class StageInspectorTests
     [Fact]
     public void 샷의_x_y는_부호_있는_u_슬라이더로_선다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "shot 계열 커맨드에도 x, y에 슬라이더 조절을 추가".
+        // shot 계열 커맨드도 x, y를 슬라이더로 조절한다.
         // 넛지 거리와 같은 u 갈래이되 <b>부호를 붙인다</b> — 축 하나가 양쪽으로 간다.
         StageSceneView view = EditableView();
 
@@ -194,7 +193,7 @@ public sealed class StageInspectorTests
     [Fact]
     public void 진동_칸도_이징_선택기로_서고_기본은_OutSine이다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 증보 — 준비 과정 없이 낱말 하나로 몸짓을 고른다.
+        // 준비 과정 없이 낱말 하나로 몸짓을 고른다.
         StageSceneView view = EditableView();
 
         Control inspector = Assert.IsAssignableFrom<Control>(

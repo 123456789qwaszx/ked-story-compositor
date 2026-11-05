@@ -9,18 +9,16 @@ namespace Vn.Authoring.Rendering;
 /// <summary>이미터가 발견한 문제 하나. 막는 문제를 안고는 파일을 쓰지 않는다.</summary>
 public sealed record YarnBundleProblem(string Message, bool IsBlocking, string? LineId = null);
 
-// ⛔ `YarnDeclaration`과 선언 파일(`declarations.yarn`) 일체는 2026-09-17에 걷혔다.
-//    선언할 대상이 <b>작가 변수</b>였고 그 어휘가 없어졌다 — 챕터 스탯은 변수가 아니라
-//    `stat("키")` 함수로 읽으므로 선언이 없다. 옛 폴더에 남은 파일을 <i>알아보는</i> 일은
-//    `OutputManifest`가 계속 한다(고아로 짚어 지우게 하려고).
+// 선언 파일(`declarations.yarn`)은 내지 않는다 — 작가 변수가 없고, 챕터 스탯은 변수가 아니라
+//    `stat("키")` 함수로 읽으므로 선언할 것이 없다. 옛 폴더에 남은 파일을 <i>알아보는</i> 일은
+//    `OutputManifest`가 한다(고아로 짚어 지우게 하려고).
 
 /// <summary>
 /// 합성 하나에서 나온 <b>대본 하나</b>. 파일로 쓰기 전의 순수 문자열이다.
 ///
-/// <b>2026-08-18까지는 트리오(Story/Set/Pres)였다.</b> 런타임이 세 레인을 읽고 동기화하고
-/// 그것을 다시 롤백에 반영하는 값을 치르지 않기로 하면서(소유자: "디버깅비용이 최소
-/// 10배 이상"), <b>합치는 쪽이 이 도구</b>가 됐다 — 런타임은 단일 대본만 읽는다.
-/// 줄에 붙던 연출은 이제 Story 본문 안에서 자기 대사 줄 바로 앞에 선다.
+/// 런타임이 여러 레인을 읽고 동기화하고 그것을 다시 롤백에 반영하는 값을 치르지 않도록
+/// <b>합치는 쪽이 이 도구</b>다 — 런타임은 단일 대본만 읽는다.
+/// 줄에 붙는 연출은 Story 본문 안에서 자기 대사 줄 바로 앞에 선다.
 /// </summary>
 public sealed class YarnBundle
 {
@@ -43,7 +41,7 @@ public sealed class YarnBundle
     /// <summary>
     /// 이 번들을 낸 대사 노드의 <b>화면 이름</b>. 번들 이름은 그것을 sanitize한 값이라
     /// 되짚을 수 없다(`장면 1`·`장면.1`이 둘 다 `장면_1`이 된다) — 이름이 겹쳤을 때
-    /// <b>어느 노드인지</b> 말해 주려고 들고 다닌다 (2026-08-25).
+    /// <b>어느 노드인지</b> 말해 주려고 들고 다닌다.
     /// </summary>
     public string SourceNodeName { get; }
 
@@ -77,7 +75,7 @@ public sealed class YarnBundle
 /// 발행 결과 조합 하나를 ked-presentation-runtime이 재생하는 <b>대본 하나</b>로 조립한다.
 /// <c>runtime-contract.md</c>가 이 클래스의 사양이다.
 ///
-/// - 레인은 없다 (2026-08-18) — Story 노드 하나에 대사·조건·선택지·연출이 모두 선다.
+/// - 레인은 없다 — Story 노드 하나에 대사·조건·선택지·연출이 모두 선다.
 /// - 연출 커맨드는 자기 대사 줄 <b>바로 앞</b>에 인라인으로 놓인다.
 /// - <c>#line:</c> 태그는 계속 단다 — 런타임은 요구하지 않지만(§C1) 이쪽의 열쇠다.
 ///
@@ -123,14 +121,10 @@ public static class YarnBundleEmitter
             definition,
             OutputPresetCatalog.RuntimeFull.Options);
 
-        // 카탈로그는 이제 이미터가 보지 않는다 (2026-08-18) — 레인이 하나라
-        // `mainLaneOnly` 검사가 가릴 대상을 잃었고, 그 검사가 유일한 소비자였다.
         string name = bundleName is not null
             ? YarnSyntax.SanitizeNodeName(bundleName)
             : BundleNameOf(dialogue.SourceNodeName, dialogue.SourceNodeId);
 
-        // ⛔ 챕터 네임스페이스 접두(`__t1_`)는 2026-09-17에 사라졌다 — 어휘가 둘이라 이름이
-        //    부딪히던 것인데, 작가 변수가 없어져 부딪힐 것이 없다.
         HashSet<string> statNames = ChapterStatNames(project, dialogue.SourceNodeId);
 
         var problems = new List<YarnBundleProblem>();
@@ -141,7 +135,7 @@ public static class YarnBundleEmitter
         // 조립하기 전에 막아 낡은 정상 산출물을 보존한다.
         ValidateProgressionStatReferences(document, statNames, problems);
 
-        // 커스텀 곡선 참조 검증 (W67 후속) — `@이름`이 프로젝트에 없으면 막는다.
+        // 커스텀 곡선 참조 검증 — `@이름`이 프로젝트에 없으면 막는다.
         // 런타임은 모르는 곡선을 로그만 남기고 OutCubic으로 굴리므로(조용한 어긋남),
         // 저작이 유일한 방어다. "채우면 반드시 동작한다"의 곡선판이다.
         ValidateEaseCurveReferences(presentation, project, definition, problems);
@@ -175,21 +169,20 @@ public static class YarnBundleEmitter
                     break;
 
                 case RenderedSegmentKind.SetAssignment:
-                    // ⛔ <b><c>&lt;&lt;set&gt;&gt;</c>은 더 이상 안 낸다</b> (2026-09-17 · 런타임 회신 §3).
+                    // <b><c>&lt;&lt;set&gt;&gt;</c>은 안 낸다</b> (런타임 회신 §3).
                     //
-                    // 런타임이 <b>Yarn 변수 층을 통째로 걷었다</b> — 아무도 초기화·저장·되감지
+                    // 런타임에는 <b>Yarn 변수 층이 없다</b> — 아무도 초기화·저장·되감지
                     // 않는다. 대본에 하나라도 남으면 챕터를 다시 시작해도 값이 안 돌아가고,
                     // 세이브에 안 실리고, 롤백에서 안 되감겨 <b>리플레이가 다른 분기를 타고
                     // 시크 표적을 영영 못 찾는다</b> — 계약서 C1의 silent hang이다. 예외도
                     // 경고도 없이 멈추므로 <b>내지 않는 것</b>만이 안전하다.
                     //
-                    // ⛔ <c>&lt;&lt;declare&gt;&gt;</c>와 <c>declarations.yarn</c>도 <b>함께 걷혔다</b>
-                    // (2026-09-17, 같은 날 뒤이어). 선언할 대상이 작가 변수였으므로 어휘가
-                    // 없어진 뒤에는 낼 것이 없다.
+                    // <c>&lt;&lt;declare&gt;&gt;</c>와 <c>declarations.yarn</c>도 내지 않는다 —
+                    // 선언할 작가 변수가 없다.
                     //
-                    // 값이 변하는 자리는 챕터 간선의 `스탯변화` 하나다(2026-08-14).
+                    // 값이 변하는 자리는 챕터 간선의 `스탯변화` 하나다.
                     //
-                    // ⚠ 이 <c>case</c>는 <b>남는다.</b> <see cref="RenderedSegmentKind.SetAssignment"/>를
+                    // 이 <c>case</c>는 <b>남는다.</b> <see cref="RenderedSegmentKind.SetAssignment"/>를
                     // 내는 곳은 없지만, 열거형에서 지우면 프리뷰·CSV까지 끌려온다. 여기서
                     // 아무것도 안 하는 것이 "안 낸다"의 가장 싼 표현이다.
                     break;
@@ -254,19 +247,18 @@ public static class YarnBundleEmitter
     /// <b>진행 스탯을 <c>$변수</c> 표기로 쓴 자리를 막는다</b> — 내보내기가 마지막 문이다
     /// (계약서 §G-14).
     ///
-    /// ⚠ <b>2026-09-17에 뜻이 좁아졌다.</b> 전에는 *"대사에서 진행 스탯을 아예 못 쓴다"*였고,
-    /// 계층이 하나가 되면서 <b>읽기는 열렸다</b>. 막는 것은 이제 <b>표기</b>다:
+    /// 대사에서 진행 스탯을 <b>읽는 것은 열려 있다</b>. 막는 것은 <b>표기</b>다:
     ///
     /// <list type="bullet">
-    /// <item>✅ <c>&lt;&lt;if stat("trust") &gt;= 3&gt;&gt;</c> — 읽기. <c>$</c>가 없으니 여기 안 걸린다</item>
-    /// <item>⛔ <c>&lt;&lt;set $trust = 5&gt;&gt;</c> — 쓰기. <b>영원히 막는다</b></item>
-    /// <item>⛔ <c>&lt;&lt;if $trust &gt;= 3&gt;&gt;</c> — 그런 변수가 런타임에 없다</item>
+    /// <item>허용: <c>&lt;&lt;if stat("trust") &gt;= 3&gt;&gt;</c> — 읽기. <c>$</c>가 없으니 여기 안 걸린다</item>
+    /// <item>차단: <c>&lt;&lt;set $trust = 5&gt;&gt;</c> — 쓰기. <b>영원히 막는다</b></item>
+    /// <item>차단: <c>&lt;&lt;if $trust &gt;= 3&gt;&gt;</c> — 그런 변수가 런타임에 없다</item>
     /// </list>
     ///
-    /// ⭐ <b>쓰기를 막는 일은 사실 표기가 이미 한다.</b> 함수에는 왼쪽 변이 없어 <c>stat(...)</c>로는
+    /// <b>쓰기를 막는 일은 사실 표기가 이미 한다.</b> 함수에는 왼쪽 변이 없어 <c>stat(...)</c>로는
     /// 쓸 수가 없다 — 이 검증은 <b>손으로 <c>$</c>를 적은 자리</b>를 잡는 마지막 그물이다.
     /// 대사 중의 스탯 쓰기는 세이브/로드 복귀와 도달성 증명이 못 보는 뒷길이라
-    /// (2026-08-14에 J열을 폐지한 이유) 경고가 아니라 <b>차단</b>이어야 한다.
+    /// 경고가 아니라 <b>차단</b>이어야 한다.
     /// </summary>
     internal static void ValidateProgressionStatReferences(
         RenderedDocument document,
@@ -317,12 +309,10 @@ public static class YarnBundleEmitter
             : "  ← 재생할 줄이 없습니다(빈 노드)");
 
     /// <summary>
-    /// ⛔ <b><c>Story_</c> 접두는 2026-08-24에 폐지됐다</b> (소유자, 런타임과 함께 —
-    /// 저쪽도 같은 날 <c>Story_*</c> 필터를 걷었다).
+    /// <b>Story 타이틀 접두는 비어 있다</b> — 런타임에도 <c>Story_*</c> 필터가 없다.
     ///
-    /// 접두가 <b>두 번 붙고 있었다</b>: 기획자가 챕터 시트의 `대사엔트리`에 이미
-    /// <c>Story_ch05_01</c>이라 적는데 이미터가 또 붙여 <c>Story_Story_ch05_01</c>이 나갔다.
-    /// 견본 여섯 줄이 전부 그랬다. 이제 <b>타이틀은 곧 대사엔트리</b>다(정규화만 거친다).
+    /// 기획자가 챕터 시트의 `대사엔트리`에 이미 <c>Story_ch05_01</c>처럼 적으므로, 이미터가
+    /// 또 붙이면 <c>Story_Story_ch05_01</c>이 나간다. <b>타이틀은 곧 대사엔트리</b>다(정규화만 거친다).
     ///
     /// 이 상수를 되살릴 일이 있으면 <see cref="StoryTitleOf"/> 한 곳만 고치면 된다 —
     /// 파일 이름·타이틀·점프 대상·진행 JSON의 <c>DialogueEntryId</c>가 전부 그 길을 지난다.
@@ -330,7 +320,7 @@ public static class YarnBundleEmitter
     public const string StoryPrefix = "";
 
     /// <summary>
-    /// 본문이 빈 대사 줄의 자리를 채우는 <b>보이지 않는 한 글자</b> (U+00A0, 2026-08-25).
+    /// 본문이 빈 대사 줄의 자리를 채우는 <b>보이지 않는 한 글자</b> (U+00A0).
     ///
     /// 빈 본문을 그대로 내면 <c>#line:</c> 태그만 남은 줄이 되어 Yarn이 파싱하지 못하고,
     /// 줄을 빼면 그 줄에 매달린 연출 커맨드가 박스를 닫지 못해 <b>조용히 버려진다</b>.
@@ -339,7 +329,7 @@ public static class YarnBundleEmitter
     /// </summary>
     public const string EmptyLineBody = " ";
 
-    // ⚠ Set·Pres는 <b>남은 이름</b>이다 — 지금은 그 파일을 만들지 않는다. 옛 폴더에
+    // Set·Pres는 <b>남은 이름</b>이다 — 그 파일을 만들지 않는다. 옛 폴더에
     // 남아 있는 파일을 고아로 알아보는 데만 쓴다(`FileNamesOf`·`LooksLikeOutput`).
     public const string SetPrefix = "Set_";
 
@@ -362,8 +352,8 @@ public static class YarnBundleEmitter
     /// <summary>
     /// 번들 이름 하나가 가질 Story 타이틀.
     ///
-    /// <b>접두를 붙이는 자리는 여기 한 곳이다</b> — 지금은 붙이는 것이 없다(2026-08-24에
-    /// <c>Story_</c>가 폐지됐다, <see cref="StoryPrefix"/>). 함수를 남겨 두는 이유는
+    /// <b>접두를 붙이는 자리는 여기 한 곳이다</b> — 지금은 붙이는 것이 없다
+    /// (<see cref="StoryPrefix"/>). 함수를 남겨 두는 이유는
     /// 그 결정이 <b>한 자리에 머물게</b> 하기 위해서다: 접두가 다시 필요해지면 여기만
     /// 고치고, 바깥에서 문자열을 손으로 잇는 자리는 새로 만들지 않는다.
     /// </summary>
@@ -373,14 +363,13 @@ public static class YarnBundleEmitter
     /// 이 이미터가 <b>그 이름의 노드에 붙일 Story 타이틀</b>. 이름 → 번들 이름 → 타이틀
     /// 두 단계를 한 번에 통과한다.
     ///
-    /// ⚠ <b>규칙은 접두 하나가 아니다</b> — <c>Story_</c> 앞에
-    /// <see cref="YarnSyntax.SanitizeNodeName"/>가 있다(`장면 1` → `Story_장면_1`). 그래서
-    /// 바깥에서 <c>"Story_" + 이름</c>으로 흉내 내면 공백·점·하이픈이 든 이름에서 갈린다.
+    /// <b>규칙은 접두 하나가 아니다</b> — 접두 앞에
+    /// <see cref="YarnSyntax.SanitizeNodeName"/>가 있다(`장면 1` → `장면_1`). 그래서
+    /// 바깥에서 <c>접두 + 이름</c>으로 흉내 내면 공백·점·하이픈이 든 이름에서 갈린다.
     ///
     /// <b>진행 내보내기의 <c>DialogueEntryId</c>가 이 함수를 지나야 한다</b> — 런타임은 이
-    /// 글자로 <c>YarnProject</c>에서 노드를 찾는다. 2026-08-23에 그 자리만 이 규칙 밖에
-    /// 있어서 진행 JSON은 `new01`, yarn은 `Story_new01`로 갈렸다
-    /// (`docs/work-orders/dialogue-entry-naming-orders.md`).
+    /// 글자로 <c>YarnProject</c>에서 노드를 찾는다. 그 자리가 이 규칙 밖에 있으면 진행 JSON과
+    /// yarn의 이름이 갈린다.
     /// </summary>
     public static string StoryNodeTitleOf(string? nodeName, string? nodeId = null) =>
         StoryTitleOf(BundleNameOf(nodeName, nodeId));
@@ -388,11 +377,10 @@ public static class YarnBundleEmitter
     /// <summary>
     /// 번들 하나가 만들 파일 이름.
     ///
-    /// <b>챕터를 아는 자리면 파일 이름 앞에 붙인다</b> (2026-08-25 소유자: "각 에피소드가
-    /// 어떤 챕터의 것인지 구분이 불가능한데"). 산출 폴더는 챕터를 섞어 담으므로, 이름에
-    /// 없으면 사람이 파일을 열어 보기 전에는 알 방법이 없다.
+    /// <b>챕터를 아는 자리면 파일 이름 앞에 붙인다</b>. 산출 폴더는 챕터를 섞어 담으므로, 이름에
+    /// 없으면 사람이 파일을 열어 보기 전에는 어느 챕터의 에피소드인지 알 방법이 없다.
     ///
-    /// ⚠ <b>Yarn 노드 타이틀은 안 건드린다.</b> 런타임은 그 글자로 노드를 찾고 진행 JSON의
+    /// <b>Yarn 노드 타이틀은 안 건드린다.</b> 런타임은 그 글자로 노드를 찾고 진행 JSON의
     /// <c>DialogueEntryId</c>가 같은 것을 부르므로, 파일 이름만 바꿔야 유니티 쪽이 그대로
     /// 돌아간다 — 폴더를 나누지 않는 이유도 같다(YarnProject의 포함 규칙을 안 건드린다).
     /// </summary>
@@ -422,8 +410,8 @@ public static class YarnBundleEmitter
         {
             yield return FileNameOf(prefix, bundleName, chapterId);
 
-            // ⚠ 챕터 없는 이름도 함께 센다 (2026-08-25). 이름에 챕터를 붙이기 전에 나간
-            //    파일들이 폴더에 남아 있는데, 그것을 고아로 세면 <b>멀쩡한 산출물이
+            // 챕터 없는 이름도 함께 센다. 챕터가 이름에 없는 옛 산출 파일이
+            //    폴더에 남아 있을 수 있는데, 그것을 고아로 세면 <b>멀쩡한 산출물이
             //    갑자기 지울 것 목록에 오른다</b>. 옛 이름은 옛 이름대로 그 노드의 것이다.
             if (chapterId is { Length: > 0 })
             {
@@ -450,7 +438,7 @@ public static class YarnBundleEmitter
         PresentationCommandCatalog catalog = PresentationCommandCatalog.For(definition);
 
         // 이름 → 곡선. <b>종류(이동/진동)까지 봐야 한다</b> — 판정 규칙은 코어
-        // CurveKindRules 하나이고 런타임 로더도 그것을 쓴다(2026-08-21 회신).
+        // CurveKindRules 하나이고 런타임 로더도 그것을 쓴다.
         // 한쪽만 알면 "툴에서는 저장되는데 재생에서는 조용히 사라지는" 곡선이 생긴다.
         Dictionary<string, Model.EaseCurve> known =
             (project?.EaseCurves ?? Enumerable.Empty<Model.EaseCurve>())
@@ -625,13 +613,11 @@ public static class YarnBundleEmitter
                         $"'{bundle.BundleName}'을 내보낼 수 없습니다.{Environment.NewLine}{bundle.BlockingSummary()}")));
         }
 
-        // ⚠ 겹친 <b>노드를 지목한다</b> (2026-08-25). 이름만 알려 주면 찾을 수가 없다 —
+        // 겹친 <b>노드를 지목한다</b>. 이름만 알려 주면 찾을 수가 없다 —
         //    번들 이름은 노드 이름을 sanitize한 값이라 되짚을 수 없고(`장면 1`과 `장면.1`이
         //    둘 다 `장면_1`이 된다), 애초에 노드 이름은 식별자가 아니라 겹칠 수 있다.
         //
-        //    이 자리가 갑자기 터지기 시작한 사정이 있다: 재생할 줄이 없는 노드는 예전에
-        //    발행에서 막혀 산출 목록에서 통째로 빠졌고(2026-08-25에 완화했다), 그래서
-        //    그 노드가 낀 중복은 <b>보이지 않았다</b>. 개명이나 재동기화가 남긴 빈 노드가
+        //    재생할 줄이 없는 노드도 산출 목록에 오르므로, 개명이나 재동기화가 남긴 빈 노드가
         //    판에 하나 더 있으면 여기서 처음 드러난다.
         IGrouping<string, YarnBundle>? duplicate = bundles
             .GroupBy(bundle => bundle.BundleName, StringComparer.Ordinal)
@@ -647,9 +633,8 @@ public static class YarnBundleEmitter
                 "판에서 한쪽의 이름을 바꾸거나, 안 쓰는 노드면 지워 주세요.");
         }
 
-        // ⛔ 2026-09-17에 <b>거절 하나를 풀었다.</b> 대사엔트리를 `declarations`라고 적으면
-        //    선언 파일을 덮어쓴다고 막던 자리인데, <b>선언 파일이 없어졌다</b>. 덮어쓸
-        //    상대가 없는 이름을 계속 거절하면 근거 없는 규칙만 남아 사람을 막는다.
+        // 대사엔트리 `declarations`는 막지 않는다 — <b>선언 파일을 내지 않으므로</b> 덮어쓸
+        //    상대가 없다. 근거 없는 거절은 사람만 막는다.
         //    (옛 폴더에 남은 `declarations.yarn`은 `OutputManifest`가 고아로 짚어 준다.)
 
         Directory.CreateDirectory(directory);
@@ -679,10 +664,6 @@ public static class YarnBundleEmitter
 
     /// <summary>
     /// 이 노드가 선 챕터의 <b>스탯 키들</b> — `$진행스탯` 누출 검사가 쓴다.
-    ///
-    /// ⚠ 한때 <c>Tier1Namespace.StatNames</c>였다. 그 클래스는 작가 변수에 챕터 접두를
-    /// 붙이려고 있었고 2026-09-17에 어휘가 하나가 되면서 통째로 죽었다 — 남은 쓰임이
-    /// 이것 하나라 여기로 옮겨 왔다.
     /// </summary>
     private static HashSet<string> ChapterStatNames(StoryProject? project, string? nodeId)
     {
@@ -718,17 +699,13 @@ public static class YarnBundleEmitter
     }
 
     /// <summary>
-    /// 연출 커맨드 하나를 Story 본문에 낸다 (2026-08-18 — 단일 대본).
+    /// 연출 커맨드 하나를 Story 본문에 낸다 — 단일 대본이라 갈 곳이 하나다.
     ///
-    /// <b>레인이 사라져 갈 곳이 하나가 됐다.</b> 예전에는 LineId 없는 커맨드는 Set 노드
-    /// (원샷 레인), 줄에 붙은 커맨드는 Pres 노드(서브 레인)로 갈렸다. 런타임이 세 레인을
-    /// 읽고 동기화하고 그것을 다시 롤백에 반영하는 값을 치르지 않기로 하면서
-    /// (소유자: "디버깅비용이 최소 10배"), <b>합치는 쪽이 이 도구</b>가 됐다.
+    /// 런타임이 여러 레인을 읽고 동기화하고 그것을 다시 롤백에 반영하는 값을 치르지 않도록
+    /// <b>합치는 쪽이 이 도구</b>다.
     ///
     /// - LineId 없음 = 노드 셋업 → 헤더 자리(첫 본문 앞)에 그대로 선다
     /// - LineId 있음 = 그 줄의 연출 → 세그먼트 순서상 자기 대사 줄 <b>바로 앞</b>에 선다
-    ///
-    /// 메인 레인 전용 검사는 없앴다 — 이제 전부 메인 레인이라 가릴 것이 없다.
     /// </summary>
     private static void AppendPresentationCommand(
         RenderedSegment segment,
@@ -774,8 +751,8 @@ public static class YarnBundleEmitter
     {
         string text = segment.Text ?? string.Empty;
 
-        // ⛔ 본문이 비면 `#line:` 태그만 남은 줄이 나가고, <b>Yarn이 그것을 파싱하지 못한다</b>
-        //    (2026-08-25). 그렇다고 줄을 빼면 더 나쁘다 — 박스는 <b>재생되는 라인이
+        // 본문이 비면 `#line:` 태그만 남은 줄이 나가고, <b>Yarn이 그것을 파싱하지 못한다</b>.
+        //    그렇다고 줄을 빼면 더 나쁘다 — 박스는 <b>재생되는 라인이
         //    나타나야 닫히므로</b>, 그 줄에 매달린 연출 커맨드가 어느 박스도 닫지 못하고
         //    런타임에서 통째로 버려진다. 화면에는 아무 일도 안 일어나고 로그도 없다.
         //
@@ -783,7 +760,7 @@ public static class YarnBundleEmitter
         //    연출 노드(대사박스를 끄고 커맨드만 돌리는 씬)가 바로 이 모양이라, 이것이
         //    막아야 할 오류가 아니라 <b>정상 경로</b>다.
         //
-        //    ⚠ 다만 박스를 켜 둔 채로 본문을 비우면 빈 말풍선이 뜬다 — 그건 저작 실수일
+        //    다만 박스를 켜 둔 채로 본문을 비우면 빈 말풍선이 뜬다 — 그건 저작 실수일
         //    수 있으므로 아래에서 경고로 짚는다(막지는 않는다).
         bool empty = text.Length == 0 && string.IsNullOrWhiteSpace(segment.Speaker);
 
@@ -826,7 +803,7 @@ public static class YarnBundleEmitter
                 IsBlocking: true));
         }
 
-        // 갈래(선택지·조건) 안의 줄은 붙여 낸다 (W47) — 옵션 본문 사이에 빈 줄이 섞이면
+        // 갈래(선택지·조건) 안의 줄은 붙여 낸다 — 옵션 본문 사이에 빈 줄이 섞이면
         // 블록이 흩어져 보인다. 숨(빈 줄)은 갈래 밖 일반 흐름에서만 준다.
         story.Append(segment.IndentLevel > 0 ? "\n" : "\n\n");
 
@@ -857,8 +834,8 @@ public static class YarnBundleEmitter
 
     private static string JumpTargetOf(RenderedSegment segment)
     {
-        // 타이틀은 세이브 키이자 에피소드 진입 키다 (C2). 대상 노드의 이름에서
-        // 이 이미터가 만들 타이틀(Story_이름)을 그대로 재현한다 — 규칙은 StoryNodeTitleOf 하나다.
+        // 타이틀은 세이브 키이자 에피소드 진입 키다 (계약서 C2). 대상 노드의 이름에서
+        // 이 이미터가 만들 타이틀을 그대로 재현한다 — 규칙은 StoryNodeTitleOf 하나다.
         return StoryNodeTitleOf(segment.TargetNodeName, segment.TargetNodeId);
     }
 }

@@ -14,11 +14,10 @@ public class YarnBundleEmitterTests
     [Fact]
     public void 타이틀은_대사엔트리를_정규화한_것이다()
     {
-        // ⛔ `Story_` 접두는 2026-08-24에 폐지됐다(소유자, 런타임과 함께). 접두가 <b>두
-        // 번</b> 붙고 있었다 — 기획자가 `대사엔트리`에 이미 `Story_ch05_01`이라 적는데
-        // 이미터가 또 붙여 `Story_Story_ch05_01`이 나갔다.
+        // `Story_` 접두는 붙이지 않는다(런타임과 같은 규칙). 기획자가 `대사엔트리`에
+        // `Story_ch05_01`이라 적으면 그 글자가 곧 타이틀이다 — 붙이면 접두가 <b>두 번</b> 선다.
         //
-        // ⚠ 그래도 <b>규칙은 여전히 두 단계다</b>: 정규화가 남아 있다. `new01`처럼 얌전한
+        // 그래도 <b>글자 그대로는 아니다</b>: 정규화를 지난다. `new01`처럼 얌전한
         // 이름만 보면 그것이 안 드러나므로 공백·점·하이픈을 케이스로 든다. 진행
         // 내보내기의 DialogueEntryId가 이것과 같은 글자여야 런타임이 노드를 찾는다.
         Assert.Equal("new01", YarnBundleEmitter.StoryNodeTitleOf("new01"));
@@ -50,11 +49,11 @@ public class YarnBundleEmitterTests
 
         Assert.Equal("test_ep", bundle.BundleName);
         Assert.Equal(
-            // 판 이름이 앞에 붙는다 (2026-08-25) — 산출 폴더가 챕터를 섞어 담기 때문이다.
+            // 판 이름이 앞에 붙는다 — 산출 폴더가 챕터를 섞어 담기 때문이다.
             new[] { "테스트_파일_test_ep.yarn" },
             bundle.Files.Select(file => file.FileName));
         Assert.StartsWith("title: test_ep\n---\n", bundle.StoryText, StringComparison.Ordinal);
-        // 2026-08-18 — 파일 하나다. 레인이 없어져 Set·Pres 사본을 만들지 않는다.
+        // 파일 하나다. 레인이 하나라 Set·Pres 사본을 만들지 않는다.
         Assert.EndsWith("===\n", bundle.StoryText, StringComparison.Ordinal);
         Assert.False(bundle.HasBlockingProblems);
     }
@@ -81,16 +80,15 @@ public class YarnBundleEmitterTests
 
         YarnBundle bundle = Emit(fixture);
 
-        // ⛔ <b>set은 아예 안 나온다</b> (2026-09-17 · 런타임 회신 §3) — 작가가 줄에 단 것도,
-        //    설정노드의 초기값도. 런타임이 Yarn 변수 층을 걷었으므로 남아 있으면 롤백에서
+        // <b>set은 아예 안 나온다</b> — 작가가 줄에 단 것도,
+        //    설정노드의 초기값도. 런타임에 Yarn 변수 층이 없으므로 남아 있으면 롤백에서
         //    안 되감겨 리플레이가 다른 분기를 탄다(계약서 C1의 silent hang).
         //
-        // 초기값이 머리에 안 나오는 이유는 그대로 유효하다 (2026-08-24, 작업지시 §4):
+        // 초기값이 머리에 안 나오는 이유는 하나 더 있다:
         // 나오면 그 초기화의 수명이 에피소드가 되어 앞 에피소드에서 켠 값이 지워진다.
         Assert.DoesNotContain("<<set ", bundle.StoryText, StringComparison.Ordinal);
 
-        // ⛔ 선언은 <b>개념째로 없다</b> — `YarnBundle.Declarations`도 2026-09-17에 걷혔다.
-        //    빈 목록을 재는 단언은 타입이 사라지면서 함께 지웠다.
+        // 선언은 <b>개념째로 없다</b> — `YarnBundle.Declarations`도 없다.
         Assert.DoesNotContain("<<declare", bundle.StoryText, StringComparison.Ordinal);
 
         // 조건 구조는 Story 안에 그대로 선다 — 이제 `stat("키")` 함수로 읽는다.
@@ -105,7 +103,7 @@ public class YarnBundleEmitterTests
 
         YarnBundle bundle = Emit(fixture);
 
-        // 2026-08-18 — 레인이 없어져 출구 앞의 <<pres_end>>도 함께 사라졌다.
+        // 레인이 하나라 출구 앞에 <<pres_end>>가 없다.
         // 조건 갈래의 출구는 detour다 — 커스텀 씬을 재생하고 갈래로 돌아온다.
         int branchLine = bundle.StoryText.IndexOf("갈래 안 #line:", StringComparison.Ordinal);
         int detour = bundle.StoryText.IndexOf("<<detour A로_간다>>", StringComparison.Ordinal);
@@ -125,8 +123,7 @@ public class YarnBundleEmitterTests
 
         YarnBundle bundle = Emit(fixture);
 
-        // 2026-08-18 — LineId 없는 커맨드는 Set 노드(원샷 레인) 본문이었다. 레인이
-        // 없어져 Story 머리(첫 본문 앞)에 그대로 선다.
+        // LineId 없는 커맨드는 따로 레인이 없어 Story 머리(첫 본문 앞)에 그대로 선다.
         int camera = bundle.StoryText.IndexOf("<<camera wide>>", StringComparison.Ordinal);
         int firstLine = bundle.StoryText.IndexOf("첫 줄", StringComparison.Ordinal);
 
@@ -139,11 +136,10 @@ public class YarnBundleEmitterTests
     [Fact]
     public void 메인_레인_전용_커맨드도_그냥_나간다()
     {
-        // 2026-08-18 — 레인이 하나뿐이라 "메인 레인 전용"이 가릴 대상을 잃었다.
-        // 예전에는 beat_fx 같은 커맨드가 Set·Pres로 새지 않도록 막았는데(옛 §E2),
-        // 이제 모든 커맨드가 메인 레인에 있으므로 막을 이유가 없다.
+        // 레인이 하나뿐이라 "메인 레인 전용"이 가릴 대상이 없다.
+        // 모든 커맨드가 메인 레인에 있으므로 beat_fx 같은 커맨드도 막을 이유가 없다.
         //
-        // ⚠ 카탈로그의 `mainLaneOnly` 플래그는 이로써 아무 데서도 안 쓰인다 —
+        // 카탈로그의 `mainLaneOnly` 플래그는 그래서 아무 데서도 안 쓰인다 —
         // 레인이 다시 생기면 그때 이 검사도 함께 돌아온다.
         BundleFixture fixture = BuildFixture(withPresentationCommands: false);
         fixture.Sample.Editor.AddPresentationCommand(
@@ -188,13 +184,12 @@ public class YarnBundleEmitterTests
         {
             IReadOnlyList<string> written = YarnBundleEmitter.WriteTo(bundle, directory);
 
-            // ⛔ <b>대본 하나뿐이다</b> (2026-09-17). 작가 변수가 없어져 선언할 것이
-            //    남지 않았고, 선언 파일을 내는 길 자체를 걷었다 — 런타임도 *"안 내는
-            //    쪽이 깔끔하다"*고 했다.
+            // <b>대본 하나뿐이다</b>. 작가 변수가 없어 선언할 것이
+            //    없고, 선언 파일을 내는 길 자체가 없다.
             //
-            // ⚠ 이름으로 다시 재는 이유: 상수를 지운 뒤에도 <b>누가 그 이름을 다시
+            // 이름으로 재는 이유: 상수가 없어도 <b>누가 그 이름을 다시
             //    쓰기 시작하면</b> 이 단언이 잡아야 한다. 상수를 참조하면 상수가
-            //    없어지는 순간 검사도 함께 사라졌다.
+            //    없어지는 순간 검사도 함께 사라진다.
             Assert.Single(written);
             Assert.DoesNotContain(written, path =>
                 Path.GetFileName(path) == "declarations.yarn");

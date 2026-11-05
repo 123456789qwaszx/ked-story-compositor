@@ -59,7 +59,7 @@ public class MotionMathTests
     [Test]
     public void 같은_채널을_relative로도_absolute로도_읽는다_첫_키가_중립값이_아니면_첫_프레임부터_움직인다()
     {
-        // 0프레임 x=140 → 1초 x=360. absolute면 140→360, relative면 지금 값+140 → 지금 값+360 (소유자 정의).
+        // 0프레임 x=140 → 1초 x=360. absolute면 140→360, relative면 지금 값+140 → 지금 값+360.
         CurveKey[] from140 = { new CurveKey(0f, 140f, 0f, 0f), new CurveKey(1f, 360f, 0f, 0f) };
         MotionChannel ch = Channel(MotionChannelKind.Position, x: from140);
         Vec3 start = new(20f, 0f, 0f);

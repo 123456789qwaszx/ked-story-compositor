@@ -12,30 +12,11 @@ public class PresentationCommandCatalogTests
         // docs/game.definition.json — 런타임 등록 테이블과 교차 검증한다.
         // 실제 대조는 아래 `카탈로그_어휘는_런타임_등록_목록과_일치한다`가 진다.
         //
-        // 2026-08-20 (W65): 런타임이 연기 커맨드를 스파인으로 넘기며 어휘가 줄었다.
-        // 179 → 126 = 삭제 56(emoji 18 · idle 5 · 몸짓 13 · 배경 모션 7 · 표정/시각 4 ·
-        // 대사창 종류 3 · 기타 6) + 추가 2(focus_on · focus_clear) + 유지 1(face_swap).
-        // 카테고리 20 → 15: emoji_preset·emoji_basic·char_rig_idle·char_rig_acting·
-        // char_rig_acting_preset이 통째로 비었다.
-        //
-        // 2026-08-21: 런타임이 회전 3종을 되살렸다(rotate_by · rotate_reset · char_rotate_to).
-        // 126 → 129. 카테고리는 그대로 15다 — 셋 다 살아 있는 계열에 붙었다.
-        //
-        // 2026-08-21: 등속 이동 4종 폐지(left_per·right_per·up_per·down_per) → 125.
-        // 속도가 1u/프레임에 잠겨 있어 "프레임당 특정 거리"를 못 냈고, 같은 노드에 같은
-        // 클레임을 거는 넛지가 그 일을 다 한다(소유자 결정 · 실사용 0건).
-        // 카테고리는 15 그대로 — char_rig_entrance에 show·넛지 4종이 남았다.
-        // 2026-08-21: 제자리 몸짓 gesture 개통 → 126.
-        // 2026-10-29: 런타임이 배경 리그를 지웠다 — bg_*는 캐스팅하지 않은 캐릭터 슬롯이 됐고
-        // bg_place·bg_size가 어휘에서 빠졌다 → 124. 카테고리는 15 그대로(background에 9개가 남았다).
-        // 2026-11-03: 런타임이 정본만 남겼다 — 인자 하나를 이름에 박은 별칭 44개(slotNN · char_to_sN · bg_slotNN ·
-        // screen_blur_sN · place_* 10 · size_<라벨> 5 · tx_<프리셋> 18)와 ui_patch · debug_log를 걷고(-46),
-        // 정본 tx와 빠져 있던 motion을 더했다(+2) → 80. 프레임 대기 <N>fr과 char_visual_<효과> 일곱은
-        // 소유자 결정으로 남았다. 카테고리는 15 그대로.
-        // 2026-11-03: 대사창 box_hide · box_show · box_close를 걷었다(숨김은 줄 태그 #boxhide) → 77.
-        // 카테고리는 15 그대로 — dialogue_box에 surface_layout · surface_reset이 남았다.
-        // 2026-11-04: 줄 태그 열두 개(범주 line_tag — #auto · #box 전환 다섯 · 대사창 종류 여섯)를 더했다 → 89 · 16.
-        // 커맨드가 아니라 대사 줄의 태그다(execution "lineTag") — 그 걷힌 box_*의 자리를 연출 층이 든다.
+        // 89 = 커맨드 77(카테고리 15) + 줄 태그 12(범주 line_tag — #auto · #box 전환 다섯 · 대사창 종류 여섯).
+        // 커맨드는 런타임 정본만 둔다 — 인자 하나를 이름에 박은 별칭은 없고, 프레임 대기 <N>fr과
+        // char_visual_<효과> 일곱만 별칭으로 남는다.
+        // 줄 태그는 커맨드가 아니라 대사 줄의 태그다(execution "lineTag") — 대사창 숨김·전환은
+        // 커맨드가 아니라 줄 태그(#boxhide 등)로 연출 층이 든다.
         Assert.Equal(89, catalog.Definitions.Count);
         Assert.Equal(77, catalog.Definitions.Count(item => !item.IsLineTag));
         Assert.Equal(16, catalog.Categories.Count);
@@ -61,7 +42,6 @@ public class PresentationCommandCatalogTests
 
         // 예외는 툴 쪽에 하나다. 늘리려면 사유를 여기 적어야 한다.
         //   <N>fr  — 1fr~48fr 동적 별칭군을 묶은 합성 항목이라 등록 이름과 글자가 다르다.
-        // (motion은 런타임 전용 예외였는데 2026-11-03에 카탈로그에 넣었다 — 예외에서 뺐다.)
         string[] toolOnly = ["<N>fr"];
 
         Assert.Equal(
@@ -109,8 +89,7 @@ public class PresentationCommandCatalogTests
     {
         PresentationCommandCatalog catalog = PresentationCommandCatalog.Default;
 
-        // 인자 하나짜리 표본. 예전에는 `char_rig_acting.hop`이 이 자리였는데 W65에서
-        // 연기 커맨드가 스파인으로 넘어가며 카탈로그에서 빠졌다.
+        // 인자 하나짜리 표본.
         PresentationCommandDefinition front = catalog.Find("char_rig_staging.sibling_front")!;
         Assert.Equal("sibling_front", front.OutputCommandName);
         Assert.Equal("char_rig_staging", front.CategoryId);
@@ -121,8 +100,7 @@ public class PresentationCommandCatalogTests
         // 기본값은 파라미터에 실려 온다. 기본값 없는 필수 인자뿐이면 빈 사전이다.
         Assert.Empty(front.DefaultArgumentValues());
 
-        // 기본값이 실려 오는 예 — `control_flow.pres_hold`가 이 자리였는데 2026-08-18에
-        // 카탈로그에서 걷혔다(런타임에 `pres_*`가 없다).
+        // 기본값이 실려 오는 예.
         PresentationCommandDefinition pause = catalog.Find("common_control.pause")!;
         Assert.Equal("0.18", pause.DefaultArgumentValues()["duration"]);
     }
@@ -130,11 +108,8 @@ public class PresentationCommandCatalogTests
     [Fact]
     public void 메인_레인_전용_표시는_이제_아무도_달고_있지_않다()
     {
-        // 2026-08-18에 셋(box_named·box_protagonist·box_reset)만 남았었고,
-        // W65에서 그 셋이 런타임에서 사라지며 **표시를 단 커맨드가 0이 됐다.**
-        //
-        // ⚠ 플래그는 읽는 쪽도 없다 — 이미터의 `IsMainLaneOnly` 검사가 유일한 소비자였는데
-        // 레인이 하나뿐이라 가릴 대상을 잃고 걷혔다. 이제 **읽는 쪽도 다는 쪽도 없다.**
+        // 메인 레인 전용 표시를 단 커맨드는 없고, 플래그를 읽는 쪽도 없다 — 레인이 하나뿐이라
+        // 가릴 대상이 없다. **읽는 쪽도 다는 쪽도 없다.**
         // 스키마에서 지우는 것은 레인이 정말 안 돌아온다고 정해질 때 한다(그때 이 테스트도 간다).
         string[] mainLaneOnly = PresentationCommandCatalog.Default.Definitions
             .Where(item => item.MainLaneOnly)
@@ -150,12 +125,12 @@ public class PresentationCommandCatalogTests
     {
         PresentationCommandCatalog catalog = PresentationCommandCatalog.Default;
 
-        // W66 — "이 커맨드가 무슨 축을 미는가"의 유일한 근거. 이름·정규식 추측 금지.
+        // "이 커맨드가 무슨 축을 미는가"의 유일한 근거. 이름·정규식 추측 금지.
         PresentationMotionDeclaration motion = catalog.Find("char_rig_staging.move_by")!.Motion!;
         Assert.Equal("CharSlot_Track", motion.NodeId);
         Assert.True(motion.Relative);
         Assert.Equal("duration", motion.DurationParameterName);
-        Assert.Equal("ease", motion.EaseParameterName); // W67 — 런타임 다섯째 인자 개통
+        Assert.Equal("ease", motion.EaseParameterName); // 런타임 다섯째 인자
         Assert.Equal("OutCubic", motion.DefaultEase); // 런타임 스펙 기본값의 기록
         Assert.Equal("x", motion.FindAxis("x")!.ParameterName);
         Assert.Equal("y", motion.FindAxis("y")!.ParameterName);
@@ -169,7 +144,7 @@ public class PresentationCommandCatalogTests
         Assert.False(ease.Required);
         Assert.Null(ease.Default);
 
-        // 로더 무해성 — 선언이 없는 커맨드는 예전과 완전히 같다.
+        // 로더 무해성 — 선언이 없는 커맨드에는 모션이 붙지 않는다.
         Assert.Null(catalog.Find("char_rig_staging.scale_by")!.Motion);
         Assert.Single(catalog.Definitions, item => item.Motion is not null);
     }
@@ -179,7 +154,7 @@ public class PresentationCommandCatalogTests
     {
         PresentationCommandCatalog catalog = PresentationCommandCatalog.Default;
 
-        // W68 — 무엇이 슬라이더로 만질 수 있는 수치인지는 코드가 아니라 선언이 정한다.
+        // 무엇이 슬라이더로 만질 수 있는 수치인지는 코드가 아니라 선언이 정한다.
         PresentationParameterSlider multiplier =
             catalog.Find("char_rig_staging.scale_by")!.FindParameter("multiplier")!.Slider!;
         Assert.Equal(0.25, multiplier.Minimum);
@@ -275,8 +250,8 @@ public class PresentationCommandCatalogTests
     [Fact]
     public void 카탈로그_기본값은_런타임_파서의_생략값과_같다()
     {
-        // 툴은 내보낼 때 빈 인자를 카탈로그 기본으로 채운다 — 손 대본의 <<size sigure 12>>가 툴에서는
-        // <<size sigure 12 bust 0fr>>로 나갔는데, 런타임은 생략된 길이를 10fr로 읽어 둘이 다르게 움직였다(2026-11-04).
+        // 툴은 내보낼 때 빈 인자를 카탈로그 기본으로 채운다 — 두 기본값이 다르면 손 대본의 <<size sigure 12>>와
+        // 툴이 내보낸 <<size sigure 12 bust 0fr>>(런타임은 생략된 길이를 10fr로 읽는다)가 다르게 움직인다.
         // 스냅샷 TuningFixtures/runtime-defaults.txt는 런타임 파서 표의 c.Arg(i, 기본) · Float(c, i, 기본)이다.
         string path = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "TuningFixtures", "runtime-defaults.txt"));

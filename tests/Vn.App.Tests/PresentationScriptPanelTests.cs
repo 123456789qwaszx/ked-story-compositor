@@ -10,7 +10,7 @@ using Vn.Authoring.Results;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 대본 텍스트 패널 (2026-08-20) — 커맨드 행마다 점(상세조절 입구)이 서고,
+/// 대본 텍스트 패널 — 커맨드 행마다 점(상세조절 입구)이 서고,
 /// 현재 라인의 구간이 반투명 박스로 구분되는 것을 사람 눈 없이 닫는다.
 /// </summary>
 public sealed class PresentationScriptPanelTests
@@ -82,7 +82,7 @@ public sealed class PresentationScriptPanelTests
         string[] texts = panel.GetLogicalDescendants().OfType<TextBlock>()
             .Select(text => text.Text ?? "").ToArray();
 
-        // Setup 헤더와 같은 결의 lineId 헤더 — 라인마다 하나 (2026-08-21 소유자 지시).
+        // Setup 헤더와 같은 결의 lineId 헤더 — 라인마다 하나.
         Assert.Contains("── ln_a ──", texts);
         Assert.Contains("── ln_b ──", texts);
         Assert.Contains("── Setup ──", texts);
@@ -103,7 +103,7 @@ public sealed class PresentationScriptPanelTests
         int VisibleX() => AllX().Count(text => text.Opacity > 0 && text.IsHitTestVisible);
 
         // ln_a 선택 — 커맨드 행 둘(Setup 하나·ln_a 하나) 모두 자리는 있고, 보이는 것은
-        // ln_a의 하나뿐이다 (2026-08-21 소유자: "특정 라인을 클릭했을 때만 x가 보이도록").
+        // ln_a의 하나뿐이다 — x는 클릭한 라인에만 보인다.
         panel.Show(Rows(), selectedLineId: "ln_a", editable: true);
         Assert.Equal(2, AllX().Length);
         Assert.Equal(1, VisibleX());
@@ -121,7 +121,7 @@ public sealed class PresentationScriptPanelTests
     [Fact]
     public void 꺼진_커맨드_행은_빈_점과_흐린_텍스트로_남는다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: 점 = 켜고 끄기 — 꺼진 커맨드는 사라지지 않고 흐려진다.
+        // 점 = 켜고 끄기 — 꺼진 커맨드는 사라지지 않고 흐려진다.
         IReadOnlyList<PresentationScriptRow> rows =
         [
             new(PresentationScriptRowKind.Command, "ln_a",
@@ -150,8 +150,8 @@ public sealed class PresentationScriptPanelTests
     [Fact]
     public void 선택이_바뀌어도_커맨드_행_높이는_그대로다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "간격이 계속 바뀌면서 레이아웃이 이동하는데 … 어지럽고
-        // 피로해". 제거 X는 보였다 숨었다 하되 자리는 늘 잡아야 한다.
+        // 간격이 계속 바뀌면서 레이아웃이 이동하면 어지럽고
+        // 피로하다. 제거 X는 보였다 숨었다 하되 자리는 늘 잡아야 한다.
         var panel = new PresentationScriptPanel();
         var window = new Window { Content = panel, Width = 400, Height = 500 };
         window.Show();
@@ -180,7 +180,7 @@ public sealed class PresentationScriptPanelTests
     [Fact]
     public void Setup을_고르면_라인_하이라이트는_꺼진다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-21 소유자: "라인을 클릭한 상태로 Setup을 클릭하면 하이라이트가 2군데에".
+        // 라인을 클릭한 상태로 Setup을 클릭해도 하이라이트는 한 군데에만 선다.
         var panel = new PresentationScriptPanel();
 
         // 라인 선택이 남아 있어도(선택 라인 정보는 살아 있다) 켜지는 박스는 하나다.
@@ -217,7 +217,7 @@ public sealed class PresentationScriptPanelTests
             text => (text.Text ?? "").Contains("Setup", StringComparison.Ordinal));
     });
 
-    // ── 우클릭 메뉴 + 단축키 (2026-08-21 소유자 지시) ────────────────────────
+    // ── 우클릭 메뉴 + 단축키 ────────────────────────
 
     private static void RightClick(Control target) => target.RaiseEvent(
         new Avalonia.Input.PointerPressedEventArgs(

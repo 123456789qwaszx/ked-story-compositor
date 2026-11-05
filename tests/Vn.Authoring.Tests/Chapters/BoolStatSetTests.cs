@@ -5,14 +5,13 @@ using Vn.Authoring.Model;
 namespace Vn.Authoring.Tests.Chapters;
 
 /// <summary>
-/// 깃발을 켜고 끈다 (2026-08-19 소유자).
+/// 깃발을 켜고 끈다.
 ///
-/// <b>그전까지 bool 스탯은 값이 변할 방법이 없었다.</b> `StatDelta`는 증감 전용이고 양쪽
-/// 저장소가 bool 증감을 오류로 막았으므로(§G4), 선언한 초기값이 곧 영원한 값이었다 —
-/// 조건에서 읽을 수는 있는데 아무도 켤 수 없는 깃발이었다.
-/// 저쪽 `docs/handoff.md` §6-4가 같은 구멍을 짚으며 "소유자가 정해야 한다"고 적어 두었다.
+/// `StatDelta`는 증감 전용이고 양쪽 저장소가 bool 증감을 오류로 막으므로(§G4), 지정이
+/// 없으면 선언한 초기값이 곧 영원한 값이 된다 — 조건에서 읽을 수는 있는데 아무도 켤 수
+/// 없는 깃발이다.
 ///
-/// 고른 답은 <b>지정(Set)</b>이다. 증감은 깃발에 맞는 낱말이 아니다 — `met_willow +1`은
+/// 그래서 bool은 <b>지정(Set)</b>으로 바꾼다. 증감은 깃발에 맞는 낱말이 아니다 — `met_willow +1`은
 /// "만난 횟수"로 읽히고 `+2`는 뜻이 없는데도 조용히 같은 결과가 된다.
 ///
 /// 규격: <c>docs/work-orders/bool-stat-orders.md</c>.
@@ -62,9 +61,8 @@ public sealed class BoolStatSetTests
 
     // ── 규칙 ────────────────────────────────────────────────────────────────
     //
-    // 2026-10-29 · D2 — 아래 셋은 리더(`VerifyBoolStatUsage`)가 저작 중에 짚던 것이다. 그 검사는
-    // 엑셀 연동과 함께 빠졌고(대신 쓸 말을 알려 주던 안내도 함께), 지금은 내보내기 관문 —
-    // 코어의 §G4 — 이 막는다. 그래서 여기서는 관문이 막는지를 잰다.
+    // 아래 셋은 저작 중에는 짚지 않고 내보내기 관문 — 코어의 §G4 — 이 막는다.
+    // 그래서 여기서는 관문이 막는지를 잰다.
 
     [Fact]
     public void bool에_증감을_쓰면_대신_쓸_말을_알려_준다()
@@ -78,7 +76,7 @@ public sealed class BoolStatSetTests
     [Fact]
     public void 정수_스탯은_true_false로_정할_수_없다()
     {
-        // 소유자 결정 (2026-08-19) — 지정은 bool에만 연다. 정수까지 열면 줄마다 "더할
+        // 지정은 bool에만 연다. 정수까지 열면 줄마다 "더할
         // 것인가 정할 것인가"를 고르게 되고, 스탯이 쌓이는 값이라는 성질이 흐려진다.
         ChapterGraphModel model = Read("trust true");
 
@@ -155,14 +153,9 @@ public sealed class BoolStatSetTests
     [Fact]
     public void 깃발을_켜고_끄는_간선이_Op_Set으로_나간다()
     {
-        // 2026-08-19 ~ 08-23 — 계약의 `StatChange`에 '정하기'를 실을 칸이 없어서, 깃발을
-        // 쓰는 챕터는 내보내기를 **통째로 거부**했다(`BoolSetNotCarried`). 조용히 빼고
+        // 지정은 `StatChangeDto.Op`(`ked-progression` **0.2.0**)로 실린다. 조용히 빼고
         // 내면 깃발이 영원히 안 켜지고 그 깃발을 보던 관문이 영원히 잠기는데, JSON에
-        // 도착한 뒤에는 아무도 그것을 볼 수 없기 때문이다.
-        //
-        // `ked-progression` **0.2.0**에 `StatChangeDto.Op`가 섰다 — 그래서 거부를 지우고
-        // 그 자리를 이 테스트가 이어받는다. 거부가 사라진 것보다 **값이 제대로 실리는
-        // 것**이 계약이다.
+        // 도착한 뒤에는 아무도 그것을 볼 수 없다 — **값이 제대로 실리는 것**이 계약이다.
         Assert.Equal(("Set", 1), OnlyStatChange(Read("met true")));
 
         // 끄는 쪽도 같은 길로 나간다 — 0이 '안 바꿈'이 아니라 '거짓으로 정함'이다.
@@ -178,7 +171,7 @@ public sealed class BoolStatSetTests
         Assert.False(
             ChapterProgressionExporter.Export(model).Refused);
 
-        // ⚠ 정수 증감은 `Add`를 **비우지 않고 명시**한다 — 저쪽은 빈 문자열도 더하기로
+        // 정수 증감은 `Add`를 **비우지 않고 명시**한다 — 저쪽은 빈 문자열도 더하기로
         // 읽지만(구 JSON 호환), 적어 두면 "아무도 안 정한 것"과 "더하기로 정한 것"이
         // JSON에서 구별된다.
         Assert.Equal("Add", OnlyStatChange(model).Op);
@@ -187,11 +180,10 @@ public sealed class BoolStatSetTests
     [Fact]
     public void 길의_종류는_아예_실리지_않는다()
     {
-        // v12 (2026-08-24) — 저작에서 `종류` 칸이 폐지됐다. 문구 없이 넘어가는 길이
-        // 사라졌으므로 "누가 고르나"를 물을 것이 없다: 언제나 플레이어다.
+        // 저작에 `종류` 칸이 없다. 문구 없이 넘어가는 길이 없으므로 "누가 고르나"를
+        // 물을 것이 없다: 언제나 플레이어다.
         //
-        // 2026-08-25 — 그래서 코어에 `Kind` 칸을 세워 달라던 부탁을 <b>철회</b>했고,
-        // 이쪽도 안 싣는다. 코어는 문구의 유무로 가른다(D5) — 그 규약이 하나뿐이어야 한다.
+        // 그래서 `Kind`는 싣지 않는다. 코어는 문구의 유무로 가른다 — 그 규약이 하나뿐이어야 한다.
         Assert.False(OnlyOption(Read("trust +1")).TryGetProperty("Kind", out _));
     }
 
@@ -226,7 +218,7 @@ public sealed class BoolStatSetTests
         return (change.GetProperty("Op").GetString()!, change.GetProperty("Amount").GetInt32());
     }
 
-    /// <summary>내보낸 첫 간선. ⚠ 문서를 닫으면 요소가 죽으므로 복제해서 돌려준다.</summary>
+    /// <summary>내보낸 첫 간선. 문서를 닫으면 요소가 죽으므로 복제해서 돌려준다.</summary>
     private static System.Text.Json.JsonElement OnlyOption(ChapterGraphModel model)
     {
         using System.Text.Json.JsonDocument document = Exported(model);

@@ -23,8 +23,8 @@ namespace Vn.App;
 /// 화면들은 서로를 모른다. 모두 <see cref="AuthoringSession"/>만 보고 있고,
 /// 편집은 전부 <see cref="ProjectEditor"/>를 지난다.
 ///
-/// ⛔ 창은 무대 하나다(2026-10-29) — 챕터 그래프 · 연출 그래프 · 대사 편집기는 이야기의 뼈대와 대사를 쓰는
-/// 화면이라 ked-story-director에 남았다(docs/plans/compositor-split.md C1).
+/// 창은 무대 하나다 — 챕터 그래프 · 연출 그래프 · 대사 편집기는 이야기의 뼈대와 대사를 쓰는
+/// 화면이라 ked-story-director의 몫이다.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -37,11 +37,9 @@ public partial class MainWindow : Window
 
     // ── 연출 편집기 ──────────────────────────────────────────────────────────
     //
-    // ⚠ 화면에 걸지 않는다. 이 편집기는 고른 연출 노드의 커맨드 행을 들고 있다가 무대에
+    // 주의: 화면에 걸지 않는다. 이 편집기는 고른 연출 노드의 커맨드 행을 들고 있다가 무대에
     // 작업대(커맨드 하나의 편집 행 + 수치 조절)와 추가 콘솔을 공급한다 — 무대가 그것을
-    // 보여 준다. 예전에 걸려 있던 자리(연출 그래프의 곁기둥)는 그래프와 함께 걷혔다.
-    // 이름을 XAML 시절 그대로 둔 것은 의도다: 참조하는 자리가 여러 군데라 이름이 바뀌면
-    // 이사와 무관한 diff가 그만큼 생긴다.
+    // 보여 준다. 필드 이름이 컨트롤처럼 PascalCase인 것은 의도다: 참조하는 자리가 여러 군데다.
     private readonly PresentationNodeEditor PresentationEditor = new();
     private readonly AssetExplorerView AssetExplorer = new() { MaxHeight = 300 };
 
@@ -65,13 +63,13 @@ public partial class MainWindow : Window
             UiGuard.Report(_session, "화면 동작", e.Exception);
         };
 
-        // 오디오 실재생 (W62) — 재생 실패·미지원 보고는 상태줄 하나로 모이고,
+        // 오디오 실재생 — 재생 실패·미지원 보고는 상태줄 하나로 모이고,
         // 셸이 닫히면 소리도 함께 끝난다.
         AudioPreview.Problem = message => _session.SetStatus(message);
         Closed += (_, _) => AudioPreview.StopAll();
 
-        // 에셋 탐색기는 무대 프리뷰 조절창 아래에 산다 (2026-08-26 소유자 — 연출
-        // 그래프에서 이사). 자리는 뷰의 것, 배선(Attach·에셋 루트 지정)은 셸의 것이다.
+        // 에셋 탐색기는 무대 프리뷰 조절창 아래에 산다. 자리는 뷰의 것, 배선(Attach·에셋
+        // 루트 지정)은 셸의 것이다.
         StagePreview.AssetExplorerHost.Content = AssetExplorer;
 
         ApplyExportChrome();
@@ -90,7 +88,7 @@ public partial class MainWindow : Window
         };
         StagePreview.LineSelectRequested += lineId =>
         {
-            // 대본 패널의 대사 행 클릭 (2026-08-20) — 같은 규칙: 활성 편집기의 선택 하나.
+            // 대본 패널의 대사 행 클릭 — 같은 규칙: 활성 편집기의 선택 하나.
             if (PresentationEditor.IsVisible)
             {
                 PresentationEditor.SelectStageLineById(lineId);
@@ -98,10 +96,10 @@ public partial class MainWindow : Window
         };
         StagePreview.DetourResumeRequested += (lineId, atLine) =>
         {
-            // detour 복귀 (2026-08-22) — 돌아간 노드의 편집기가 떠난 줄을 짚고 한 줄
+            // detour 복귀 — 돌아간 노드의 편집기가 떠난 줄을 짚고 한 줄
             // 나아간다. 다녀온 detour는 경로에서 빠져 있으므로(PopDetour가 표시했다)
             // 그 한 걸음이 곧 "나머지 대본"의 첫 줄이다.
-            // 줄 앞 분기(2026-11-04)에서 돌아온 것이면 그 줄을 아직 안 읽었다 — 그 줄부터(남은 분기가 있으면 또 나간다).
+            // 줄 앞 분기에서 돌아온 것이면 그 줄을 아직 안 읽었다 — 그 줄부터(남은 분기가 있으면 또 나간다).
             if (!PresentationEditor.IsVisible)
             {
                 return;
@@ -117,11 +115,9 @@ public partial class MainWindow : Window
             PresentationEditor.MoveStageLine(1);
         };
         StagePreview.SceneChosen += EnterPresentationChannel;
-        // 작업대 = Inspector (2026-08-21 소유자: "점의 세부 조절창과 연출 편집창이
-        // 합쳐지는 게 맞겠네") — 선택 커맨드 하나의 편집 행(연출 편집기) + 수치 조절
+        // 작업대 = Inspector — 선택 커맨드 하나의 편집 행(연출 편집기) + 수치 조절
         // (무대 뷰)을 연출 편집기가 한 판으로 조합해 프리뷰 탭에 공급한다. 연출 추가는
-        // 터미널 우클릭이 띄우는 콘솔이다(검색·종류별 탭·직접 입력 — 2026-08-21 소유자:
-        // "콘솔을 띄운다는 느낌으로").
+        // 터미널 우클릭이 띄우는 콘솔이다(검색·종류별 탭·직접 입력).
         StagePreview.CommandDetailProvider = commandId =>
             PresentationEditor.IsVisible
                 ? PresentationEditor.BuildCommandInspector(commandId, StagePreview.BuildSceneInspector)
@@ -132,11 +128,11 @@ public partial class MainWindow : Window
                 : null;
         StagePreview.NodeExitRequested = () =>
         {
-            // 문서 끝 도달 (W39) — 활성 편집기가 실행 출구를 따라 다음 노드로 전환하면
+            // 문서 끝 도달 — 활성 편집기가 실행 출구를 따라 다음 노드로 전환하면
             // 재생이 이어진다. 전환된 노드의 편집기가 열리며 첫 라인 프리뷰를 민다.
             return PresentationEditor.IsVisible && PresentationEditor.TryExitPlaybackNode();
         };
-        // ▶를 누른 줄 앞에 <<detour>>가 있으면 그 분기부터 (2026-11-04) — 줄을 읽기 전에 다녀온다.
+        // ▶를 누른 줄 앞에 <<detour>>가 있으면 그 분기부터 — 줄을 읽기 전에 다녀온다.
         StagePreview.PlayEntryRequested = () =>
             PresentationEditor.IsVisible && PresentationEditor.TryDetourAtCurrentLine();
         StagePreview.ManipulationApplied += () =>
@@ -150,8 +146,8 @@ public partial class MainWindow : Window
         PresentationEditor.StagePreview = StagePreview;
 
         _session.Changed += OnSessionChanged;
-        // 상태줄만 바뀐 경우는 셸 갱신 하나로 끝난다 (2026-08-18) — 판을 다시 그리거나
-        // 챕터를 다시 읽을 이유가 없다. 그 구분이 없어서 노드가 늘수록 느려졌다.
+        // 상태줄만 바뀐 경우는 셸 갱신 하나로 끝난다 — 판을 다시 그리거나
+        // 챕터를 다시 읽을 이유가 없다. 그 구분이 없으면 노드가 늘수록 느려진다.
         _session.StatusChanged += (_, _) =>
         {
             if (Dispatcher.UIThread.CheckAccess())
@@ -179,12 +175,10 @@ public partial class MainWindow : Window
 
         Opened += OnOpened;
 
-        // 저장 단축키 (W49) — 어디에 포커스가 있어도 Ctrl+S가 저장이다.
+        // 저장 단축키 — 어디에 포커스가 있어도 Ctrl+S가 저장이다.
         //
-        // ⛔ <b>Ctrl+Z가 없었다</b> (2026-09-18에 알았다). 되돌리기는 <b>단추로만</b> 됐는데,
-        //    그 단추는 창 위쪽 띠에 있어서 트리에서 실수로 지운 사람이 찾아 올라가야 했다.
-        //    지우는 단추를 세우면서 소유자가 짚은 조건이 *"ctrl+z로 롤백이 가능해야"*이고,
-        //    그것이 이미 되는 줄 알았던 것이 문제였다.
+        // 되돌리기도 <b>Ctrl+Z</b>로 된다 — 단추는 창 위쪽 띠에 있어서, 단추로만 되면
+        // 트리에서 실수로 지운 사람이 찾아 올라가야 한다.
         AddHandler(KeyDownEvent, (_, args) =>
         {
             if (!args.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control))
@@ -199,7 +193,7 @@ public partial class MainWindow : Window
                     OnSaveClick(this, new RoutedEventArgs());
                     break;
 
-                // ⚠ 글 입력칸에서는 <b>가로채지 않는다</b> — 거기서 Ctrl+Z는 <b>타이핑</b>을
+                // 주의: 글 입력칸에서는 <b>가로채지 않는다</b> — 거기서 Ctrl+Z는 <b>타이핑</b>을
                 //    되돌리는 것이고, 그것을 프로젝트 되돌리기로 바꾸면 쓰던 문장이 통째로
                 //    날아간다. TextBox가 제 되돌리기를 먼저 하도록 둔다.
                 case Avalonia.Input.Key.Z when FocusManager?.GetFocusedElement() is not TextBox:
@@ -214,7 +208,7 @@ public partial class MainWindow : Window
             }
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
-        // 10분 자동 저장 (W49) — 저장 경로가 있고 바뀐 것이 있을 때만, 상태줄로 알린다.
+        // 10분 자동 저장 — 저장 경로가 있고 바뀐 것이 있을 때만, 상태줄로 알린다.
         _autoSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
         _autoSaveTimer.Tick += (_, _) => UiGuard.Run(_session, "자동 저장", () =>
         {
@@ -230,7 +224,7 @@ public partial class MainWindow : Window
         ShowSelectedNode();
         RefreshShell();
 
-        // 챕터 지도 (2026-11-04) — 무대가 "그릴 것"을 들고, 셸의 왼쪽 기둥이 그린다. 점을 누르면 무대의 씬 선택과 같은 길.
+        // 챕터 지도 — 무대가 "그릴 것"을 들고, 셸의 왼쪽 기둥이 그린다. 점을 누르면 무대의 씬 선택과 같은 길.
         StagePreview.MinimapChanged += RefreshMinimap;
         Minimap.NodeClicked += StagePreview.EnterSceneFromMap;
         RouteSurvey.Attach(_session, () => _session.ChapterEntries());
@@ -309,8 +303,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 무대의 챕터 · 씬 선택기에 프로젝트의 챕터를 공급한다. 원천은 프로젝트 하나다
-    /// (⛔ 예전에는 챕터 그래프 뷰가 읽은 목록을 셸이 나눠 줬다 — 그 뷰가 걷혔다).
+    /// 무대의 챕터 · 씬 선택기에 프로젝트의 챕터를 공급한다. 원천은 프로젝트 하나다.
     /// </summary>
     private void SupplyChapters()
     {
@@ -319,13 +312,13 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 씬 하나를 연출할 수 있는 상태로 만든다 (2026-08-21) — 대사 발행 → 연출 노드 →
-    /// 결과 연결 → 연출 발행까지 한 번에(멱등). 소유자: "미리 다 해둔 다음에 무대
-    /// 프리뷰측에서 뭘 할지 고르도록".
+    /// 씬 하나를 연출할 수 있는 상태로 만든다 — 대사 발행 → 연출 노드 →
+    /// 결과 연결 → 연출 발행까지 한 번에(멱등). 미리 다 해 둔 뒤 무대 프리뷰에서
+    /// 무엇을 할지 고르게 한다.
     ///
     /// 부르는 곳이 둘이다 — <b>씬 선택기</b>와 <b>대사 노드가 골라진 것</b>(프로젝트를 열면 시작 노드가
     /// 골라진다). 둘은 같은 뜻이라 같은 함수를 지난다(사본 금지) — 무대는 대사 노드를 그리지 않는다:
-    /// 그것을 고른 채로 두면 발행본이 그려져 <b>잠긴 화면</b>이 된다(2026-08-22 소유자 보고).
+    /// 그것을 고른 채로 두면 발행본이 그려져 <b>잠긴 화면</b>이 된다.
     /// </summary>
     private void EnterPresentationChannel(string dialogueNodeId)
     {
@@ -359,11 +352,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 내보내기 단추 chrome. ⏸ [CSV 내보내기…]와 [양식…]은 <b>임시로</b> 내렸다 (2026-08-25 소유자).
+    /// 내보내기 단추 chrome. [CSV 내보내기…]와 [양식…]은 <b>임시로</b> 내려 두었다.
     /// 지우지 않고 접어 두는 이유: 뒤의 것(OnCsvExportClick·ShowExportFormatsFlyout·LiveOutputService의
     /// 양식 선택)은 그대로 살아 있고 라이브 출력이 계속 그 선택을 따르므로, 코드를 걷으면 되살릴 때
     /// 두 벌이 된다. 되돌리는 것은 아래 두 줄을 <c>true</c>로 하는 것뿐이다.
-    /// (⛔ 예전에는 탭마다 달랐다 — 챕터 그래프에서는 [내보내기…]도 접혔다. 그 탭이 걷혔다.)
     /// </summary>
     private void ApplyExportChrome()
     {
@@ -375,7 +367,7 @@ public partial class MainWindow : Window
     /// 검증용 손잡이 — 최근 프로젝트 복원을 끈다. 헤드리스 테스트의 창은 "이 컴퓨터가
     /// 마지막에 연 프로젝트"를 물려받으면 안 된다: 복원된 챕터의 감시자가 부르는 에피소드
     /// 동기화가 테스트가 세운 노드를 솎아 내고 판을 다시 그려, 부하에 따라 매번 다른
-    /// 테스트가 흔들렸다(2026-08-26 — 더블클릭 넷 사이에 판이 재건되면 제스처도 끊긴다).
+    /// 테스트가 흔들린다(더블클릭 넷 사이에 판이 재건되면 제스처도 끊긴다).
     /// </summary>
     internal static bool RestoreRecentProjectOnOpen { get; set; } = true;
 
@@ -482,7 +474,7 @@ public partial class MainWindow : Window
 
     // ── 파일 ────────────────────────────────────────────────────────────────
 
-    /// <summary>열기 = 폴더 고르기 (2026-11-04) — director와 같은 폴더. 폴더 안의 유일한 원고를 찾아 열고, 연출 파일은 그 옆이다.</summary>
+    /// <summary>열기 = 폴더 고르기 — director와 같은 폴더. 폴더 안의 유일한 원고를 찾아 열고, 연출 파일은 그 옆이다.</summary>
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -509,8 +501,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 다른 폴더의 연출을 이 원고 옆으로 (2026-11-04) — 원고만 복사해 온 폴더에 연출이 없을 때. 복사이지 공유가 아니고,
-    /// 원고는 건드리지 않는다(K3). 가져온 뒤 다시 연다.
+    /// 다른 폴더의 연출을 이 원고 옆으로 — 원고만 복사해 온 폴더에 연출이 없을 때. 복사이지 공유가 아니고,
+    /// 원고는 건드리지 않는다. 가져온 뒤 다시 연다.
     /// </summary>
     private async void OnImportLayerClick(object? sender, RoutedEventArgs e)
     {
@@ -558,7 +550,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>게임 폴더 (2026-11-04) — director와 같은 <c>runtime.target.json</c>. 저장할 때마다 Yarn이 거기로도 나간다.</summary>
+    /// <summary>게임 폴더 — director와 같은 <c>runtime.target.json</c>. 저장할 때마다 Yarn이 거기로도 나간다.</summary>
     private async void OnGameFolderClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -705,7 +697,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 고아 출력 목록 (K1 ②안) — 노드를 지우거나 이름을 바꾸면 옛 파일이 출력 폴더에 남고,
+    /// 고아 출력 목록 — 노드를 지우거나 이름을 바꾸면 옛 파일이 출력 폴더에 남고,
     /// 유니티가 폴더를 통째로 읽으면 그 옛 대사가 재생된다. 이 툴은 <b>지우지 않고 보여 준다</b>:
     /// 출력 폴더는 사용자의 폴더이지 도구의 소유물이 아니다.
     /// </summary>
@@ -785,7 +777,7 @@ public partial class MainWindow : Window
 
             var written = new List<string>(YarnBundleEmitter.WriteBundles(bundles, folder));
 
-            // 커스텀 곡선(W67 후속) — 번들이 @이름으로 참조하는 곡선을 런타임 스키마로
+            // 커스텀 곡선 — 번들이 @이름으로 참조하는 곡선을 런타임 스키마로
             // 함께 낸다. 곡선이 없으면 파일도 없다(런타임의 무음 0개 경로).
             if (YarnBundleEmitter.WriteCurves(_session.Project.EaseCurves, folder) is { } curvesPath)
             {
@@ -897,8 +889,7 @@ public partial class MainWindow : Window
 
         var list = new ListBox { SelectionMode = SelectionMode.Multiple };
 
-        // ⛔ 거르개 (2026-08-25 소유자: "내보낼 대사노드 선택하는 팝업창에 챕터 단위
-        //    필터기능을 추가해"). 챕터가 여럿이면 목록이 수십 줄이 되는데, 사람이
+        // 챕터 거르개. 챕터가 여럿이면 목록이 수십 줄이 되는데, 사람이
         //    내보내려는 것은 <b>대개 한 챕터</b>다. 거르개가 없으면 남의 챕터를 하나씩
         //    풀어야 하고, 하나 빠뜨리면 그냥 같이 나간다 — 나간 뒤에는 안 보인다.
         var chapters = new List<string> { AllChapters };
@@ -967,7 +958,7 @@ public partial class MainWindow : Window
 
         var picked = new List<LiveComposition>();
 
-        // ⚠ 자리(index)가 아니라 <b>고른 것 자체</b>를 읽는다. 거르개가 목록을 갈아 끼우면
+        // 주의: 자리(index)가 아니라 <b>고른 것 자체</b>를 읽는다. 거르개가 목록을 갈아 끼우면
         //   자리는 원본 목록과 어긋나므로, 자리로 되짚으면 남의 노드를 내보낸다.
         confirm.Click += (_, _) =>
         {
@@ -1051,10 +1042,6 @@ public partial class MainWindow : Window
         Margin = new Thickness(4, 2),
         Background = new SolidColorBrush(Color.FromArgb(60, 128, 128, 128))
     };
-
-    // [편집 자료] 현황판(RebuildResourcePanel)은 2026-08-21에 사라졌다 (소유자) —
-    // 대본·발행 결과·연출 공급을 읽기 전용으로 나열하던 판인데, 발행·배선이 자동이
-    // 된 뒤로는 볼 이유가 없다. 대본은 노드 카드가, 짝은 내보내기가 말한다.
 
     private void ShowSelectedNode()
     {

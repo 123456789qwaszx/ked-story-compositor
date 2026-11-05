@@ -6,12 +6,12 @@ using Vn.Authoring.Flow;
 namespace Vn.App.Views;
 
 /// <summary>
-/// detour에서 돌아오는 규칙 하나 (2026-08-22 소유자 보고: "detour로 중간에 다른 노드로
-/// 넘어가는 건 구현이 되는데, 그걸 끝까지 재생한 뒤에 원래 노드로 돌아오지가 않네").
+/// detour에서 돌아오는 규칙 하나 — detour로 중간에 다른 노드로 넘어가 끝까지 재생한 뒤에는
+/// 원래 노드로 돌아와야 한다.
 ///
 /// 계약 §A2-1에서 조건 갈래의 커스텀 씬 출구는 <c>&lt;&lt;jump&gt;&gt;</c>가 아니라
 /// <c>&lt;&lt;detour&gt;&gt;</c>다 — <b>씬을 재생하고 갈래로 돌아와 나머지 대본을 계속한다</b>.
-/// 프리뷰 재생은 나가는 절반만 하고 있었다.
+/// 프리뷰 재생도 나가는 절반만이 아니라 돌아오는 절반까지 한다.
 ///
 /// <b>두 편집기가 같은 것을 부른다</b>(사본 금지): 나가는 노드는 연출 편집기일 때가 많고
 /// detour 대상(커스텀 씬)은 대사 편집기로 열리므로, 돌아오는 쪽은 둘 중 어느 쪽이든 될 수
@@ -25,7 +25,7 @@ internal static class DetourReturnPlayback
     ///
     /// - 나갈 곳이 없다 → 쌓아 둔 detour 복귀를 태운다 → 없으면 자유 씬 뒤에 적어 둔
     ///   도착 에피소드로 잇는다 → 그것도 없으면 <b>에피소드 끝 선택지</b>가 제시된다
-    ///   (전이 규칙 v9① — 2026-08-27 소유자 보고: 에피소드가 끝나도 선택지가 안 선다).
+    ///   (전이 규칙 v9① — 에피소드가 끝나면 선택지가 서야 한다).
     ///   선택지도 없으면 false — 챕터 종료, 재생이 끝난다
     /// - 갈래 출구(detour) → <b>돌아올 자리를 쌓고</b> 그 노드로 나간다
     /// - 기본 출구(jump) → 그냥 나간다. 돌아오지 않는다
@@ -48,7 +48,7 @@ internal static class DetourReturnPlayback
         {
             if (TryReturn(session, preview, out StagePlayback.DetourReturn returned))
             {
-                // 지도의 길 (2026-11-04) — 분기 카드에서 돌아왔다. 줄을 하나도 재생하지 않았으면 첫머리 조건에 막힌 것.
+                // 지도의 길 — 분기 카드에서 돌아왔다. 줄을 하나도 재생하지 않았으면 첫머리 조건에 막힌 것.
                 if (nodeId is not null)
                 {
                     preview!.NoteDetourReturn(returned.NodeId, nodeId, played: path.LineIds.Count > 0);

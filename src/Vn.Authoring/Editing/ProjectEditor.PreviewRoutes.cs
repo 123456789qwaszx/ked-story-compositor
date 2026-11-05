@@ -3,7 +3,7 @@ using Vn.Authoring.Model;
 namespace Vn.Authoring.Editing;
 
 /// <summary>
-/// 미리 정한 루트 (2026-11-04) — 전체 재생이 갈림마다 고를 선택지와 시작 스탯. 되돌릴 수 있고 이 툴의 파일에 저장된다.
+/// 미리 정한 루트 —전체 재생이 갈림마다 고를 선택지와 시작 스탯. 되돌릴 수 있고 이 툴의 파일에 저장된다.
 /// 챕터마다 여럿, <b>활성은 하나</b> — 지도와 재생이 "지금 루트"를 하나로 본다.
 /// </summary>
 public sealed partial class ProjectEditor

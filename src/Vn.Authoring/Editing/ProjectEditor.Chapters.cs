@@ -5,20 +5,19 @@ using Vn.Authoring.Definition;
 namespace Vn.Authoring.Editing;
 
 /// <summary>
-/// <b>챕터를 바꾸는 코드는 이 파일 안에만 있다</b> (R-F · 2026-09-16, 지시서 §1.1·§4.1).
+/// <b>챕터를 바꾸는 코드는 이 파일 안에만 있다</b>.
 ///
 /// <c>ProjectEditor.Scripts.cs</c>가 대사에 대해 하는 일을 챕터 구조에 대해 한다 — 그래야
 /// <i>"한 값을 고쳤을 때 권위 있는 데이터가 하나만 바뀐다"</i>가 코드 구조로 보장된다.
 ///
-/// ⛔ <b>여기는 파일을 모른다.</b> 옛 <c>ChapterWorkbookWriter</c>는 셀 하나를 고치는
-/// 외과수술이었고 그래서 열 번호·시트 이름·행 삭제가 부르는 쪽까지 스며 있었다. 이제 고치는
-/// 것은 <b>모델</b>뿐이다(엑셀 출력은 2026-10-29 · D2에 걷혔다).
+/// <b>여기는 파일을 모른다.</b> 고치는 것은 <b>모델</b>뿐이다 — 열 번호·시트 이름·행 삭제 같은
+/// 파일의 사정이 부르는 쪽까지 스미지 않는다.
 ///
-/// ⚠ <b>규칙은 옛 창구에서 그대로 옮겨 왔다.</b> 간선의 신원은 (출발, 도착, 문구)이고(v9),
+/// 간선의 신원은 (출발, 도착, 문구)이고,
 /// 개명은 간선·픽스처를 함께 끌고 가며, 삭제는 끝점 간선을 함께 걷고, <b>선택지 사전은
-/// 건드리지 않는다</b>(어휘집이지 배선이 아니다). 바뀐 것은 <b>어디에 쓰는가</b>뿐이다.
+/// 건드리지 않는다</b>(어휘집이지 배선이 아니다).
 ///
-/// ⚠ 실패는 <see cref="InvalidOperationException"/>이다 — 옛 창구와 같다. 부르는 쪽이
+/// 실패는 <see cref="InvalidOperationException"/>이다. 부르는 쪽이
 /// <c>UiGuard</c>로 받아 상태줄에 말한다.
 /// </summary>
 public sealed partial class ProjectEditor
@@ -51,12 +50,11 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 에피소드 하나를 세운다.
     ///
-    /// ⚠ <b>대사엔트리 = EpisodeId</b>가 기본이다(v3 규약) — 옛 창구가 B열에 같은 값을 적던
-    /// 그 규칙이고, 임포터의 노드 이름 규칙도 같은 값을 본다. 어긋나면 같은
+    /// <b>대사엔트리 = EpisodeId</b>가 기본이다 — 임포터의 노드 이름 규칙도 같은 값을 본다. 어긋나면 같은
     /// 에피소드에 대사노드가 둘이 된다.
     /// </summary>
     /// <param name="sceneId">
-    /// 어느 장면에 놓을지. ⚠ <b>만들면서 함께 정한다</b> — 만든 뒤에 옮기면 되돌리기가 두 걸음이
+    /// 어느 장면에 놓을지. <b>만들면서 함께 정한다</b> — 만든 뒤에 옮기면 되돌리기가 두 걸음이
     /// 되고, 그 사이 상태(장면 없는 에피소드)가 잠깐 진짜가 된다.
     /// </param>
     public ChapterEpisode AddEpisode(
@@ -79,15 +77,13 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// <b>에피소드 하나를 짓기만 한다</b> — 카드·대본까지 함께, <see cref="Mutate"/> 밖에서.
     ///
-    /// ⭐ <b>2026-09-18에 창구가 하나로 합쳐졌다.</b> 그 전에는 「에피소드에는 대사노드가
-    /// 있다」가 <b>편집기 명령이 아니라 화면에</b> 살았다: 챕터 그래프는 <c>AddEpisode</c> 뒤에
-    /// 노드 만들기를 한 줄 더 불렀고, 대본 탭은 <b>그 한 줄이 없었다</b>. 그래서 작가의 탭에서
-    /// 만든 에피소드만 쓸 자리가 없었다.
+    /// 「에피소드에는 대사노드가 있다」는 화면이 아니라 <b>편집기 명령</b>이 지킨다. 화면마다
+    /// 노드 만들기를 따로 부르면 그 한 줄을 빠뜨린 창구에서 만든 에피소드만 쓸 자리가 없다.
     ///
-    /// ⚠ <b>창구를 늘릴 때 잊을 수 있는 자리를 없앤 것</b>이 요점이다. 이제 에피소드를 만드는
+    /// <b>창구를 늘릴 때 잊을 수 있는 자리를 없앤 것</b>이 요점이다. 에피소드를 만드는
     /// 길은 전부 여기를 지나므로, 어디서 만들었느냐가 결과를 바꾸지 않는다.
     ///
-    /// ⚠ <see cref="EnsureChapterBoard"/>가 판을 <b>먼저</b> 세운다(없을 때만). 판이 없는
+    /// <see cref="EnsureChapterBoard"/>가 판을 <b>먼저</b> 세운다(없을 때만). 판이 없는
     /// 챕터에 에피소드를 넣는 것은 카드를 놓을 자리가 없다는 뜻이다.
     /// </summary>
     private (DialogueNode Node, ChapterEpisode? Episode, Action Attach) NewEpisodeCore(
@@ -96,12 +92,12 @@ public sealed partial class ProjectEditor
     {
         string fileId = EnsureChapterBoard(chapterId);
 
-        // ⚠ <b>자리가 둘이다.</b> 주어진 (x, y)는 <b>챕터 그래프</b>의 자리이고, 연출 판의
+        // <b>자리가 둘이다.</b> 주어진 (x, y)는 <b>챕터 그래프</b>의 자리이고, 연출 판의
         //    카드는 제 판의 규칙(<see cref="Graph.NodePlacement"/>)으로 선다 — 부모 카드의 아래에.
         //    한쪽 좌표를 다른 판에 그대로 넣으면 사람이 맞춰 둔 배치가 흐트러진다.
         //
-        // ⚠ 부모를 <b>직접</b> 준다 (D3 · 2026-10-29). 이 자리를 묻는 순간에는 에피소드도 간선도 아직
-        //    챕터에 없다 — 예전에는 그래서 언제나 "챕터에 없는 이름"으로 빠져 판 오른쪽 끝에 섰다(§6-1).
+        // 부모를 <b>직접</b> 준다. 이 자리를 묻는 순간에는 에피소드도 간선도 아직
+        //    챕터에 없다 — 챕터에서 찾게 하면 언제나 "챕터에 없는 이름"으로 빠져 판 오른쪽 끝에 선다.
         (double cardX, double cardY) = Graph.NodePlacement.For(Project, chapterId, episodeId, parentEpisodeId);
 
         return NewDialogueNodeCore(
@@ -188,10 +184,10 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// 챕터 조건 하나 — 간선의 표시조건·해금조건이 라벨로 가리킨다.
     ///
-    /// ⚠ <b>이름에 "Chapter"가 붙은 이유</b>: <c>AddCondition</c>은 이미 <b>설정노드</b>의
+    /// <b>이름에 "Chapter"가 붙은 이유</b>: <c>AddCondition</c>은 이미 <b>설정노드</b>의
     /// 창구다. 둘은 다른 것이다 — 저쪽은 대사 안의 [3] 조건이 태어나는 자리이고, 이쪽은
-    /// 챕터 간선이 보는 [2] 진행 스탯이다(지시서 §3.2). 같은 이름으로 두면 인자 개수만
-    /// 다른 호출이 <b>조용히 저쪽으로 간다</b> — 실제로 이 테스트를 쓰다 한 번 물렸다.
+    /// 챕터 간선이 보는 [2] 진행 스탯이다. 같은 이름으로 두면 인자 개수만
+    /// 다른 호출이 <b>조용히 저쪽으로 간다</b>.
     /// </summary>
     public void AddChapterCondition(string chapterId, string label, string expression, string? description = null)
     {
@@ -202,7 +198,7 @@ public sealed partial class ProjectEditor
             throw new InvalidOperationException($"조건 라벨 '{label}'이 이미 있습니다.");
         }
 
-        // 조건과 그 조건의 공급이 <b>한 변경</b>이다 (2026-10-29 · D2) — 되돌리기 한 번에 함께 간다.
+        // 조건과 그 조건의 공급이 <b>한 변경</b>이다 — 되돌리기 한 번에 함께 간다.
         Batch(() =>
         {
             Mutate(() => chapter.Conditions.Add(
@@ -212,13 +208,12 @@ public sealed partial class ProjectEditor
         });
     }
 
-    // ── 판에 공급하는 챕터 조건 (2026-10-29 · D2) ───────────────────────────
+    // ── 판에 공급하는 챕터 조건 ───────────────────────────
     //
-    // ⛔ 예전에는 이 공급이 <b>엑셀 [대본 가져오기]</b> 안에 숨어 있었다. 그 단추를 누를 때마다
-    //    챕터 조건이 판의 공급 노드(`챕터 {Id} 조건`)로 건너갔고, 그래서 툴에서 조건을 고친 뒤
-    //    가져오기를 안 누르면 대사 노드의 조건 목록이 옛것이었다. 엑셀 연동이 걷힌 지금은
+    // 챕터 조건은 판의 공급 노드(`챕터 {Id} 조건`)로 건너간다. 공급은
     //    <b>조건이 생기는 그 명령</b>(<see cref="AddChapterCondition"/>)과
-    //    <b>판이 서는 순간</b>(<see cref="EnsureChapterBoard"/>)이 공급을 부른다.
+    //    <b>판이 서는 순간</b>(<see cref="EnsureChapterBoard"/>)이 부른다 — 따로 누를 단추가
+    //    있으면 누르지 않은 동안 대사 노드의 조건 목록이 낡는다.
 
     /// <summary>판이 있으면 챕터 조건을 그 판의 공급 노드로 보낸다. 멱등이다 — 바뀔 것이 없으면 안 건드린다.</summary>
     private void SupplyChapterConditions(string chapterId)
@@ -232,20 +227,20 @@ public sealed partial class ProjectEditor
     }
 
 
-    // ── 스탯 정의 (2026-09-17 — 저작 자리가 엑셀에서 챕터 그래프로) ──────────
+    // ── 스탯 정의 ──────────
 
     /// <summary>
     /// 스탯 하나를 세운다.
     ///
-    /// ⚠ <b>경계(최소·최대·초기)는 여기서 안 막는다.</b> <see cref="ChapterDocument"/>가 이미
+    /// <b>경계(최소·최대·초기)는 여기서 안 막는다.</b> <see cref="ChapterDocument"/>가 이미
     /// 진단으로 짚고(<c>최소 &gt; 최대</c>, 초기값이 범위 밖), <b>읽기는 오류가 있어도 모델을
     /// 만든다</b>(규칙 14) — 여기서만 막으면 툴로 만든 것과 파일에서 읽은 것(옛 프로젝트 · 손으로
     /// 고친 파일)이 서로 다른
     /// 규칙을 살게 된다. 값을 채워 가는 중에 막히지도 않는다.
     ///
-    /// ⛔ 막는 것은 <b>키 중복</b>뿐이다. 같은 키가 둘이면 어느 행이 이기는지 말할 수 없어
-    /// 진단으로 넘길 수 있는 상태가 아니다 — 정규화 뒤에 겹치는 것도 같다(화면에서는 달라
-    /// 보이는데 <b>게임에서 하나가 된다</b>).
+    /// 막는 것은 <b>키 중복</b>뿐이다. 같은 키가 둘이면 어느 행이 이기는지 말할 수 없어
+    /// 진단으로 넘길 수 있는 상태가 아니다. 키는 `stat("키")`의 문자열 리터럴이라 정규화하지
+    /// 않는다 — 글자가 같아야 겹친다.
     /// </summary>
     public ChapterStat AddChapterStat(
         string chapterId,
@@ -283,7 +278,6 @@ public sealed partial class ProjectEditor
     /// <summary>
     /// bool 스탯은 값 공간이 0/1 하나다 — 범위를 0~1로 고정하고 처음값은 0이 아니면 1이다.
     ///
-    /// ⚠ 옛 워크북 리더가 하던 일이다(최소·최대 칸을 읽지 않고 고정했다). 리더가 걷힌 뒤 편집기가
     /// 경계를 받는 그대로 두면 깃발에 0~100 같은 범위가 붙고, 도달성 증명이 없는 값까지 훑는다.
     /// </summary>
     private static ChapterStat BoolBounded(ChapterStat stat) =>
@@ -305,9 +299,6 @@ public sealed partial class ProjectEditor
         {
             throw new InvalidOperationException($"스탯 '{key}'가 이미 있습니다.");
         }
-
-        // ⛔ ~~정규화 뒤 겹침도 막는다~~ — <b>걷혔다</b> (2026-09-17, 런타임 회신 §6.1).
-        //    `stat("키")`의 인자가 문자열 리터럴이라 정규화가 없어졌고, 근거도 함께 사라졌다.
     }
 
     // ── 잔손 ────────────────────────────────────────────────────────────────
@@ -352,9 +343,9 @@ public sealed partial class ProjectEditor
                     StringComparison.Ordinal));
 
     /// <summary>
-    /// 사전에 없는 낱말이면 올려 둔다 — 다음부터 드롭다운에서 고른다(옛 <c>EnsureChoiceLabel</c>).
+    /// 사전에 없는 낱말이면 올려 둔다 — 다음부터 드롭다운에서 고른다.
     ///
-    /// ⚠ <c>Mutate</c> 안에서만 부른다 — 이것만으로 되돌리기 항목을 따로 만들지 않는다.
+    /// <c>Mutate</c> 안에서만 부른다 — 이것만으로 되돌리기 항목을 따로 만들지 않는다.
     /// </summary>
     private static void LearnChoiceLabel(ChapterDocument chapter, string? text)
     {
@@ -382,8 +373,8 @@ public sealed partial class ProjectEditor
     /// `스탯변화` 문법(`trust +1; anger -1`)을 푼다 — 문법을 읽는 자리는
     /// <see cref="StatDeltaParser"/> 하나다.
     ///
-    /// ⚠ <b>못 읽은 것은 조용히 버리지 않는다.</b> 옛 경로에서는 셀에 원문이 남아 리더가
-    /// 다음 읽기에 짚어 줬는데, 이제 다시 읽는 일이 없어 여기서 안 막으면 영영 사라진다.
+    /// <b>못 읽은 것은 조용히 버리지 않는다.</b> 원문을 다시 읽는 일이 없으므로
+    /// 여기서 안 막으면 영영 사라진다.
     /// </summary>
     private static IReadOnlyList<StatDelta> ParseDeltas(ChapterDocument chapter, string text)
     {

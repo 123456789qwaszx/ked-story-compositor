@@ -8,8 +8,7 @@ using Vn.Authoring.Script;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// 무대 프리뷰의 씬 선택기 (2026-08-21 소유자 — "미리 다 해둔 다음에 무대 프리뷰측에서
-/// 뭘 할지 고르도록"). 그래프에서 발행·배선하던 길이 사라지고 이 콤보가 유일한 입구다:
+/// 무대 프리뷰의 씬 선택기. 이 콤보가 연출할 씬을 고르는 유일한 입구다:
 /// 고르면 연출 채널이 자동으로 선다(EnsurePresentationChannel — Vn.Authoring 테스트가 진다).
 /// </summary>
 public sealed class StageScenePickerTests
@@ -19,12 +18,11 @@ public sealed class StageScenePickerTests
     {
         var (preview, session) = ShowPreview();
         string fileId = session.Editor.EnsureChapterBoard("ch05");
-        // 목록은 활성 판의 것만 담는다 (2026-08-26) — 앱에서는 챕터를 고르는 순간 판이
+        // 목록은 활성 판의 것만 담는다 — 앱에서는 챕터를 고르는 순간 판이
         // 활성이 되므로, 그 흐름 그대로 활성화한다.
         session.SelectFile(fileId);
 
-        // 일부러 이름 역순으로 만든다 — 파일 순서가 아니라 이름 순임을 재기 위해서다
-        // (2026-08-26 소유자: "이름 순으로 정렬 해달라").
+        // 일부러 이름 역순으로 만든다 — 파일 순서가 아니라 이름 순임을 재기 위해서다.
         session.Editor.AddDialogueNode(fileId, name: "커스텀B");
         session.Editor.AddDialogueNode(fileId, name: "커스텀A");
         DialogueNode late = session.Editor.AddDialogueNode(fileId, name: "EP10");
@@ -44,8 +42,8 @@ public sealed class StageScenePickerTests
     [Fact]
     public void 선택기는_고른_챕터의_씬만_담는다() => HeadlessUi.Run(() =>
     {
-        // 2026-08-26 소유자 — "선택한 챕터의 것만, 무대프리뷰 왼쪽의 노드드롭다운에
-        // 표시되면 좋겠습니다." 예전에는 프로젝트 전체라 챕터가 늘수록 목록이 섞였다.
+        // 무대 프리뷰 왼쪽의 노드 드롭다운은 선택한 챕터의 것만 담는다 — 프로젝트 전체를
+        // 담으면 챕터가 늘수록 목록이 섞인다.
         var (preview, session) = ShowPreview();
         string ch05 = session.Editor.EnsureChapterBoard("ch05");
         string ch06 = session.Editor.EnsureChapterBoard("ch06");
@@ -69,7 +67,7 @@ public sealed class StageScenePickerTests
     {
         var (preview, session) = ShowPreview();
         string fileId = session.Editor.EnsureChapterBoard("ch05");
-        session.SelectFile(fileId);   // 목록은 활성 판의 것만 담는다 (2026-08-26)
+        session.SelectFile(fileId);   // 목록은 활성 판의 것만 담는다
 
         DialogueNode scene = session.Editor.AddDialogueNode(fileId, name: "커스텀A");
         ScriptLine line = session.Editor.InsertScriptLine(scene.Id);
@@ -101,8 +99,8 @@ public sealed class StageScenePickerTests
     [Fact]
     public void 챕터_선택기는_판이_있는_챕터만_담고_고르면_그_판을_찾기만_한다() => HeadlessUi.Run(() =>
     {
-        // 2026-10-29 (C2b) — 원고는 ked-story-director의 것이다. 예전에는 챕터를 고르면 판이 없을 때
-        // 판을 세웠는데, 이 툴은 원고를 저장하지 않으므로 그 판은 화면에만 서고 사라진다.
+        // 원고는 ked-story-director의 것이다. 챕터를 골라도 판이 없으면 판을 세우지 않는다 —
+        // 이 툴은 원고를 저장하지 않으므로 그 판은 화면에만 서고 사라진다.
         var (preview, session) = ShowPreview();
         session.Editor.EnsureChapter("ch05");
         string ch05 = session.Editor.EnsureChapterBoard("ch05");

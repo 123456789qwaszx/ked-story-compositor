@@ -5,7 +5,7 @@ using Vn.Authoring.Model;
 
 namespace Vn.Authoring.Tests.Chapters;
 
-/// <summary>R2 — 자동 진행은 공백 추론이 아니라 간선의 명시적 계약이다.</summary>
+/// <summary>자동 진행은 공백 추론이 아니라 간선의 명시적 계약이다.</summary>
 public sealed class ChapterAutoAuthoringTests
 {
     private readonly ProjectEditor _editor = new(new StoryProject());

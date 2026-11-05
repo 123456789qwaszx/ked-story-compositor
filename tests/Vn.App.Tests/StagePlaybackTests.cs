@@ -9,7 +9,7 @@ using Vn.Authoring.Flow;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// W31·W32 — 재생 진행 모델. 시간의 계산이 UI 없이 옳아야 한다:
+/// 재생 진행 모델. 시간의 계산이 UI 없이 옳아야 한다:
 /// 타자(글자 노출) → 여운 → 다음 라인, 클릭 규약(타자 중=전문·그 뒤=다음),
 /// 선택지 정지, 일시정지, 끝 도달, 처음부터. 이동은 delta 요청으로만 나가고,
 /// 반영은 새 요청이 돌아와야 완성된다(편집기 선택 경로 재사용).
@@ -31,7 +31,7 @@ public class StagePlaybackTests
         StagePlayback playback, int lineIndex, int lineCount, string? text = "대사", bool isChoice = false)
         => playback.OnRequest(lineIndex, lineCount, text, isChoice);
 
-    // ── 라인만 재생 (2026-08-21 소유자: "현재 라인만 재생기능") ──────────
+    // ── 라인만 재생 ──────────
 
     [Fact]
     public void 라인만_재생은_이_라인을_끝까지_돌고_다음으로_넘어가지_않는다()
@@ -79,7 +79,7 @@ public class StagePlaybackTests
         Assert.Equal([1], moves); // 이번에는 다음 라인으로 간다
     }
 
-    // ── 타자기 (W32) ──────────────────────────────────────────────────────
+    // ── 타자기 ──────────────────────────────────────────────────────
 
     [Fact]
     public void 타자는_속도대로_글자를_노출하고_완료_후_여운_뒤에_넘어간다()
@@ -152,7 +152,7 @@ public class StagePlaybackTests
         Assert.Equal([1], moves);
     }
 
-    // ── 재생 배율 (W34-a) ─────────────────────────────────────────────────
+    // ── 재생 배율 ─────────────────────────────────────────────────
 
     [Fact]
     public void 배율은_타자와_여운에_함께_적용된다()
@@ -182,7 +182,7 @@ public class StagePlaybackTests
         Assert.Equal(1, playback.SpeedMultiplier);
     }
 
-    // ── 전이 (W33) ────────────────────────────────────────────────────────
+    // ── 전이 ────────────────────────────────────────────────────────
 
     [Fact]
     public void 재생_중_라인이_바뀌면_전이가_흐르고_끝나면_확정_상태다()
@@ -202,7 +202,7 @@ public class StagePlaybackTests
         Assert.Equal(0.5, playback.TransitionProgress!.Value, precision: 3);
 
         playback.Tick(0.3);
-        // 전이 종료 — 재생 중에는 1로 남는다 (W66): null로 떨어지면 뷰가 정지 화면
+        // 전이 종료 — 재생 중에는 1로 남는다: null로 떨어지면 뷰가 정지 화면
         // (이동 슬롯 = 출발 자리)으로 읽어 캐릭터가 되돌아가 버린다.
         Assert.Equal(1, playback.TransitionProgress!.Value, precision: 3);
     }
@@ -252,7 +252,7 @@ public class StagePlaybackTests
     [Fact]
     public void 재생을_누르면_현재_라인의_이동을_처음부터_태운다()
     {
-        // W66 — 타자만 처음부터 되감고 연출은 끝 상태로 두면 "재생"이 아니다.
+        // 타자만 처음부터 되감고 연출은 끝 상태로 두면 "재생"이 아니다.
         // 정지 상태에서 라인을 보고 있다가 ▶ — 그 라인의 전이가 0부터 흐른다.
         (StagePlayback playback, _) = Build(lineIndex: 0, lineCount: 2, text: "");
 
@@ -272,7 +272,7 @@ public class StagePlaybackTests
         Assert.Null(playback.TransitionProgress); // 정지 화면 — 뷰가 출발 자리로 되돌린다
     }
 
-    // ── 진행·정지 (W31) ───────────────────────────────────────────────────
+    // ── 진행·정지 ───────────────────────────────────────────────────
 
     [Fact]
     public void 마지막_라인에_도달하면_여운_후_멈춘다()
@@ -292,7 +292,7 @@ public class StagePlaybackTests
         Assert.Equal([1], moves);         // 더 갈 곳이 없으니 추가 이동 요청도 없다
     }
 
-    // ── 노드 간 이어 재생 (W39) ───────────────────────────────────────────
+    // ── 노드 간 이어 재생 ───────────────────────────────────────────
 
     [Fact]
     public void 문서_끝에서_노드_전환이_받아들여지면_재생이_이어진다()
@@ -350,7 +350,7 @@ public class StagePlaybackTests
 
         Assert.Equal(0, playback.VisibleCharacters); // 새 라인 취급 — 처음부터
         // 노드를 넘는 전이는 흐르지 않는다 — 진행도 1(확정 자리)로 곧장 선다.
-        // (null이 아니라 1인 이유: 재생 중 null은 정지 화면 = 이동 슬롯이 출발 자리다, W66)
+        // (null이 아니라 1인 이유: 재생 중 null은 정지 화면 = 이동 슬롯이 출발 자리다)
         Assert.Equal(1, playback.TransitionProgress!.Value, precision: 3);
     }
 
@@ -402,8 +402,8 @@ public class StagePlaybackTests
     [Fact]
     public void 재생은_현재_라인부터_끝까지이고_되감지_않는다()
     {
-        // 2026-08-21 소유자: [⏮ 처음부터]를 걷고 ▶는 "현재 라인부터 끝까지"가 됐다.
-        // 예전에는 마지막 라인에서 ▶가 첫 라인으로 되감았다(⏮와 한 쌍의 규칙이었다).
+        // ▶는 "현재 라인부터 끝까지"다. 처음부터 되감는 단추는 없고,
+        // 마지막 라인에서 ▶를 눌러도 첫 라인으로 되감지 않는다.
         (StagePlayback playback, List<int> moves) = Build(lineIndex: 2, lineCount: 3, text: "");
 
         playback.Play();
@@ -435,12 +435,12 @@ public class StagePlaybackTests
         Assert.False(playback.IsPlaying);
     }
 
-    // ── 두 버튼은 각자 제 모드만 비춘다 (2026-08-21 소유자) ────────────────
+    // ── 두 버튼은 각자 제 모드만 비춘다 ────────────────
 
     [Fact]
     public void 라인만_재생_중에는_전체_재생_버튼이_재생_상태로_남는다()
     {
-        // 소유자: "라인만 재생을 누르는데 재생버튼이 일시정지로 바뀌는 것도 불편".
+        // 라인만 재생을 눌렀는데 전체 재생 버튼이 일시정지로 바뀌면 헷갈린다.
         (StagePlayback playback, _) = Build(lineIndex: 0, lineCount: 3, text: new string('가', 30));
 
         playback.ToggleLinePlay();
@@ -481,14 +481,14 @@ public class StagePlaybackTests
         Assert.False(playback.IsPlaying);
     }
 
-    // ── 컨트롤 자리 (2026-08-21 소유자: 타임라인을 사이에 두고 양 끝) ──────
+    // ── 컨트롤 자리 (타임라인을 사이에 두고 양 끝) ──────
 
     [Fact]
     public void 라인_재생은_왼쪽_진행표시와_전체_재생과_배속은_오른쪽_묶음이다() =>
         HeadlessUi.Run(() =>
         {
-            // 소유자: "타임라인 가장 오른쪽으로 보내서 위치상 안 겹치게" ·
-            // "1/3 역시 전체실행쪽으로" · "아이콘을 라인재생과 똑같이 하지말고".
+            // 전체 재생은 타임라인 가장 오른쪽으로 보내 라인 재생과 자리가 겹치지 않고,
+            // 진행 표시(1/3)도 그쪽에 붙는다. 아이콘은 라인 재생과 다르다.
             (StagePlayback playback, _) = Build(lineIndex: 0, lineCount: 3);
 
             Control leading = StagePlaybackControls.BuildLeading(playback);
@@ -570,7 +570,7 @@ public class StagePlaybackTests
         Assert.False(playback.IsPlaying);
     }
 
-    // ── 에피소드 끝 선택지 (2026-08-27) ──────────────────────────────────
+    // ── 에피소드 끝 선택지 ──────────────────────────────────
 
     [Fact]
     public void 선택지_대기는_클릭이_올_때까지_시간이_흐르지_않는다()

@@ -9,7 +9,7 @@ using Vn.Authoring.Results;
 namespace Vn.App.Tests;
 
 /// <summary>
-/// W66 — 무대가 만질 수 있는 이동 커맨드를 고르는 규칙.
+/// 무대가 만질 수 있는 이동 커맨드를 고르는 규칙.
 ///
 /// 무엇이 이동인지는 <b>카탈로그의 모션 선언</b>만이 정한다. 여기서 지키는 것은
 /// "선언 없는 커맨드가 칩으로 새어 나오지 않는다"와 "칩이 든 값이 실제 이동량이다" 둘이다.
@@ -71,7 +71,7 @@ public class StageMotionCueTests
     [Fact]
     public void 앳_이름은_프로젝트_곡선의_키로_풀린다()
     {
-        // W67 후속 — 커스텀 곡선. 프리뷰·재생·스크럽이 이 키들을 코어 CurveFunctions로 탄다.
+        // 커스텀 곡선. 프리뷰·재생·스크럽이 이 키들을 코어 CurveFunctions로 탄다.
         PresentationResultCommand move = Command(
             "char_rig_staging.move_by",
             ("slot", "c1"), ("x", "+2u"), ("duration", "12fr"), ("ease", "@hop_snappy"));

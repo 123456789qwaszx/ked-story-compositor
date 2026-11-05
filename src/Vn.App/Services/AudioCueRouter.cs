@@ -4,10 +4,10 @@ using Vn.Authoring.Results;
 namespace Vn.App.Services;
 
 /// <summary>
-/// 프리뷰 재생이 라인에 도달했을 때 그 라인의 오디오 커맨드를 실제 소리로 옮긴다 (W62).
+/// 프리뷰 재생이 라인에 도달했을 때 그 라인의 오디오 커맨드를 실제 소리로 옮긴다.
 ///
 /// 해석은 기본 게임 정의의 네 커맨드 id 규약(bgm·sfx·stop_bgm·stop_all_sfx)이다 —
-/// 다른 id의 audio 카테고리 커맨드는 ♪ 칩(W34-b)으로만 남고, 소리를 못 낸다는 사실을
+/// 다른 id의 audio 카테고리 커맨드는 ♪ 칩으로만 남고, 소리를 못 낸다는 사실을
 /// 상태줄로 알린다 (규칙 14). 표시 편의이지 결과 해석 규칙이 아닌 점은 칩과 같다.
 /// </summary>
 internal static class AudioCueRouter
