@@ -113,12 +113,6 @@ public static class ProjectManifestJson
             root["writerSpeakers"] = writerSpeakers;
         }
 
-        // 커스텀 이징 곡선 (W67 후속) — 커브도 작가 자산이라 정의 파일이 아니라 여기 산다.
-        if (WriteEaseCurves(project.EaseCurves) is { } easeCurves)
-        {
-            root["easeCurves"] = easeCurves;
-        }
-
         if (compositions.Count > 0)
         {
             root["compositions"] = compositions;
@@ -269,7 +263,6 @@ public static class ProjectManifestJson
 
         List<ChapterDocument> chapters = ChapterDocumentJson.Read(root["chapters"]);
         List<WriterSpeaker> writerSpeakers = ReadWriterSpeakers(root["writerSpeakers"]);
-        List<EaseCurve> easeCurves = ReadEaseCurves(root["easeCurves"]);
 
         return new ProjectManifest(
             (string?)root["title"] ?? "제목 없음",
@@ -284,7 +277,6 @@ public static class ProjectManifestJson
             links,
             chapters,
             writerSpeakers,
-            easeCurves,
             compositions,
             (string?)root["results"]);
     }
@@ -489,12 +481,6 @@ public static class ProjectManifestJson
     }
 
     /// <summary>
-    /// 커스텀 곡선 직렬화 (W67 후속) — manifest와 undo 스냅샷 코덱이 <b>같은 이것 하나</b>를
-    /// 쓴다(코덱이 따로 쓰면 undo가 곡선을 조용히 지운다). 필드명(t·v·inTangent·outTangent)은
-    /// 내보내기 curves.json 스키마와 같은 낱말이다 — 두 파일을 나란히 볼 사람이 같은 것을
-    /// 다른 이름으로 읽지 않게. 이름이 빈 곡선은 파일에 안 쓴다.
-    /// </summary>
-    /// <summary>
     /// 자주 쓰는 칩 직렬화 — manifest와 undo 스냅샷 코덱이 같은 것을 쓴다.
     /// <b>null(손대지 않음)이면 null</b>을 돌려 키를 안 쓰고, 빈 목록은 빈 배열로 남긴다.
     /// </summary>
@@ -600,85 +586,6 @@ public static class ProjectManifestJson
         }
 
         return chips;
-    }
-
-    internal static JsonArray? WriteEaseCurves(IReadOnlyList<EaseCurve> curves)
-    {
-        List<EaseCurve> named = curves
-            .Where(curve => !string.IsNullOrWhiteSpace(curve.Name))
-            .ToList();
-
-        if (named.Count == 0)
-        {
-            return null;
-        }
-
-        var array = new JsonArray();
-
-        foreach (EaseCurve curve in named)
-        {
-            var keys = new JsonArray();
-
-            foreach (Ked.Presentation.Core.CurveKey key in curve.Keys)
-            {
-                keys.Add(new JsonObject
-                {
-                    ["t"] = key.Time,
-                    ["v"] = key.Value,
-                    ["inTangent"] = key.InTangent,
-                    ["outTangent"] = key.OutTangent
-                });
-            }
-
-            var entry = new JsonObject { ["name"] = curve.Name, ["keys"] = keys };
-
-            if (curve.OwnerCommandId is { } owner)
-            {
-                entry["ownerCommandId"] = owner; // 커맨드 소유 곡선 — 없으면 보관함
-            }
-
-            array.Add(entry);
-        }
-
-        return array;
-    }
-
-    internal static List<EaseCurve> ReadEaseCurves(JsonNode? node)
-    {
-        var curves = new List<EaseCurve>();
-
-        foreach (JsonNode? item in node?.AsArray() ?? new JsonArray())
-        {
-            if (item is not JsonObject curve)
-            {
-                throw new InvalidDataException("easeCurves 항목이 객체가 아닙니다.");
-            }
-
-            var keys = new List<Ked.Presentation.Core.CurveKey>();
-
-            foreach (JsonNode? keyNode in curve["keys"]?.AsArray() ?? new JsonArray())
-            {
-                if (keyNode is not JsonObject key)
-                {
-                    throw new InvalidDataException("easeCurves의 keys 항목이 객체가 아닙니다.");
-                }
-
-                keys.Add(new Ked.Presentation.Core.CurveKey(
-                    (float?)key["t"] ?? 0f,
-                    (float?)key["v"] ?? 0f,
-                    (float?)key["inTangent"] ?? 0f,
-                    (float?)key["outTangent"] ?? 0f));
-            }
-
-            curves.Add(new EaseCurve
-            {
-                Name = (string?)curve["name"] ?? string.Empty,
-                Keys = keys,
-                OwnerCommandId = (string?)curve["ownerCommandId"]
-            });
-        }
-
-        return curves;
     }
 
     /// <summary>
@@ -861,7 +768,6 @@ public sealed record ProjectManifest(
     IReadOnlyList<NodeLink> Links,
     IReadOnlyList<ChapterDocument> Chapters,
     IReadOnlyList<WriterSpeaker> WriterSpeakers,
-    IReadOnlyList<EaseCurve> EaseCurves,
     IReadOnlyList<RuntimeComposition> Compositions,
     string? ResultsRelativePath);
 

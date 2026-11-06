@@ -8,8 +8,9 @@ namespace Vn.Authoring.Definition;
 /// 예외(소유자 결정)는 걷지 않았으므로 옮기지 않는다: place_left · place_center · place_right,
 /// 프레임 대기 &lt;&lt;Nfr&gt;&gt;(control.frame_wait), char_visual_&lt;효과&gt; 일곱(캐릭터 비주얼은 이름에서 효과가 드러나야 한다).
 ///
-/// 정본 없이 걷은 커맨드는 옮기지 않는다(ui_patch · debug_log · box_* · char_to와 그 별칭 char_to_sN).
+/// 정본 없이 걷은 커맨드는 옮기지 않는다(ui_patch · debug_log · box_* · char_to와 그 별칭 char_to_sN · gesture).
 /// char_to는 2026-11-06에 걷었다 — 리그는 무대 · 층을 옮기지 않고, 다른 자리는 fade_out 뒤 새 slot이다.
+/// gesture는 2026-11-07에 걷었다 — 몸짓은 모션 툴이 만든 motion으로 한다. 남은 줄은 모르는 명령으로 드러난다.
 ///
 /// 이 툴의 데이터는 명령을 <b>정의 id + 이름 인자</b>로 저장한다. 걷은 정의를 가리키는 저장본이 있으면
 /// <b>읽을 때</b> 여기서 정본으로 옮긴다 — 작업 데이터(연출 노드 · 프리셋 · 칩 · 최근 명령)도, 얼린 발행본도.
@@ -18,6 +19,10 @@ namespace Vn.Authoring.Definition;
 /// <b>옮김은 재생 결과를 바꾸지 않는다.</b> 옛 정의의 생략값이 정본과 다른 자리는 값을 명시해 옮긴다
 /// (place_*의 focus "face" · tx_daze/strip의 무대).
 /// 이름에 박혀 있던 값은 고정값으로 덮는다 — 옛 정의에는 그 인자가 없었으니 덮을 것도 없다.
+///
+/// 예외 하나: 커스텀 곡선 참조(ease 인자의 <c>@이름</c>)는 2026-11-07에 걷었다 — 런타임이 곡선 파일을 더 읽지 않는다.
+/// 값을 빼서 기본 이징으로 둔다. 재생이 바뀌는 유일한 옮김이라, 열 때 몇 곳인지
+/// <see cref="Serialization.CompositionLoadResult.RetiredEaseReferences"/>로 알린다.
 /// </summary>
 public static class LegacyCommandUpgrade
 {
@@ -31,6 +36,9 @@ public static class LegacyCommandUpgrade
         IReadOnlyDictionary<string, string>? Renames = null);
 
     private static readonly IReadOnlyDictionary<string, Rule> Rules = BuildRules();
+
+    /// <summary>카탈로그에서 이징 타입 인자는 모두 이 이름이다.</summary>
+    private const string EaseParameter = "ease";
 
     private static Dictionary<string, Rule> BuildRules()
     {
@@ -111,12 +119,21 @@ public static class LegacyCommandUpgrade
         upgradedId = definitionId;
         upgradedArguments = new Dictionary<string, string>(arguments, StringComparer.Ordinal);
 
+        var result = new Dictionary<string, string>(arguments, StringComparer.Ordinal);
+        bool retiredCurve = result.TryGetValue(EaseParameter, out string? ease) &&
+                            ease.StartsWith('@') &&
+                            result.Remove(EaseParameter);
+
         if (!Rules.TryGetValue(definitionId, out Rule? rule))
         {
-            return false;
-        }
+            if (!retiredCurve)
+            {
+                return false;
+            }
 
-        var result = new Dictionary<string, string>(arguments, StringComparer.Ordinal);
+            upgradedArguments = result;
+            return true;
+        }
 
         if (rule.Renames is { } renames)
         {

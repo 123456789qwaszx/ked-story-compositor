@@ -29,9 +29,9 @@ namespace Ked.Presentation.Core
         /// Trim 후 대소문자 구분 일치. 없으면 false — 호출자가 Default를 쓴다
         /// (엔트리 부재는 오류가 아니라 "기본값 캐릭터"라는 데이터 의미다).
         /// </summary>
-        public bool TryGet(string characterKey, out SetAnchorReduction.RoleAnchorTuning tuning)
+        public bool TryGet(string characterKey, out NodeTargets.RoleAnchorTuning tuning)
         {
-            tuning = SetAnchorReduction.RoleAnchorTuning.Default;
+            tuning = NodeTargets.RoleAnchorTuning.Default;
 
             if (string.IsNullOrWhiteSpace(characterKey))
                 return false;
@@ -48,7 +48,7 @@ namespace Ked.Presentation.Core
                 if (!string.Equals(entry.key.Trim(), key, StringComparison.Ordinal))
                     continue;
 
-                tuning = new SetAnchorReduction.RoleAnchorTuning(
+                tuning = new NodeTargets.RoleAnchorTuning(
                     entry.offset?.ToVec2() ?? Vec2.Zero,
                     entry.visualScale);
 

@@ -1,6 +1,7 @@
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 단위도 클램프도 없는 맨 숫자 파서. 문화권 무관(InvariantCulture)이 핵심이다.

@@ -10,7 +10,7 @@ namespace Ked.Presentation.Core
         /// <summary>
         /// shot_focus_to (role, focus="body", screenPoint="center", zoom=2.5, duration).
         ///
-        /// 런타임과 같은 리덕션을 태운다: 무대 좌표의 focus와 그 슬롯이 선 층 d를 ShotZoomFocusReduction에 넘긴다.
+        /// 런타임과 같은 목표 계산을 태운다: 무대 좌표의 focus와 그 슬롯이 선 층 d를 ShotIntents.FocusTo에 넘긴다.
         /// 층 반응 곡선은 하네스가 무대 뷰를 판정할 때와 같은 것(ResolveLayerProfileCurve)이다.
         /// </summary>
         private static bool ApplyShotFocusTo(
@@ -53,12 +53,12 @@ namespace Ked.Presentation.Core
             Vec2 focusOffset = FocusOffsetMath.Resolve(tuning.FocusTuning, characterKey, focusName, Vec2.Zero);
 
             RectNodeState[] chain = state.Nodes.BuildChainTo(
-                StageState.NodeKeyOf(slotKey, PlaceFocusStageReduction.MeasureNodeId));
+                StageState.NodeKeyOf(slotKey, NodeTargets.FocusMeasureNodeId));
 
             Vec2 focus = SettledFocusMath.FocusPointInRigSpace(
                 chain, state.Nodes.RootSpace, focusOffset);
 
-            state.Shot = ShotZoomFocusReduction.Reduce(
+            state.Shot = ShotIntents.FocusTo(
                 zoom,
                 focus,
                 desired,
@@ -77,7 +77,7 @@ namespace Ked.Presentation.Core
                 return false;
             }
 
-            state.Shot = ShotZoomReduction.Reduce(state.Shot, zoom);
+            state.Shot = ShotIntents.Zoom(state.Shot, zoom);
             reason = null;
             return true;
         }
@@ -94,7 +94,7 @@ namespace Ked.Presentation.Core
                 return false;
             }
 
-            state.Shot = ShotToReduction.Reduce(state.Shot, zoom, new Vec2(x, y));
+            state.Shot = ShotIntents.To(state.Shot, zoom, new Vec2(x, y));
             reason = null;
             return true;
         }
@@ -110,7 +110,7 @@ namespace Ked.Presentation.Core
                 return false;
             }
 
-            state.Shot = ShotTrackReduction.Reduce(state.Shot, new Vec2(x, y));
+            state.Shot = ShotIntents.Track(state.Shot, new Vec2(x, y));
             reason = null;
             return true;
         }

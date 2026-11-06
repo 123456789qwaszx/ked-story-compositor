@@ -565,7 +565,8 @@ internal sealed class AuthoringSession
         var refresher = new ProjectEditor(project);
         CompositionRefresh.Report refresh = CompositionRefresh.Apply(refresher, Definition);
         project = refresher.Project;
-        _savedSnapshot = refresh.ChangedAnything ? string.Empty : ProjectSnapshotCodec.Encode(project);
+        bool retiredCurves = loaded.RetiredEaseCurves > 0 || loaded.RetiredEaseReferences > 0;
+        _savedSnapshot = refresh.ChangedAnything || retiredCurves ? string.Empty : ProjectSnapshotCodec.Encode(project);
 
         StatusMessage =
             $"{Path.GetFileName(Path.GetDirectoryName(ManuscriptPath))}/ · 카드 {project.EnumerateNodes().OfType<DialogueNode>().Count()}개" +
@@ -573,6 +574,7 @@ internal sealed class AuthoringSession
             (refresh.Summary is { } summary ? $" · {summary}" : string.Empty) +
             (TuningLibrary.IsLoaded ? $" · {TuningLibrary.Summary}" : string.Empty) +
             SourceNote(loaded) +
+            RetiredCurveNote(loaded) +
             (loaded.Source == CompositionSource.None ? " · 이 원고에는 연출이 없습니다 — 여기서 시작하거나 [연출 가져오기…]" : string.Empty) +
             (RuntimeTarget is null ? " · 게임 폴더 미지정" : $" · 게임 폴더 {RuntimeTarget.GameFolder}");
 
@@ -588,6 +590,15 @@ internal sealed class AuthoringSession
             activeFileChanged: true,
             fileListChanged: true);
     }
+
+    /// <summary>
+    /// 걷은 커스텀 곡선(2026-11-07)을 읽었으면 한 마디 — 곡선 정의는 버렸고, 그것을 쓰던 이징은 기본으로 읽었다.
+    /// 재생이 바뀌는 옮김이라 조용히 넘기지 않는다. 저장하면 파일에서도 사라진다.
+    /// </summary>
+    private static string RetiredCurveNote(CompositionLoadResult loaded) =>
+        loaded.RetiredEaseCurves > 0 || loaded.RetiredEaseReferences > 0
+            ? $" · 커스텀 곡선은 더 쓰지 않습니다 — 곡선 {loaded.RetiredEaseCurves}개를 버리고, 그것을 쓰던 명령 {loaded.RetiredEaseReferences}곳은 기본 이징으로 읽었습니다(저장하면 굳습니다)"
+            : string.Empty;
 
     /// <summary>열었을 때 연출이 어디서 왔는지 한 마디 — 옛 프로젝트에서 가져왔으면 저장이 옮긴다는 것까지.</summary>
     private static string SourceNote(CompositionLoadResult loaded)

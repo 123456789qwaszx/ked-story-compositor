@@ -47,14 +47,14 @@ namespace Ked.Presentation.Core
             StageState state, string slotKey, string emotionKey,
             StageReducerTuning tuning, out string reason)
         {
-            if (!PortraitSizingStageReduction.TryReduce(
+            if (!NodeTargets.TryPortraitSizing(
                     state, slotKey, emotionKey, tuning.PortraitDimensions,
-                    out StageNodeClaim claim, out reason))
+                    out NodeTarget target, out reason))
             {
                 return false;
             }
 
-            state.Apply(claim);
+            state.Apply(target);
             return true;
         }
     }

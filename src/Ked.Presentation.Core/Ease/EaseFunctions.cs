@@ -5,7 +5,7 @@ namespace Ked.Presentation.Core
     // ─────────────────────────────────────────────────────────────────
     // 이징 순수 함수 — DOTween EaseManager.Evaluate의 코어 포팅.
     //
-    // 형태 규약은 reduction-boundary.md 그대로: 순수, UnityEngine 타입 금지,
+    // 형태 규약은 target-boundary.md 그대로: 순수, UnityEngine 타입 금지,
     // 시간·랜덤·IO·전역 상태 없음. 같은 입력은 언제나 같은 출력.
     //
     // 수식은 DOTween 소스(EaseManager.cs · Bounce.cs · Flash.cs)를 식 단위로

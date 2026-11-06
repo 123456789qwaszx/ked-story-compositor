@@ -76,18 +76,12 @@ internal static class StageAudioCues
 }
 
 /// <summary>
-/// 무대에서 수치를 만질 수 있는 이동 커맨드 하나 — <b>이동 편집기(슬라이더·이징·곡선)와
+/// 무대에서 수치를 만질 수 있는 이동 커맨드 하나 — <b>이동 편집기(슬라이더·이징)와
 /// 휴지 배치</b>가 이것 하나를 본다.
 /// 좌표는 <b>루트 공간 픽셀</b>이고, 화면으로 옮기는 것은 <see cref="StageSceneView"/>가
 /// 샷 규약(<c>ShotIntentMath</c>)으로 한다.
 /// </summary>
 /// <param name="Arguments">현재 인자 토큰 — 슬라이더의 시작값이자 되돌릴 자리다.</param>
-/// <param name="CurveKeys">
-/// <see cref="Ease"/>가 <c>@이름</c>이고 프로젝트에 그 곡선이 있으면 그 키들 —
-/// 재생·스크럽·미리보기가 코어 <c>CurveFunctions</c>로 이 모양을 그대로 탄다.
-/// null이면 이름 곡선이 없다는 뜻이고, 런타임과 같은 기본(OutCubic)으로 물러선다
-/// (내보내기 검증이 그 어긋남을 막는 자리다).
-/// </param>
 internal sealed record StageMotionCue(
     string CommandId,
     string DefinitionId,
@@ -96,8 +90,7 @@ internal sealed record StageMotionCue(
     double DeltaY,
     double DurationFrames,
     string? Ease,
-    IReadOnlyDictionary<string, string> Arguments,
-    IReadOnlyList<Ked.Presentation.Core.CurveKey>? CurveKeys = null);
+    IReadOnlyDictionary<string, string> Arguments);
 
 /// <summary>
 /// 이 라인의 이동 커맨드를 무대가 만질 수 있는 모양으로 펼친다.
@@ -113,8 +106,7 @@ internal static class StageMotionCues
         IReadOnlyList<PresentationResultCommand> setupCommands,
         IReadOnlyList<MiniStageFoldLine> foldLines,
         IReadOnlyList<PresentationResultCommand>? lineCommands,
-        Ked.Presentation.Core.StageReducerTuning? tuning,
-        IReadOnlyList<EaseCurve>? curves = null)
+        Ked.Presentation.Core.StageReducerTuning? tuning)
     {
         if (tuning is null || lineCommands is null || lineCommands.Count == 0)
         {
@@ -141,16 +133,6 @@ internal static class StageMotionCues
                 continue;
             }
 
-            // @이름 → 프로젝트 곡선의 키. 못 찾으면 null — 런타임과 같은 폴백(OutCubic)이고,
-            // 내보내기 검증이 어긋남을 막는다.
-            IReadOnlyList<Ked.Presentation.Core.CurveKey>? curveKeys = null;
-
-            if (segment.Ease is ['@', .. var curveName])
-            {
-                curveKeys = curves?.FirstOrDefault(curve =>
-                    string.Equals(curve.Name, curveName, StringComparison.Ordinal))?.Keys;
-            }
-
             cues.Add(new StageMotionCue(
                 segment.CommandId,
                 command.DefinitionId,
@@ -159,8 +141,7 @@ internal static class StageMotionCues
                 segment.Delta.Y,
                 segment.DurationFrames,
                 segment.Ease,
-                command.Arguments,
-                curveKeys));
+                command.Arguments));
         }
 
         return cues.Count > 0 ? cues : null;

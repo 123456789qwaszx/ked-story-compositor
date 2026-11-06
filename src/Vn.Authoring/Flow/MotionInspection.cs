@@ -100,9 +100,9 @@ public static class MotionInspection
         Vec2 start = nodeState.AnchoredPosition;
 
         // 종점은 런타임 커맨드가 쓰는 그 함수다. 여기서 손으로 더하면 사본이 하나 는다.
-        StageNodeClaim claim = MoveByReduction.Reduce(
+        NodeTarget target = NodeTargets.MoveBy(
             nodeKey,
-            new MoveByReduction.Args(!motion.Relative, value),
+            new NodeTargets.MoveByArgs(!motion.Relative, value),
             start);
 
         double seconds = 0;
@@ -129,7 +129,7 @@ public static class MotionInspection
             slotKey,
             nodeKey,
             start,
-            claim.Value.XY,
+            target.Value.XY,
             seconds,
             seconds * DurationToken.FramesPerSecond,
             ease);

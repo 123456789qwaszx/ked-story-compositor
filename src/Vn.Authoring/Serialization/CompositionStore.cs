@@ -27,7 +27,7 @@ namespace Vn.Authoring.Serialization;
 /// 이 파일이 없고 원고에 연출이 들어 있으면 그것을, 원고에 없으면 director가 남긴
 /// <c>presentation-original/</c>의 원본에서 꺼낸다. 첫 저장이 이 파일에 남기고, 원고는 그대로다.
 /// </summary>
-public static class CompositionStore
+public static partial class CompositionStore
 {
     public const int CurrentFormatVersion = 1;
     public const string FileExtension = ".vncompose.json";
@@ -91,7 +91,9 @@ public static class CompositionStore
         StoryProject merged = PresentationLayer.Merge(loaded, layer, out int droppedLinks);
         JsonSupport.ValidateProject(merged);
 
-        return new CompositionLoadResult(merged, manuscriptPath, composePath, source, droppedLinks);
+        return new CompositionLoadResult(
+            merged, manuscriptPath, composePath, source, droppedLinks,
+            layer.RetiredEaseCurves, layer.RetiredEaseReferences);
     }
 
     /// <summary>연출 층만 떼어 이 파일(과 발행 결과 파일)에 쓴다. 원고 파일은 건드리지 않는다.</summary>
@@ -196,11 +198,6 @@ public static class CompositionStore
                 layer.Compositions.Select(item => (JsonNode)ProjectManifestJson.WriteComposition(item)).ToArray());
         }
 
-        if (ProjectManifestJson.WriteEaseCurves(layer.EaseCurves) is { } curves)
-        {
-            root["easeCurves"] = curves;
-        }
-
         if (ProjectManifestJson.WriteQuickCommands(layer.QuickCommands) is { } quick)
         {
             root["quickCommands"] = quick;
@@ -241,8 +238,8 @@ public static class CompositionStore
 
     private static PresentationLayer ReadLayer(string composePath)
     {
-        JsonObject root = JsonSupport.ParseObject(
-            File.ReadAllText(composePath, new UTF8Encoding(false)), "연출 층 파일");
+        string composeJson = File.ReadAllText(composePath, new UTF8Encoding(false));
+        JsonObject root = JsonSupport.ParseObject(composeJson, "연출 층 파일");
         int version = (int?)root["formatVersion"] ?? 0;
 
         if (version != CurrentFormatVersion)
@@ -269,7 +266,8 @@ public static class CompositionStore
             layer.Compositions.Add(ProjectManifestJson.ReadComposition(composition));
         }
 
-        layer.EaseCurves.AddRange(ProjectManifestJson.ReadEaseCurves(root["easeCurves"]));
+        layer.RetiredEaseCurves = (root["easeCurves"] as JsonArray)?.Count ?? 0;
+        layer.RetiredEaseReferences = CountRetiredEaseReferences(composeJson);
         layer.QuickCommands = ProjectManifestJson.ReadQuickCommands(root["quickCommands"]);
         layer.RecentCommandIds.AddRange(ProjectManifestJson.ReadRecentCommands(root["recentCommands"]));
         layer.PreviewRoutes.AddRange(ProjectManifestJson.ReadPreviewRoutes(root["previewRoutes"]));
@@ -289,7 +287,9 @@ public static class CompositionStore
                     $"연출 층 파일이 참조하는 발행 결과 파일을 찾을 수 없습니다: {results}", resultsPath);
             }
 
-            ResultRepository repository = ResultStoreJson.Read(File.ReadAllText(resultsPath, new UTF8Encoding(false)));
+            string resultsJson = File.ReadAllText(resultsPath, new UTF8Encoding(false));
+            layer.RetiredEaseReferences += CountRetiredEaseReferences(resultsJson);
+            ResultRepository repository = ResultStoreJson.Read(resultsJson);
 
             foreach (DialogueResult result in repository.DialogueResults)
             {
@@ -304,6 +304,16 @@ public static class CompositionStore
 
         return layer;
     }
+
+    /// <summary>
+    /// 걷은 커스텀 곡선(<c>@이름</c>)을 가리키던 ease 인자 수. 값은 읽을 때 <see cref="LegacyCommandUpgrade"/>가 빼서
+    /// 기본 이징이 된다 — 재생이 바뀌는 옮김이라 열 때 몇 곳인지 알린다. 파일 글자에서 센다(읽은 객체에는 이미 없다).
+    /// </summary>
+    private static int CountRetiredEaseReferences(string json) =>
+        RetiredEaseReference().Count(json);
+
+    [System.Text.RegularExpressions.GeneratedRegex("\"ease\"\\s*:\\s*\"@")]
+    private static partial System.Text.RegularExpressions.Regex RetiredEaseReference();
 }
 
 /// <summary>열었을 때 연출이 어디서 왔는가.</summary>
@@ -325,12 +335,16 @@ public enum CompositionSource
 /// <param name="ManuscriptPath">원고 manifest — 읽기만 한다.</param>
 /// <param name="ComposePath">이 툴의 파일 — 아직 없을 수 있다(첫 저장이 만든다).</param>
 /// <param name="DroppedLinks">원고에서 사라진 노드를 가리켜 버린 연출 배선 수.</param>
+/// <param name="RetiredEaseCurves">걷은 커스텀 곡선 정의 수 — 읽지 않고 버렸다(저장하면 파일에서도 사라진다).</param>
+/// <param name="RetiredEaseReferences">그 곡선을 가리키던 ease 인자 수 — 기본 이징으로 읽었다.</param>
 public sealed record CompositionLoadResult(
     StoryProject Project,
     string ManuscriptPath,
     string ComposePath,
     CompositionSource Source,
-    int DroppedLinks);
+    int DroppedLinks,
+    int RetiredEaseCurves = 0,
+    int RetiredEaseReferences = 0);
 
 /// <summary>
 /// 한 <see cref="StoryProject"/>에서 <b>연출 층</b>만 떼거나, 원고에 다시 얹는다.
@@ -349,7 +363,10 @@ public sealed class PresentationLayer
 
     public ResultRepository Results { get; } = new();
 
-    public List<EaseCurve> EaseCurves { get; } = new();
+    /// <summary>읽을 때 버린 커스텀 곡선 정의 수 · 그 참조 수 — 열 때 알리려고만 센다.</summary>
+    public int RetiredEaseCurves { get; set; }
+
+    public int RetiredEaseReferences { get; set; }
 
     public List<StageQuickCommand>? QuickCommands { get; set; }
 
@@ -367,7 +384,7 @@ public sealed class PresentationLayer
     /// <summary>연출이 하나도 없다 — 노드 · 배선 · 결과 · 곡선 · 빠른 명령 · 설정 모두.</summary>
     public bool IsEmpty =>
         Nodes.Count == 0 && Links.Count == 0 && Compositions.Count == 0 && Results.IsEmpty &&
-        EaseCurves.Count == 0 && QuickCommands is null && RecentCommandIds.Count == 0 && PreviewRoutes.Count == 0 &&
+        QuickCommands is null && RecentCommandIds.Count == 0 && PreviewRoutes.Count == 0 &&
         AssetRoots.IsEmpty && ExportFormats.IsDefault && OutputPath is null;
 
     public static PresentationLayer Empty() => new();
@@ -400,7 +417,6 @@ public sealed class PresentationLayer
 
         layer.Links.AddRange(project.Links.Where(IsPresentationLink).Select(link => link.Clone()));
         layer.Compositions.AddRange(project.Compositions.Select(item => item.Clone()));
-        layer.EaseCurves.AddRange(project.EaseCurves.Select(curve => curve.Clone()));
         layer.RecentCommandIds.AddRange(project.RecentCommandIds);
         layer.PreviewRoutes.AddRange(project.PreviewRoutes.Select(route => route.Clone()));
 
@@ -448,7 +464,6 @@ public sealed class PresentationLayer
             }).ToList(),
             Links = manuscript.Links.Where(link => !IsPresentationLink(link)).Select(link => link.Clone()).ToList(),
             WriterSpeakers = manuscript.WriterSpeakers.Select(speaker => speaker.Clone()).ToList(),
-            EaseCurves = layer.EaseCurves.Select(curve => curve.Clone()).ToList(),
             Results = layer.Results.Clone(),
             Compositions = layer.Compositions.Select(item => item.Clone()).ToList()
         };

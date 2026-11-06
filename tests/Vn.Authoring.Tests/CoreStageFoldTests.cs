@@ -291,25 +291,46 @@ public class CoreStageFoldTests
     [Fact]
     public void 미표시_분류_접혔지만_안_그리는_축은_플래그로_갈린다()
     {
-        // gesture는 코어가 접지만(제자리 몸짓 — 순변위 0) 화면에 그릴 것이 없다 —
+        // 반투명 목표 fade는 코어가 접지만 프리뷰의 슬롯은 보임/안 보임뿐이라 그 alpha를 못 그린다 —
         // H-3 "미표시". 코어도 툴도 모르는 커맨드는 "반영 안 됨"(플래그 false)이다.
         PresentationResultCommand[] setup =
         [
             Command("char_rig_cast.slot", ("slotKey", "c1")),
-            Command("char_rig_staging.gesture", ("slot", "c1")),
+            Command("char_rig_presentation.fade", ("slot", "c1"), ("alpha", "0.6")),
             Command("custom.mystery", ("x", "1"))
         ];
 
         CoreStageFoldResult composite = CoreStageFold.Fold(
             Catalog, setup, Array.Empty<MiniStageFoldLine>(), LoadTuning());
 
-        MiniStageUnhandled gesture = Assert.Single(
-            composite.State.Unhandled, entry => entry.CommandName == "gesture");
-        Assert.True(gesture.FoldedButNotDrawn);
+        MiniStageUnhandled partial = Assert.Single(
+            composite.State.Unhandled, entry => entry.CommandName == "fade");
+        Assert.True(partial.FoldedButNotDrawn);
 
         MiniStageUnhandled mystery = Assert.Single(
             composite.State.Unhandled, entry => entry.CommandName == "custom.mystery");
         Assert.False(mystery.FoldedButNotDrawn);
+    }
+
+    [Theory]
+    [InlineData("0", false)]
+    [InlineData("1", true)]
+    public void fade는_목표_alpha를_가시성으로_그린다(string alpha, bool visible)
+    {
+        // 0과 1은 그릴 수 있는 목표다 — 미표시 뱃지 없이 보임/안 보임으로 선다.
+        PresentationResultCommand[] setup =
+        [
+            Command("char_rig_cast.slot", ("slotKey", "c1")),
+            Command("char_rig_cast.cast", ("slot", "c1"), ("characterKey", "harin")),
+            Command("char_rig_presentation.fade_in", ("slot", "c1"), ("duration", "0fr")),
+            Command("char_rig_presentation.fade", ("slot", "c1"), ("alpha", alpha))
+        ];
+
+        CoreStageFoldResult composite = CoreStageFold.Fold(
+            Catalog, setup, Array.Empty<MiniStageFoldLine>(), LoadTuning());
+
+        Assert.Equal(visible, composite.State.Slots["c1"].Visible);
+        Assert.DoesNotContain(composite.State.Unhandled, entry => entry.CommandName == "fade");
     }
 
     [Fact]

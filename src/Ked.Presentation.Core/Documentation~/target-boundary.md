@@ -1,82 +1,100 @@
-# 리덕션 경계 — "스펙 → 목표 상태" 규약
+# 목표 계산 경계 — "스펙 → 타깃" 규약
 
-코드베이스 **57곳**에 흩어져 있던 `ClaimTarget` 관습을 규약으로 승격한 것.
+연출 커맨드는 트윈을 시작하기 전에 "끝나면 노드가 어떤 값이어야 하는가"를 먼저 정한다.
+그 계산을 엔진 의존이 없는 순수 함수(`NodeTargets` · `ShotIntents`)로 떼어 낸 것이 이 경계다.
+떼어 낸 이유는 하나다 — 같은 값이 장부 · 트윈 · 정지 프레임 세 곳에 쓰이므로,
+계산이 한 자리에 있어야 셋이 갈라지지 않는다(바로 아래).
+
+처음에는 코드베이스 **57곳**에 흩어져 있던 `ClaimTarget` 관습이었고, 그것을 규약으로 올렸다.
 이후 커맨드 이관이 전부 이 문서의 모양을 따른다.
 
-본보기: [`Reduce/CharPlacementReductions.cs`](../Reduce/CharPlacementReductions.cs) (MoveBy · ScaleTo)
+본보기: [`Reduce/NodeTargets.Staging.cs`](../Reduce/NodeTargets.Staging.cs) (MoveBy · ScaleTo)
 ↔ 호스트 `MoveByCommandCharR` · `ScaleToCommandCharR`.
 
-## 코어로 가는 것 / 호스트에 남는 것
-
-| | 어디 | 왜 |
-|---|---|---|
-| 스펙 → 목표 상태 변환 (`XxxReduction.Reduce`) | **코어** | 정지 프레임이 필요한 전부. 순수 산수다 |
-| 출력 타입 (`StageNodeClaim`) | **코어** | 게시·트윈 종점·폴드가 같은 값을 봐야 한다 |
-| `CommandBase` · 코루틴 · `WaitForCompletion` | 호스트 | MonoBehaviour 호스트를 문다 |
-| `ResolveRefs` (slotKey → RectTransform) | 호스트 | 유니티 참조 해석이다 |
-| `DOKill` · 트윈 생성/가속 (`OnStepLifetimeFinished`) | 호스트 | 시간의 세계다 |
-| Commit의 트랜스폼 쓰기 · Ledger `Clear` | 호스트 | 유니티에 쓰는 일이다 |
-| `HasClaimedTarget` 수명 관리 | 호스트 | 실행 수명의 일부다 |
-
-## 리덕션의 형태
-
-```csharp
-public static class XxxReduction            // 커맨드당 하나, Reduce/ 폴더
-{
-    public readonly struct Args { ... }     // 파싱된 스펙 값만. UnityEngine 타입 금지
-    public static StageNodeClaim Reduce(    // 순수 함수
-        string nodeKey,                     // 논리 노드 키
-        in Args args,
-        /* 필요한 현재 상태를 명시적 인자로 */ ...);
-}
-```
-
-- **순수**: 시간·랜덤·IO·전역 상태 없음. 트랜스폼을 **읽지도** 않는다 —
-  현재 상태가 필요하면 값으로 받는다. 같은 입력은 언제나 같은 출력.
-- **출력은 `StageNodeClaim`.** 복수 노드를 겨누면 배열이다(SetDepth처럼 위치+스케일 두 장).
-  스케일 클레임의 z 보존 규약은 `ApplyTo`가 안다.
-
-## 호스트 어댑터의 형태 (본보기에서)
-
-```csharp
-private void ClaimTarget()
-{
-    _rect.DOKill(true);                                    // 호스트: 시간의 세계
-    _startPos = _rect.anchoredPosition;                    // 호스트: 현재 상태 읽기
-
-    StageNodeClaim claim = MoveByReduction.Reduce(         // ── 코어 ──
-        _rect.name,
-        new MoveByReduction.Args(_spec.useAbsolutePosition, _spec.delta.ToCore()),
-        _startPos.ToCore());
-
-    _destPos = claim.Value.XY.ToUnity();                   // 호스트: 트윈 종점
-    Claim(_rect, claim);                                   // 기반(RigClaimTweenCommandBase)이 게시·Clear
-}                                                          // 클레임을 안 내면 움직이지 않는다(place의 해 실패) — 무음 실패 금지
-```
-
-**동작 불변이 규약이다**: 어댑터는 계산의 **자리만** 바꾸고 값·순서·부작용을 바꾸지 않는다.
-그래서 리덕션 테스트의 기대값은 **종전 식**에서 온다 — 새 기대값을 만들면 불변을 주장할 수 없다.
-
-호스트에서 노드의 정체는 `RectTransform` 참조이고, 클레임의 `NodeKey`는 진단용 이름이다.
-장부(`CharacterPlacementTargetLedger`)가 참조 ↔ 키 대응을 안다.
-
-유니티 ↔ 코어 벡터 변환은 `PresentationCoreConversions`의 `ToCore()` / `ToUnity()` 한 곳에 둔다.
-
-## 클레임이 흐르는 세 갈래
+## 타깃이 흐르는 세 갈래
 
 ```
-              StageNodeClaim
+              NodeTarget
                     │
    ┌────────────────┼────────────────┐
    ↓                ↓                ↓
 ① 장부 게시      ② 트윈 종점      ③ 상태 폴드
-Ledger.Publish   DOTween 종점     claim.ApplyTo(tree)
+Ledger.Publish   DOTween 종점     target.ApplyTo(tree)
 (정착 예약)      (재생)           (정지 프레임)
 ```
 
 **셋이 같은 값을 보므로 "재생 결과 = 정착 예약 = 정지 프레임"이 한 곳에서 갈라진다.**
 하나라도 빠뜨리면 나중에 원인 모를 불일치가 난다.
-(`ReductionTests.세_갈래가_같은_값을_본다`가 이 성질을 고정한다.)
+(`NodeTargetTests.세_갈래가_같은_값을_본다`가 이 성질을 고정한다.)
+
+## 코어로 가는 것 / 호스트에 남는 것
+
+| | 어디 | 왜 |
+|---|---|---|
+| 스펙 → 타깃 변환 (`NodeTargets.Xxx` · `ShotIntents.Xxx`) | **코어** | 정지 프레임이 필요한 전부. 순수 산수다 |
+| 출력 타입 (`NodeTarget`) | **코어** | 게시·트윈 종점·폴드가 같은 값을 봐야 한다 |
+| `CommandBase` · 코루틴 · `WaitForCompletion` | 호스트 | MonoBehaviour 호스트를 문다 |
+| `ResolveRefs` (roleKey → RectTransform) | 호스트 | 유니티 참조 해석이다 |
+| `DOKill` · 트윈 생성/가속 (`OnStepLifetimeFinished`) | 호스트 | 시간의 세계다 |
+| Commit의 트랜스폼 쓰기 · Ledger `Clear` | 호스트 | 유니티에 쓰는 일이다 |
+| `HasClaimedTarget` 수명 관리 | 호스트 | 실행 수명의 일부다 |
+
+## 목표 계산의 형태
+
+결과물 이름의 클래스에, 커맨드 이름의 메서드다. 노드 타깃은 `NodeTargets`(partial — 파일은
+리듀서와 같은 갈래로 Staging · Show · Portrait · Placement), 샷 의도는 `ShotIntents`.
+
+```csharp
+public static partial class NodeTargets         // Reduce/NodeTargets.*.cs
+{
+    public readonly struct XxxArgs { ... }      // 파싱된 스펙 값만. UnityEngine 타입 금지
+    public static NodeTarget Xxx(               // 순수 함수. 이름 = 대본 커맨드 (move_by → MoveBy)
+        string nodeKey,                         // 논리 노드 키
+        in XxxArgs args,
+        /* 필요한 현재 상태를 명시적 인자로 */ ...);
+}
+```
+
+무대 상태를 읽고 실패 사유를 낼 수 있는 것은 `Try`로 시작한다 —
+`TryPlaceFocus` · `TrySetDepth` · `TryPortraitSizing`(`out NodeTarget`, `out string reason`).
+
+- **순수**: 시간·랜덤·IO·전역 상태 없음. 트랜스폼을 **읽지도** 않는다 —
+  현재 상태가 필요하면 값으로 받는다. 같은 입력은 언제나 같은 출력.
+- **출력은 `NodeTarget`.** 복수 노드를 겨누면 배열이다(SetDepth처럼 위치+스케일 두 장).
+  스케일 타깃의 z 보존 규약은 `ApplyTo`가 안다.
+
+## 호스트 어댑터의 형태 (본보기에서)
+
+```csharp
+protected override void ClaimTarget()
+{
+    _rect.DOKill(true);                                    // 호스트: 시간의 세계
+    _startPos = _rect.anchoredPosition;                    // 호스트: 현재 상태 읽기
+
+    NodeTarget target = RigTargets.MoveBy(_rect, _spec, _startPos);     // ── 코어 ── (변환은 RigTargets가)
+    _rig.PlacementTargets.Reserve(_rect, target, Releases);               // 호스트: 장부에 게시 (해제는 확정 때 실행기가 — CommitReleases)
+    _destPos = target.Value.XY.ToUnity();                                 // 호스트: 트윈 종점은 타깃에서 읽는다
+}
+
+// 리그 커맨드의 Unity → Core 경계(Stage/Character/Commands/RigTargets.cs).
+// 커맨드는 변환과 Args 조립을 들고 있지 않는다.
+public static class RigTargets
+{
+    public static NodeTarget MoveBy(RectTransform rect, MoveByCommandSpecCharR spec, Vector2 start)
+        => NodeTargets.MoveBy(
+            rect.name,
+            new NodeTargets.MoveByArgs(spec.useAbsolutePosition, spec.delta.ToCore()),
+            start.ToCore());
+}
+```
+
+**동작 불변이 규약이다**: 어댑터는 계산의 **자리만** 바꾸고 값·순서·부작용을 바꾸지 않는다.
+그래서 목표 계산 테스트의 기대값은 **종전 식**에서 온다 — 새 기대값을 만들면 불변을 주장할 수 없다.
+
+호스트에서 노드의 정체는 `RectTransform` 참조이고, 타깃의 `NodeKey`는 진단용 이름이다.
+장부(`CharacterPlacementTargetLedger`)가 참조 ↔ 키 대응을 안다.
+
+유니티 ↔ 코어 벡터 변환은 `PresentationCoreConversions`의 `ToCore()` / `ToUnity()` 한 곳에 둔다.
 
 ## 표본 정독 보고 — 편차 축
 
@@ -102,17 +120,17 @@ Ledger.Publish   DOTween 종점     claim.ApplyTo(tree)
 
 트랜스폼(anchoredPosition / localScale / localEuler) · alpha(Fade) · color(ColorTo) ·
 sizeDelta(Overlay) · 마스크(StageMaskMotion).
-`StageNodeClaim`은 트랜스폼 셋으로 시작하고, 필요한 종류를 그때 더한다.
+`NodeTarget`은 트랜스폼 셋으로 시작하고, 필요한 종류를 그때 더한다.
 
 ### 축 ③ — 게시 여부
 
 > **2026-11-05 갱신.** 처음(2026-08)엔 "남이 알아야 하는 노드"만 골라 4곳(MoveBy · ScaleTo ·
 > PlaceCharacterFocus · SetDepth)에 손으로 게시를 넣었다. 그 판정에서 **회전(SwayPivot)과
 > 슬라이드(Track)가 빠졌다** — 둘 다 측정 체인 위라 같은 줄의 place가 트윈 중간값을 읽었다.
-> 지금은 판정하지 않는다. `RigClaimTweenCommandBase`가 파생이 기록한 클레임을 **전부** 게시하고
-> 확정 때 Clear한다. 체인 아래 노드도 게시된다 — 아무도 안 읽을 뿐 틀리지 않는다.
-> 게시를 잊는 상태는 구조적으로 없다. 리덕션 없이 끝값을 정하는 커맨드(Slide · RotateBy ·
-> Gesture · Mirror)는 호스트가 클레임을 만든다 — "클레임 = 리덕션 출력"의 유일한 예외다.
+> 지금은 판정하지 않는다. 커맨드가 내는 타깃은 **전부** 장부의 `Reserve`로 게시되고
+> 확정 때 실행기의 `CommitReleases`가 푼다(2026-11-06 — 그 전엔 상속 층 `RigClaimTweenCommandBase`가 했다). 체인 아래 노드도 게시된다 — 아무도 안 읽을 뿐 틀리지 않는다.
+> 해제를 잊는 상태는 구조적으로 없다 — 게시하는 그 호출이 해제를 등록한다. 목표 계산 없이 끝값을 정하는 커맨드(Slide ·
+> Mirror)는 호스트가 타깃을 만든다 — "타깃 = 목표 계산 출력"의 유일한 예외다.
 
 ## 두 가지 주의 (표본 정독에서 드러난 것)
 
@@ -122,7 +140,7 @@ sizeDelta(Overlay) · 마스크(StageMaskMotion).
 메서드 이름으로 찾으면 놓친다.
 
 **2. 절차적 커맨드는 이관 대상이 아니다.**
-`Tremble`은 `_basePos`와 `Random.Range` 시드만 잡고 **목표값 자체가 없다** —
+`Tremble`은 `_basePos`와 `Random.Range` 시드만 잡고 **끝값 자체가 없다** —
 시간 함수로 계속 흔들 뿐이다. 정지 프레임에서 이런 커맨드는 목표가 정의되지 않으므로,
 리듀서에서 `Unhandled`로 남는 것이 맞다. 이관 개수 추정에서 뺀다.
 
@@ -138,12 +156,12 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 
 | 커맨드 | 처리 |
 |---|---|
-| `move_by` · `move_reset` | `MoveByReduction` |
-| `scale_by` · `scale_reset` | `ScaleToReduction` |
-| `set_anchor` / `show` | `SetAnchorReduction` |
-| `fade_in` / `fade_out` | `FadeInReduction` / `FadeOutReduction` (가시성 축) |
+| `move_by` · `move_reset` | `NodeTargets.MoveBy` |
+| `scale_by` · `scale_reset` | `NodeTargets.ScaleTo` |
+| `set_anchor` / `show` | `NodeTargets.SetAnchor` |
+| `fade_in` / `fade_out` | `NodeTargets.FadeIn` / `NodeTargets.FadeOut` (가시성 축) |
 | `place_focus` | `SettledFocusMath.SolveFocusPlacement` |
-| `set_portrait_sprite` | `PortraitSizingReduction` — 폭만 접는다(아래 참조) |
+| `set_portrait_sprite` | `NodeTargets.PortraitSizing` — 폭만 접는다(아래 참조) |
 
 ### 초상 (portrait)
 
@@ -179,7 +197,7 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 `shot_zoom` · `shot_track` · `shot_to` · `shot_reset` · `shot_focus_to` 5종 전부.
 `ShotIntentMath`가 zoom→배율 규약(0.05)의 유일한 자리다 — 커맨드와 적용측이 같이 본다.
 
-샷 리덕션의 출력은 노드 클레임이 아니라 **샷 의도 `ShotIntentState`(zoom · pan · focus) 하나**다.
+샷 목표 계산의 출력은 노드 타깃이 아니라 **샷 의도 `ShotIntentState`(zoom · pan · focus) 하나**다.
 그 셋이 무대 노드(무대마다 카메라 둘 · 층마다 하나)에 무엇을 쓰는지는 **`Transforms/ShotLayoutMath`가 유일한 자리**다(2026-11-05).
 
 | 누가 | 무엇을 |
@@ -198,9 +216,9 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 
 | 커맨드 | 스펙 클래스 | 처리 |
 |---|---|---|
-| `move_by` · `move_reset` | `MoveByCommandSpecCharR` | placement 리덕션이 이미 덮는다 |
+| `move_by` · `move_reset` | `MoveByCommandSpecCharR` | placement 목표 계산이 이미 덮는다 |
 | `scale_by` · `scale_reset` | `ScaleToCommandSpecCharR` | 동일 |
-| `rotate_by` · `rotate_reset` | `RotateToCommandSpecCharR` | `RotateToReduction` |
+| `rotate_by` · `rotate_reset` | `RotateToCommandSpecCharR` | `NodeTargets.RotateTo` |
 | `sibling_front` · `sibling_back` | — | **이관 안 함** (아래) |
 | `char_to` | — | **어휘에서 걷었다 (2026-11-06)** — 리그는 무대 · 층을 옮기지 않는다. 다른 자리는 fade_out 뒤 새 slot([stage-rig.md](../../Runtime/StageRig/Documentation~/stage-rig.md) §2.4). 무대를 이름에 박은 `char_to_s0/s1/s2`는 그 전 2026-11-03에 걷었다 |
 
@@ -213,7 +231,7 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 
 ### 이관 대상이 아닌 부류 — 절차적 커맨드
 
-`Tremble` · `Sway` · `Breath` · `Walk` · `Hop` · `Bounce` 등은 목표값 자체가 없다.
+`Tremble` · `Sway` · `Breath` · `Walk` · `Hop` · `Bounce` 등은 끝값 자체가 없다.
 `_basePos`와 랜덤 시드를 잡고 시간 함수로 계속 흔들 뿐이다.
 정지 프레임에서 이들의 목표는 **정의되지 않으므로** 리듀서에서 `Unhandled`로 남는 것이 맞다.
 
@@ -225,7 +243,7 @@ CharacterPortrait_SwayPivot.localEulerAngles  접힘=(0,0,0) vs 캡처=(0,0,7.53
 CharSlot_Track_Idle.anchoredPosition          접힘=(0,0)   vs 캡처=(0, 7.99) …
 ```
 
-값이 매 라인 제각각인 것이 특징이다 — 목표값이 아니라 **시간 함수의 스냅샷**이라서.
+값이 매 라인 제각각인 것이 특징이다 — 끝값이 아니라 **시간 함수의 스냅샷**이라서.
 랩드스킵 재생에서는 즉시 확정되어 누적될 시간이 없으므로 이 축이 보이지 않는다.
 그래서 폴드 대조의 기준 프로토콜은 랩드스킵이다(하네스 파일 상단 주석 참조).
 
@@ -237,7 +255,7 @@ CharSlot_Track_Idle.anchoredPosition          접힘=(0,0)   vs 캡처=(0, 7.99)
 | 부류 | 건수 | 판정 |
 |---|---|---|
 | 시간 커맨드 (`pause` · `1fr`~`48fr`) | 19 | **접을 것이 없다** → 무해하게 접도록 고쳤다 |
-| 절차적 연기 (`tap`·`sway*`·`jolt`·`dip`·`idle_*`) | 38 | **이관 대상 아님** — 목표값이 정의되지 않는다 |
+| 절차적 연기 (`tap`·`sway*`·`jolt`·`dip`·`idle_*`) | 38 | **이관 대상 아님** — 끝값이 정의되지 않는다 |
 | 화면 효과 (`screen_blur/vignette/noise/flash`) | 36 | 무대 상태 모델 밖 (포스트 이펙트 축). 단 `screen_blur`는 이후 리그마다 거는 셰이더 블러가 되어 `char_visual_*`과 같은 머티리얼 축이다(2026-11-03 주) |
 | 배경 (`bg_*`) | 19 | **이관 완료 (2026-10-29)** — 배경은 캐스팅하지 않은 캐릭터 슬롯이 됐다. 아래 참조 |
 | 캐릭터 비주얼 (`char_visual_*`) | 14 | 무대 상태 모델 밖 (머티리얼 축) |
@@ -252,15 +270,15 @@ CharSlot_Track_Idle.anchoredPosition          접힘=(0,0)   vs 캡처=(0, 7.99)
 **배경(`bg_*`)은 2026-10-29에 모델 안으로 들어왔다.** 별도 배경 리그를 지우고 배경을 **캐스팅하지 않은
 캐릭터 슬롯**으로 세우기로 했기 때문이다(재생 저장소 `docs/PLAN_background-as-slot.md`). 그래서 `StageState`가
 "캐릭터 리그만 담는다"는 문장은 더 정확히 "캐릭터 리그 *스키마*만 담는다"가 됐고, 배경 슬롯은 그 스키마의
-인스턴스다. 폴드는 새 리덕션을 만들지 않았다 — `StageReducer.Background.cs`는 슬롯 스폰·초상 사이징·
-fade·move·scale을 **같은 노드, 같은 리덕션**으로 접고, 종횡비의 출처만 `background-dimensions.json`이다.
+인스턴스다. 폴드는 새 목표 계산을 만들지 않았다 — `StageReducer.Background.cs`는 슬롯 스폰·초상 사이징·
+fade·move·scale을 **같은 노드, 같은 목표 계산**으로 접고, 종횡비의 출처만 `background-dimensions.json`이다.
 `bg_size`·`bg_place`는 어휘에서 지웠으므로 케이스가 없다 — 남은 대본이 있으면 여기서 소리가 난다(의도).
 
 같은 작업에서 **슬롯 재선언의 의미**를 런타임에 맞췄다. 런타임은 같은 키로 `slot`/`bg_spawn`을 다시 부르면
 새 리그를 짓고 옛 리그를 부순다. 폴드는 "재사용한다 — 좌표도 유지"로 접고 있었다(사실이 아니었다).
 배경을 합치며 같은 키의 `bg_spawn` 재선언을 검토하다 드러났다(배경 그림만 바꾸는 것은 `bg_sprite`). 지금은 노드·α가 스키마로 돌아가고 배역만 남는다.
 
-**둘은 대칭이 아니다.** `SlideCommandBase`가 등장·퇴장의 차이를 "현재 위치가 도착점이냐
+**둘은 대칭이 아니다.** `SlideCommandCharR`(2026-11-06까지 `SlideCommandBase` + 파생 둘)가 등장·퇴장의 차이를 "현재 위치가 도착점이냐
 출발점이냐" 하나로 환원하기 때문이다:
 
 | | 정착 상태 | 표적 | 기본 방향·거리 |
@@ -286,29 +304,31 @@ fade·move·scale을 **같은 노드, 같은 리덕션**으로 접고, 종횡비
 - `SetPortraitSprite` (초상 축)
 - `ScreenFocusPoint` 비율표 — 게임별 값이므로 코어 코드가 아니라 **tuning 데이터**가 맞다.
   지금은 호스트 `ScreenFocusPointResolver`에 있다. U12 덤프 추가 후보.
-- `RotateByCommandCharR` 등 SO 저작 전용 스펙 — yarn 4묶음 밖. 필요하면 같은 규약으로.
+- SO 저작 전용 스펙 — yarn 4묶음 밖. 필요하면 같은 규약으로. (`RotateByCommandCharR`는 대본이 낸 적이 없어 2026-11-06에 지웠다 — `rotate_by`는 `RotateToCommandCharR`의 상대 모드다.)
 - **커맨드 수명 통합** — **완료** (`PresentationCore/Base/ClaimTweenCommandBase.cs`).
   `ShotIntentCommandBase`가 shot 계열에 했던 통합의 일반화. 하네스가 오라클이므로
   **이관 배치마다 랩드스킵 재판정으로 리포트가 리팩터 전과 같은지 확인했다.**
   - 배치 1: MoveBy · ScaleTo · RotateTo (코어 배선이 끝난 셋)
-  - 배치 2·3: Fade 4종(`CanvasFadeCommandBase`) · BgR 트랜스폼 계열 · RotateBy 쌍
-  - 배치 4: PivotRotateTo · Slide 4종(`SlideCommandBase`) ·
+  - 배치 2·3: Fade 4종(`CanvasFadeCommandBase` — 2026-11-06에 `FadeCommandCharR` 하나로 합쳤다) · BgR 트랜스폼 계열 · RotateBy 쌍
+  - 배치 4: PivotRotateTo · Slide 4종(`SlideCommandBase` — 2026-11-06에 `SlideCommandCharR` 하나로 합쳤다) ·
     Overlay Move/Scale/Size · Overlay Show/Hide(`OverlayRootFadeCommandBase`) ·
-    SetDepth(클레임 2장 + 시퀀스) · PlaceCharacterFocus(클레임 1장 + 게시) ·
+    SetDepth(타깃 2장 + 시퀀스) · PlaceCharacterFocus(타깃 1장 + 게시) ·
     MirrorCharacter · CharVisualFocus · StageDepthDefocus
 
-  기반이 제공하는 변형점: `AccelerateOnStepFinish`(가속 여부) ·
-  `CreateAcceleratedTween`(가속 트윈이 본 트윈과 다른 경우) ·
-  `StepFinishSpeedUpMultiplier`(가속 배율) · `ResolvePlaybackDuration`(배속 축약).
-  가속 잔여시간은 `MeasureRemainingRatio` 한 장으로 받는다 — 축이 여럿이면
-  축별 `RemainingRatio`의 최댓값이다(가장 늦게 도착하는 축이 기준).
+  스텝 경계 가속(2026-11-06 개편): 처음엔 트윈을 죽이고 남은 비율(`MeasureRemainingRatio` — 커맨드마다 거리·각도·배율로 어림)로
+  새 트윈(`CreateAcceleratedTween`)을 만들었고, 그 변형점으로 `AccelerateOnStepFinish` · `StepFinishSpeedUpMultiplier`가 있었다.
+  지금은 **지금 트윈의 `timeScale`을 30으로 올린다** — 같은 길을 빠르게 끝까지 돌고, 남은 시간은 트윈이 안다.
+  그래서 커맨드가 채울 훅은 `ResolveRefs` · `ClaimTarget` · `CreateTween` · `OnCommitFinalState` 넷뿐이다.
+  이게 되는 까닭은 값과 타이밍이 갈라져서다 — 끝값은 장부의 타깃이 쥐고(트윈 전에 게시, 확정 때 해제),
+  트윈이 언제 거기 닿느냐는 보이는 연출일 뿐이다. 장부가 없던 때는 다음 커맨드가 라이브 트랜스폼을 읽었기에
+  남은 만큼을 재서 다시 만들어야 했다. 샷과 화면 효과·블러의 전환(`IntentTransition`)도 같은 날 같은 방식으로 바꿨다 —
+  거기서는 `Intent`가 끝값을 쥔다.
 
   - 대상 아님: 절차적 연기 —
-    목표값이 정의되지 않는다. 즉시 확정(`SetAnchor`)은 트윈이 없어 모양이 다르다.
+    끝값이 정의되지 않는다. 즉시 확정(`SetAnchor`)은 트윈이 없어 모양이 다르다.
   - 기반이 의도적으로 통일한 미세 차이 (실경로 무영향):
     ① 해석 실패 시 NRE 대신 경고+건너뛰기
-    ② 가속 잔여시간이 0으로 퇴화하는 경계에서 0초 트윈 대신 즉시 확정
-    ③ 가속 잔여시간에 0.01초 하한 — 다수파 규칙으로 통일했다.
+    (예전의 ② 가속 잔여시간 0 경계 즉시 확정 · ③ 0.01초 하한은 timeScale 개편으로 사라졌다 — 잔여시간을 계산하지 않는다.)
        종전에 하한이 없던 것은 `SetDepth` 하나뿐이다.
     ④ `PlaceCharacterFocus`는 출발=목표일 때 잔여비율이 NaN이 되어
        NaN 길이 트윈을 만들고 있었다. 기반의 0 가드가 이를 없앤다.

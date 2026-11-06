@@ -42,6 +42,9 @@ public static class CoreStageFold
         "cast", "pose", "actor",
         "show", "face", "face_swap", "fade_in", "fade_out",
 
+        // 목표 alpha 페이드 — 가시성(alpha 0.5 기준)으로 그린다. 0과 1 사이 목표는 아래에서 미표시로 남긴다.
+        "fade",
+
         // 슬라이드 (2026-08-24) — 퇴장은 나간 자리가 곧 정착 상태라 화면에 그려야 한다.
         // 등장은 정착으로는 항등이지만 <b>여기 있어야 한다</b>: 없으면 "접혔지만 안 그린다"
         // 뱃지로 남고, 고칠 것이 없는 뱃지는 진짜 미표시를 그 안에 묻는다.
@@ -51,7 +54,7 @@ public static class CoreStageFold
         "place", "place_left", "place_center", "place_right",
 
         // 뎁스.
-        "size",
+        "size", "size_reset",
 
         // 이동·스케일·회전.
         "left", "right", "up", "down",
@@ -206,6 +209,13 @@ public static class CoreStageFold
         if (DrawnCoreCommands.Contains(outputCommand))
         {
             ProjectSlots(fold, next);
+
+            // 프리뷰의 슬롯은 보임/안 보임뿐이라 반투명 목표는 못 그린다 — 불투명으로 그린 채
+            // 말하지 않으면 거짓 화면이다. 상태는 접혔으니 "미표시"로 드러낸다.
+            if (string.Equals(outputCommand, "fade", StringComparison.Ordinal) && IsPartialFade(next, args))
+            {
+                fold.Unhandled.Add(new MiniStageUnhandled(lineId, outputCommand, FoldedButNotDrawn: true));
+            }
         }
         else
         {
@@ -231,6 +241,18 @@ public static class CoreStageFold
     /// 표정은 보완 폴드의 어휘(원문 토큰)다 — 초상 해석이 <c>PortraitKey.Normalize</c>로
     /// 같은 정규화를 지나므로 화면 결과는 같다.
     /// </summary>
+    /// <summary>fade가 남긴 alpha가 0과 1 사이인가 — 프리뷰가 그리지 못하는 반투명.</summary>
+    private static bool IsPartialFade(StageState state, IReadOnlyList<string> args)
+    {
+        if (args.Count == 0 || !state.TryResolveSlot(args[0], out string slotKey))
+        {
+            return false;
+        }
+
+        float alpha = state.GetAlpha(StageState.NodeKeyOf(slotKey, "CharacterPortraitSprite_Root"));
+        return alpha > 0.001f && alpha < 0.999f;
+    }
+
     private static void ProjectSlots(MiniStageFold.FoldState fold, StageState core)
     {
         foreach (string slotKey in core.Slots)

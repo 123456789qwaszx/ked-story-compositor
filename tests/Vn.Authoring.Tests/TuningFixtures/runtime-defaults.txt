@@ -1,6 +1,6 @@
-# 런타임 파서 표가 생략된 인자에 쓰는 값 — 실측 스냅샷 (2026-11-04).
+# 런타임 파서 표가 생략된 인자에 쓰는 값 — 실측 스냅샷 (2026-11-07, dev @ bb90f3dd).
 #
-# 정본: ked-presentation-runtime/Assets/Ked.Presentation/Runtime/Commands/StageCommandParser/StageCommandParser.Table.cs
+# 정본: ked-presentation-runtime/Assets/Ked.Presentation/Stage/Grammar/StageCommandParser.Table.cs
 #   의 c.Arg(i, "기본") · Float(c, i, 기본) · Int(c, i, 기본). 상수는 값으로 푼다(그 폴더의 const ·
 #   ScreenNoisePresetDBSO.DefaultPresetKey = "default" · MotionModeToken.Relative = "relative").
 #   pause는 표에 기본이 없고 StageCommandParser.Control.cs의 DefaultPauseSeconds(0.18)가 쓰인다.
@@ -27,12 +27,7 @@ scale_by 2 0.4s
 move_reset 1 0.4s
 rotate_reset 1 0.4s
 scale_reset 1 0.4s
-gesture 1 0u
-gesture 2 0u
-gesture 3 12fr
 motion 2 relative
-char_to 1 stage00
-char_to 2 mid
 shot_focus_to 1 body
 shot_focus_to 2 center
 shot_focus_to 3 2.5
@@ -65,6 +60,8 @@ place_right 2 0fr
 size 2 bust
 size 3 10fr
 size_reset 1 0
+fade 1 1
+fade 2 14fr
 fade_in 1 14fr
 fade_out 1 14fr
 slide_in 1 left

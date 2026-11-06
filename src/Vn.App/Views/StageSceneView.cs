@@ -1007,34 +1007,14 @@ internal sealed class StageSceneView : UserControl
                 }
                 else if (string.Equals(parameter.Type, "ease", StringComparison.Ordinal))
                 {
-                    // 이징 칸(place·size·회전에도 있다) — 이동과
-                    // 같은 선택기다: 곡선 미리보기 + 커스텀 곡선(@이름) 편집까지.
+                    // 이징 칸(place·size·회전에도 있다) — 이동과 같은 선택기다.
                     // 미지정 기본은 런타임 스펙 그대로 EaseKindOf(null)가 말한다.
                     host.Children.Add(BuildEaseSelector(
                         context.PresentationNodeId,
                         command.CommandId,
                         written.Length > 0 ? written : null,
-                        CurveKeysOf(written),
                         parameter.Name,
                         StageMotionPlan.EaseKindOf(null).ToString()));
-                }
-                else if (string.Equals(parameter.Type, "oscillation", StringComparison.Ordinal))
-                {
-                    // 진동 칸 — 같은 선택기이되 <b>핑퐁</b>으로 그린다.
-                    // 표준 이징이 왕복의 절반으로 읽히므로 35종이 그대로 몸짓이 되고,
-                    // [곡선 편집…]은 그 핑퐁을 구워 열어 준다(끝점이 (0,0)·(1,0)이라
-                    // 구운 결과가 그대로 유효한 진동 곡선이다).
-                    //
-                    // 기본값은 <c>OutSine</c>이다 — 빈 토큰의 기본 혹 sin(πt)와
-                    // <b>같은 함수</b>라(오차 0) 고르면 인자가 지워지고 텍스트가 안 늘어난다.
-                    host.Children.Add(BuildEaseSelector(
-                        context.PresentationNodeId,
-                        command.CommandId,
-                        written.Length > 0 ? written : null,
-                        CurveKeysOf(written),
-                        parameter.Name,
-                        EaseKind.OutSine.ToString(),
-                        CurveKind.Oscillation));
                 }
                 else if (!ArgumentTokenCandidates.IsStageTargetType(parameter.Type) &&
                          ArgumentTokenCandidates.For(parameter.Type) is { Count: > 0 } candidates)
@@ -1134,16 +1114,6 @@ internal sealed class StageSceneView : UserControl
 
         return name.Length > 0 ? number + " (" + name + ")" : number;
     }
-
-    /// <summary>
-    /// <c>@이름</c>이면 프로젝트 곡선의 키. 못 찾으면 null — 런타임과 같은 폴백이고,
-    /// 내보내기 검증이 그 어긋남을 막는다(계획이 쓰는 규칙과 같은 자리).
-    /// </summary>
-    private IReadOnlyList<CurveKey>? CurveKeysOf(string? ease) =>
-        ease is ['@', .. var name]
-            ? _session?.Project.EaseCurves.FirstOrDefault(curve =>
-                string.Equals(curve.Name, name, StringComparison.Ordinal))?.Keys
-            : null;
 
     /// <summary>프리셋 토큰 한 줄 — 고르면 그 인자만 바뀐다(같은 커맨드 인자 수정 통로).</summary>
     private Control BuildTokenSelector(
@@ -2124,7 +2094,7 @@ internal sealed class StageSceneView : UserControl
         if (motion.EaseParameterName is { } easeParameter)
         {
             host.Children.Add(BuildEaseSelector(
-                context.PresentationNodeId, cue.CommandId, cue.Ease, cue.CurveKeys,
+                context.PresentationNodeId, cue.CommandId, cue.Ease,
                 easeParameter, motion.DefaultEase));
         }
     }
@@ -2132,39 +2102,18 @@ internal sealed class StageSceneView : UserControl
     /// <summary>
     /// 이징 선택기 — 후보는 코어 <see cref="EaseKind"/> 어휘 그대로이고, 옆의 곡선
     /// 미리보기는 재생이 쓰는 그 <see cref="EaseFunctions"/>로 그린다(사본 없음 — 선택기가
-    /// 보여 주는 모양 = 재생이 타는 모양). <b>기본값(OutCubic)을 고르면 인자를 지운다</b> —
-    /// 다섯째 토큰이 생략돼 기존 대본과의 diff가 최소가 된다.
+    /// 보여 주는 모양 = 재생이 타는 모양). <b>기본값을 고르면 인자를 지운다</b> —
+    /// 토큰이 생략돼 기존 대본과의 diff가 최소가 된다.
     /// </summary>
     private Control BuildEaseSelector(
         string presentationNodeId,
         string commandId,
         string? ease,
-        IReadOnlyList<CurveKey>? curveKeys,
         string easeParameter,
-        string? defaultEase,
-        CurveKind curveKind = CurveKind.Motion)
+        string? defaultEase)
     {
-        // 진동 칸은 같은 선택기를 쓰되 <b>모양을 핑퐁으로</b> 그린다 — 표준 이징이
-        // 왕복의 절반으로 읽히기 때문이다. 미리보기가 재생과 같은
-        // 코어 함수를 지나므로 고를 때 보이는 것이 그대로 나온다.
-        bool oscillation = curveKind == CurveKind.Oscillation;
-        Func<EaseKind, float, float> Shape = oscillation
-            ? OscillationFunctions.PingPong
-            : EaseFunctions.Evaluate;
-
-        // 안 적었을 때 콤보가 짚을 자리 — <b>종류마다 다르다</b>. 이동은 런타임 스펙
-        // 기본 OutCubic이고, 진동은 <c>OutSine</c>이다(빈 토큰의 기본 혹 sin(πt)와 같은
-        // 함수라 오차 0). 여기서 이동 기본을 쓰면 "안 적었는데 OutCubic이라고 적힌"
-        // 화면이 되어 실제 재생과 어긋난다.
-        EaseKind Current(string? token) =>
-            Enum.TryParse(token, ignoreCase: true, out EaseKind parsed)
-                ? parsed
-                : oscillation ? EaseKind.OutSine : EaseKindOf(null);
-        // 커스텀(커맨드 소유 곡선)이면 콤보 첫 칸이 그것이다 — 선택 없음(-1)으로
-        // 두면 "지금 쓰이는 ease가 안 보이는" 화면이 된다.
-        bool isCustom = ease is ['@', ..];
-        string[] enumNames = Enum.GetNames<EaseKind>();
-        string[] candidates = isCustom ? ["커스텀 곡선", .. enumNames] : enumNames;
+        string[] names = Enum.GetNames<EaseKind>();
+        EaseKind current = Enum.TryParse(ease, ignoreCase: true, out EaseKind parsed) ? parsed : EaseKindOf(null);
 
         var curvePreview = new Avalonia.Controls.Shapes.Polyline
         {
@@ -2175,7 +2124,7 @@ internal sealed class StageSceneView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        void DrawShape(Func<float, float> shape)
+        void DrawShape(EaseKind kind)
         {
             const int sampleCount = 32;
             var points = new Avalonia.Points();
@@ -2183,35 +2132,24 @@ internal sealed class StageSceneView : UserControl
             for (int i = 0; i <= sampleCount; i++)
             {
                 float t = i / (float)sampleCount;
-                // Back·Elastic·커스텀이 [0,1]을 벗어나므로 여유를 두고 세로를 뒤집는다.
-                points.Add(new Point(t * 44, 26 - Math.Clamp(shape(t), -0.25f, 1.25f) * 18 - 4));
+                // Back·Elastic이 [0,1]을 벗어나므로 여유를 두고 세로를 뒤집는다.
+                points.Add(new Point(t * 44, 26 - Math.Clamp(EaseFunctions.Evaluate(kind, t), -0.25f, 1.25f) * 18 - 4));
             }
 
             curvePreview.Points = points;
         }
 
-        if (isCustom && curveKeys is { Count: >= 2 } customKeys)
-        {
-            CurveKey[] keys = customKeys as CurveKey[] ?? customKeys.ToArray();
-            DrawShape(t => CurveFunctions.Evaluate(keys, t));
-        }
-        else
-        {
-            EaseKind current = Current(ease);
-            DrawShape(t => Shape(current, t));
-        }
+        DrawShape(current);
 
         var combo = new ComboBox
         {
-            ItemsSource = candidates,
-            SelectedIndex = isCustom ? 0 : Array.IndexOf(enumNames, Current(ease).ToString()),
+            ItemsSource = names,
+            SelectedIndex = Array.IndexOf(names, current.ToString()),
             FontSize = 10,
             MinWidth = 110,
             VerticalAlignment = VerticalAlignment.Center
         };
-        ToolTip.SetTip(combo, isCustom
-            ? "이 커맨드의 커스텀 곡선입니다. 표준 이징을 고르면 커스텀을 버리고 되돌아갑니다."
-            : "이징 곡선 — 미리보기 모양 그대로 재생됩니다. 기본(OutCubic)을 고르면 텍스트에서 생략됩니다.");
+        ToolTip.SetTip(combo, "이징 곡선 — 미리보기 모양 그대로 재생됩니다. 기본값을 고르면 텍스트에서 생략됩니다.");
 
         combo.SelectionChanged += (_, _) =>
         {
@@ -2220,14 +2158,8 @@ internal sealed class StageSceneView : UserControl
                 return;
             }
 
-            string selected = candidates[combo.SelectedIndex];
-
-            if (string.Equals(selected, "커스텀 곡선", StringComparison.Ordinal))
-            {
-                return; // 이미 커스텀 — 되돌아온 선택은 편집이 아니다.
-            }
-
-            DrawShape(t => Shape(Enum.Parse<EaseKind>(selected), t));
+            string selected = names[combo.SelectedIndex];
+            DrawShape(Enum.Parse<EaseKind>(selected));
 
             // 기본값 = 생략 (빈 값이 인자를 지운다 — SetPresentationCommandArgument 규약).
             string? token = string.Equals(selected, defaultEase, StringComparison.OrdinalIgnoreCase)
@@ -2236,37 +2168,13 @@ internal sealed class StageSceneView : UserControl
 
             UiGuard.Run(_session, "이징 선택", () =>
             {
-                if (isCustom)
-                {
-                    // 표준으로 복귀 = 소유 곡선 폐기(보관함 사본은 남는다).
-                    EaseCurveCommandActions.DiscardOwned(
-                        _session.Editor, presentationNodeId, commandId, easeParameter, token);
-                }
-                else
-                {
-                    _session.Editor.SetPresentationCommandArgument(
-                        presentationNodeId, commandId, easeParameter, token);
-                }
-
+                _session.Editor.SetPresentationCommandArgument(
+                    presentationNodeId, commandId, easeParameter, token);
                 ManipulationApplied?.Invoke();
             });
         };
 
-        // 곡선 편집 — 마야처럼 키를 줘서 커스텀한다. 선택한 이징에서
-        // 출발해 키를 만진다. 저장은 프로젝트 곡선 + 커맨드 인자 @이름이다.
-        var editButton = new Button
-        {
-            Content = "곡선 편집…",
-            FontSize = 10,
-            Padding = new Thickness(6, 2),
-            Margin = new Thickness(4, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        ToolTip.SetTip(editButton, "이 곡선에서 출발해 키를 만듭니다 — 저장하면 커스텀 곡선(@이름)이 됩니다.");
-        editButton.Click += (_, _) =>
-            ShowCurveEditorWindow(presentationNodeId, commandId, ease, easeParameter, curveKind);
-
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         var label = new TextBlock
         {
             Text = "곡선",
@@ -2279,56 +2187,11 @@ internal sealed class StageSceneView : UserControl
         Grid.SetColumn(label, 0);
         Grid.SetColumn(combo, 1);
         Grid.SetColumn(curvePreview, 2);
-        Grid.SetColumn(editButton, 3);
         row.Children.Add(label);
         row.Children.Add(combo);
         row.Children.Add(curvePreview);
-        row.Children.Add(editButton);
 
         return row;
-    }
-    /// <summary>곡선 편집 분리 창 — 도킹·분리 무대가 각자 하나씩 갖고, 닫으면 비운다.</summary>
-    private EaseCurveWindow? _curveWindow;
-
-    /// <summary>
-    /// 곡선 편집을 별도 창으로 연다 — 조작 콘솔 팝업 안에서는 캔버스가 스크롤 껍데기에
-    /// 갇혀 동작하지 않는다.
-    /// 이미 열려 있으면 그 창이 새 커맨드로 갈아탄다. 편집 규칙(열면 소유 곡선 생성 ·
-    /// 실시간 커밋 · 보관함 복사)은 창이 진다 — <see cref="EaseCurveWindow"/>.
-    /// </summary>
-    private void ShowCurveEditorWindow(
-        string presentationNodeId, string commandId, string? ease, string easeParameter,
-        CurveKind curveKind = CurveKind.Motion)
-    {
-        if (_session is null || _request?.EditContext is not { Editable: true })
-        {
-            return;
-        }
-
-        if (_curveWindow is null)
-        {
-            _curveWindow = new EaseCurveWindow();
-            _curveWindow.Closed += (_, _) => _curveWindow = null;
-            _curveWindow.ShowFor(
-                _session, presentationNodeId, commandId, ease, easeParameter,
-                () => ManipulationApplied?.Invoke(), curveKind);
-
-            if (VisualRoot is Window owner)
-            {
-                _curveWindow.Show(owner);
-            }
-            else
-            {
-                _curveWindow.Show();
-            }
-        }
-        else
-        {
-            _curveWindow.ShowFor(
-                _session, presentationNodeId, commandId, ease, easeParameter,
-                () => ManipulationApplied?.Invoke(), curveKind);
-            _curveWindow.Activate();
-        }
     }
 
     /// <summary>

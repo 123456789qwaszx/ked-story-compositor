@@ -1,7 +1,8 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 무대 상태의 축들. 리듀서가 이 위에서 돌기 전에 축 자체의 규약을 고정한다.
@@ -214,16 +215,16 @@ namespace Ked.Presentation.Core.Tests
             Assert.That(state.GetAlpha("c1/CharacterPortraitSprite_Root"), Is.EqualTo(0f));
         }
 
-        // ── 클레임 라우팅 ────────────────────────────────────────────
+        // ── 타깃 라우팅 ────────────────────────────────────────────
 
         [Test]
-        public void 트랜스폼_클레임은_트리로_alpha_클레임은_가시성_축으로_간다()
+        public void 트랜스폼_타깃은_트리로_alpha_타깃은_가시성_축으로_간다()
         {
             StageState state = NewState();
             state.Nodes.Add("c1/CharSlot_Track", null, RectNodeState.StretchFull);
 
-            state.Apply(StageNodeClaim.AnchoredPosition("c1/CharSlot_Track", new Vec2(30f, -10f)));
-            state.Apply(FadeOutReduction.Reduce("c1/CharacterPortraitSprite_Root"));
+            state.Apply(NodeTarget.AnchoredPosition("c1/CharSlot_Track", new Vec2(30f, -10f)));
+            state.Apply(NodeTargets.FadeOut("c1/CharacterPortraitSprite_Root"));
 
             Assert.That(state.Nodes.GetState("c1/CharSlot_Track").AnchoredPosition,
                 Is.EqualTo(new Vec2(30f, -10f)));

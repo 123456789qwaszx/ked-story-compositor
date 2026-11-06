@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 하네스 부품 둘: 원문 추출기와 상태 비교기.

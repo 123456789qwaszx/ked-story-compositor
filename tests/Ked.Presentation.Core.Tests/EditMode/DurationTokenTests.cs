@@ -1,6 +1,7 @@
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// Nfr = N/24초, Ns = N초, 단위 없는 N = N초(하위호환). 결과는 0으로 클램프.

@@ -260,4 +260,25 @@ public sealed class SlidePreviewTests
         Assert.Contains(legacy.Unhandled, entry =>
             string.Equals(entry.CommandName, "slide_out", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void slide의_ease와_punch_인자가_계획에_실린다()
+    {
+        // 런타임 파서와 같은 규칙 — 적힌 이징 이름, 비었거나 못 읽으면 종류별 기본(등장 OutCubic).
+        MotionTween bare = Assert.Single(PlanOf(
+            Command("char_rig_presentation.slide_in", ("slot", "c1"))).Tweens);
+        Assert.Equal("OutCubic", bare.Ease);
+        Assert.NotNull(bare.Punch);
+        Assert.True(bare.Punch!.Ratio > 0);
+
+        MotionTween tuned = Assert.Single(PlanOf(
+            Command("char_rig_presentation.slide_in", ("slot", "c1"), ("ease", "Linear"), ("punch", "0u"))).Tweens);
+        Assert.Equal("Linear", tuned.Ease);
+        Assert.Equal(0, tuned.Punch!.Ratio, 6);
+
+        // 못 읽는 이징 이름은 종류별 기본으로 물러선다(런타임 YarnEaseParser.Parse의 fallback).
+        MotionTween unknown = Assert.Single(PlanOf(
+            Command("char_rig_presentation.slide_out", ("slot", "c1"), ("ease", "Bogus"))).Tweens);
+        Assert.Equal("InCubic", unknown.Ease);
+    }
 }

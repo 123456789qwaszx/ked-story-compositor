@@ -1,6 +1,7 @@
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 값 계층의 골든. 여기 있는 성질이 깨지면 그 위 좌표 계산은 볼 필요도 없다.

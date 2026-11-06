@@ -214,15 +214,15 @@ namespace Ked.Presentation.Core
                 : "";
 
         /// <summary>actor — 별칭 기호("@3")를 캐릭터/슬롯 키에 잇는다.</summary>
-        public void SetAlias(string aliasSymbol, string targetKey)
+        public void SetAlias(string aliasSymbol, string roleKey)
         {
             if (string.IsNullOrEmpty(aliasSymbol))
                 throw new ArgumentException("별칭 기호가 비어 있다.", nameof(aliasSymbol));
 
-            if (string.IsNullOrEmpty(targetKey))
-                throw new ArgumentException("별칭 대상이 비어 있다.", nameof(targetKey));
+            if (string.IsNullOrEmpty(roleKey))
+                throw new ArgumentException("별칭 대상이 비어 있다.", nameof(roleKey));
 
-            _aliases[aliasSymbol] = targetKey;
+            _aliases[aliasSymbol] = roleKey;
         }
 
         /// <summary>슬롯에 앉은 캐릭터 키. 배역이 없으면 false.</summary>
@@ -238,29 +238,29 @@ namespace Ked.Presentation.Core
         /// <summary>
         /// 커맨드 대상 키 → 슬롯 키.
         ///
-        /// 해석 순서(런타임 CharacterRigTargetResolver.ResolveRigKeyByPolicy와 같다): 별칭을 풀고 →
+        /// 해석 순서(런타임 CharacterRigResolver.ResolveSlotKey와 같다): 별칭을 풀고 →
         /// 캐릭터 키인가(배역 맵) → 슬롯 키인가. 이걸로 "@3"·"parkeunseol"·"c1"이 모두 풀린다.
         /// 한 키가 슬롯 키이면서 캐스팅된 캐릭터 키이면 **캐릭터 쪽**이 이긴다 — 런타임이 그렇다.
         /// </summary>
-        public bool TryResolveSlot(string targetKey, out string slotKey)
+        public bool TryResolveSlot(string roleKey, out string slotKey)
         {
             slotKey = null;
 
-            if (string.IsNullOrEmpty(targetKey))
+            if (string.IsNullOrEmpty(roleKey))
                 return false;
 
-            if (_aliases.TryGetValue(targetKey, out string aliased))
-                targetKey = aliased;
+            if (_aliases.TryGetValue(roleKey, out string aliased))
+                roleKey = aliased;
 
-            if (_slotByCharacter.TryGetValue(targetKey, out string bySlot) && _slots.Contains(bySlot))
+            if (_slotByCharacter.TryGetValue(roleKey, out string bySlot) && _slots.Contains(bySlot))
             {
                 slotKey = bySlot;
                 return true;
             }
 
-            if (_slots.Contains(targetKey))
+            if (_slots.Contains(roleKey))
             {
-                slotKey = targetKey;
+                slotKey = roleKey;
                 return true;
             }
 
@@ -331,21 +331,21 @@ namespace Ked.Presentation.Core
             return new List<float>(depths);
         }
 
-        // ── 클레임 라우팅 ────────────────────────────────────────────
+        // ── 타깃 라우팅 ────────────────────────────────────────────
 
         /// <summary>
-        /// 리덕션 출력을 상태에 접는다. 트랜스폼은 트리로, alpha는 가시성 축으로.
-        /// 클레임이 흐르는 세 갈래 중 "상태 폴드"가 여기다.
+        /// 목표 계산 출력을 상태에 접는다. 트랜스폼은 트리로, alpha는 가시성 축으로.
+        /// 타깃이 흐르는 세 갈래 중 "상태 폴드"가 여기다.
         /// </summary>
-        public void Apply(in StageNodeClaim claim)
+        public void Apply(in NodeTarget target)
         {
-            if (claim.Kind == StageNodeClaimKind.CanvasAlpha)
+            if (target.Kind == NodeTargetKind.CanvasAlpha)
             {
-                SetAlpha(claim.NodeKey, claim.Value.X);
+                SetAlpha(target.NodeKey, target.Value.X);
                 return;
             }
 
-            claim.ApplyTo(Nodes);
+            target.ApplyTo(Nodes);
         }
 
         // ── Unhandled ────────────────────────────────────────────────

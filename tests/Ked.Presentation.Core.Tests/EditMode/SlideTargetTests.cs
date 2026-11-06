@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 슬라이드(등장·퇴장)의 폴드.
     ///
-    /// <b>둘은 대칭이 아니다.</b> 런타임 <c>SlideCommandBase</c>가 등장·퇴장의 차이를
+    /// <b>둘은 대칭이 아니다.</b> 런타임 <c>SlideCommandCharR</c>가 등장·퇴장의 차이를
     /// "현재 위치가 도착점이냐 출발점이냐" 하나로 환원하기 때문이다:
     /// <list type="bullet">
     ///   <item><c>slide_in</c> — 현재 위치가 <b>도착점</b>이므로 <b>순변위 0</b>. 화면 밖
@@ -18,7 +19,7 @@ namespace Ked.Presentation.Core.Tests
     /// 기본값·표적·방향 별칭은 전부 브리지 실측에서 왔다
     /// (<c>CommandBridge.CharRigPresentation.cs</c> · <c>CharRigDirectionParser</c>).
     /// </summary>
-    public sealed class SlideReductionTests
+    public sealed class SlideTargetTests
     {
         private const float Eps = 1e-3f;
 
@@ -163,7 +164,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void 방향_네_낱말이_런타임과_같은_벡터다()
         {
-            // CharRigDirectionParser + SlideCommandBase.DirectionToVector를 합친 것.
+            // CharRigDirectionParser + SlideCommandCharR.DirectionToVector를 합친 것.
             Assert.That(TrackOf(Fold(Cmd("slot", "c1"), Cmd("slide_out", "c1", "left", "1u"))).X,
                 Is.EqualTo(-PixelsPerUnit).Within(Eps));
             Assert.That(TrackOf(Fold(Cmd("slot", "c1"), Cmd("slide_out", "c1", "right", "1u"))).X,
@@ -193,7 +194,7 @@ namespace Ked.Presentation.Core.Tests
         public void 슬라이드는_move_by와_같은_노드를_민다()
         {
             // 표적이 갈리면 둘을 섞어 쓴 라인에서 자리가 어긋난다 — 런타임은 둘 다
-            // CharSlot_Track이다(SlideInCommandSpecCharR.target · MoveByCommandSpecCharR).
+            // CharSlot_Track이다(SlideCommandSpecCharR.node · MoveByCommandSpecCharR).
             StageState slid = Fold(Cmd("slot", "c1"), Cmd("slide_out", "c1", "right", "3u"));
             StageState moved = Fold(Cmd("slot", "c1"), Cmd("move_by", "c1", "+3u", "0u"));
 

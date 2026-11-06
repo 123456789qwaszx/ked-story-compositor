@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// bg_* 폴드 골든 — 배경은 캐스팅하지 않은 캐릭터 슬롯이다(StageReducer.Background.cs).
@@ -13,7 +14,7 @@ namespace Ked.Presentation.Core.Tests
     ///   · 지운 어휘(bg_size·bg_place)는 Unhandled로 소리를 낸다 — 조용히 통과하지 않는다.
     /// 합성 리그는 StageReducerTests와 같은 부모 사슬이다.
     /// </summary>
-    public sealed class BackgroundReductionTests
+    public sealed class BackgroundTargetTests
     {
         private const float Eps = 1e-3f;
 
@@ -318,7 +319,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void 캐스팅된_캐릭터_키는_슬롯_키보다_먼저_풀린다()
         {
-            // 런타임 CharacterRigTargetResolver와 같은 순서 — 캐릭터 키가 이긴다.
+            // 런타임 CharacterRigResolver와 같은 순서 — 캐릭터 키가 이긴다.
             // 배경 키를 캐릭터 키와 같게 지으면 bg_* 명령이 그 캐릭터의 슬롯으로 간다(런타임은 세울 때 경고한다).
             StageState state = Fold(
                 Cmd("slot", "s1"),

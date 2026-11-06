@@ -6,7 +6,7 @@
     "rigs": [
         {
             "rigKind": "character",
-            "sourcePrefab": "Assets/Ked.Presentation/Prefabs/CharacterRig.prefab",
+            "sourcePrefab": "Assets/Ked.Presentation/Stage/Prefabs/CharacterRig.prefab",
             "nodes": [
                 {
                     "id": "__root",

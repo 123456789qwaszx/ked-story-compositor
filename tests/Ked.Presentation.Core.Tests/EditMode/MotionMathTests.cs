@@ -1,7 +1,7 @@
 using Ked.Presentation.Core;
 using NUnit.Framework;
 
-// 모션 샘플링·합성·클레임 — 정본이 코어라는 것을 값으로 못 박는다.
+// 모션 샘플링·합성·타깃 — 정본이 코어라는 것을 값으로 못 박는다.
 // 재생 샘플러·툴 프리뷰·리듀서가 전부 이 함수를 지난다. mode는 채널이 아니라 호출부가 준다(motions/2).
 public class MotionMathTests
 {
@@ -120,21 +120,21 @@ public class MotionMathTests
     }
 
     [Test]
-    public void 클레임은_종류대로_나가고_값은_끝값이다()
+    public void 타깃은_종류대로_나가고_값은_끝값이다()
     {
         Vec3 start = new(1f, 2f, 3f);
 
-        StageNodeClaim pos = MotionMath.ClaimFor(Channel(MotionChannelKind.Position, x: Rise10), Rel, "c1/N", start);
-        StageNodeClaim scale = MotionMath.ClaimFor(Channel(MotionChannelKind.Scale, x: From5To7, y: From5To7), Abs, "c1/N", start);
-        StageNodeClaim euler = MotionMath.ClaimFor(Channel(MotionChannelKind.Euler, z: From5To7), Abs, "c1/N", start);
+        NodeTarget pos = MotionMath.TargetFor(Channel(MotionChannelKind.Position, x: Rise10), Rel, "c1/N", start);
+        NodeTarget scale = MotionMath.TargetFor(Channel(MotionChannelKind.Scale, x: From5To7, y: From5To7), Abs, "c1/N", start);
+        NodeTarget euler = MotionMath.TargetFor(Channel(MotionChannelKind.Euler, z: From5To7), Abs, "c1/N", start);
 
-        Assert.AreEqual(StageNodeClaimKind.AnchoredPosition, pos.Kind);
+        Assert.AreEqual(NodeTargetKind.AnchoredPosition, pos.Kind);
         Assert.AreEqual(new Vec2(11f, 2f), pos.Value.XY);
 
-        Assert.AreEqual(StageNodeClaimKind.LocalScaleXY, scale.Kind);
+        Assert.AreEqual(NodeTargetKind.LocalScaleXY, scale.Kind);
         Assert.AreEqual(new Vec2(7f, 7f), scale.Value.XY);
 
-        Assert.AreEqual(StageNodeClaimKind.LocalEulerAngles, euler.Kind);
+        Assert.AreEqual(NodeTargetKind.LocalEulerAngles, euler.Kind);
         Assert.AreEqual(new Vec3(1f, 2f, 7f), euler.Value);
         Assert.AreEqual("c1/N", euler.NodeKey);
     }

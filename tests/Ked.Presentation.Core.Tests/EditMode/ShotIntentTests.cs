@@ -1,15 +1,16 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
-    /// 샷 리덕션. 기대값은 종전 BuildTargetState 본문에서 온다.
+    /// 샷 목표 계산. 기대값은 종전 BuildTargetState 본문에서 온다.
     ///
     /// zoom_focus는 값보다 **명중**이 정의다: 접은 샷을 정방향 식(SolveLayer → ProjectToRigSpace)에 넣어
     /// 그 점이 원하는 화면 지점에 보이는지 본다. 층마다 반응이 달라도 명중해야 한다.
     /// </summary>
-    public sealed class ShotReductionTests
+    public sealed class ShotIntentTests
     {
         private const float Eps = 1e-4f;
 
@@ -37,12 +38,12 @@ namespace Ked.Presentation.Core.Tests
             Assert.That(ShotIntentMath.EvaluateCameraScale(-4f), Is.EqualTo(0.8f).Within(Eps));
         }
 
-        // ── 단순 리덕션 4종 ──────────────────────────────────────────
+        // ── 단순 목표 계산 4종 ──────────────────────────────────────────
 
         [Test]
         public void shot_zoom은_zoom만_바꾼다()
         {
-            ShotIntentState to = ShotZoomReduction.Reduce(From, 5f);
+            ShotIntentState to = ShotIntents.Zoom(From, 5f);
 
             Assert.That(to.Zoom, Is.EqualTo(5f));
             AssertVec2(to.PanInRigSpace, From.PanInRigSpace, "pan 유지");
@@ -52,7 +53,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void shot_track은_현재_pan에_더한다()
         {
-            ShotIntentState to = ShotTrackReduction.Reduce(From, new Vec2(20f, 5f));
+            ShotIntentState to = ShotIntents.Track(From, new Vec2(20f, 5f));
 
             Assert.That(to.Zoom, Is.EqualTo(From.Zoom));
             AssertVec2(to.PanInRigSpace, new Vec2(50f, -5f), "pan 가산");
@@ -62,7 +63,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void shot_to는_zoom과_pan을_절대값으로_바꾼다()
         {
-            ShotIntentState to = ShotToReduction.Reduce(From, 4f, new Vec2(-80f, 60f));
+            ShotIntentState to = ShotIntents.To(From, 4f, new Vec2(-80f, 60f));
 
             Assert.That(to.Zoom, Is.EqualTo(4f));
             AssertVec2(to.PanInRigSpace, new Vec2(-80f, 60f), "pan 절대");
@@ -74,7 +75,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void shot_reset은_기본_샷이다()
         {
-            ShotIntentState to = ShotResetReduction.Reduce();
+            ShotIntentState to = ShotIntents.Reset();
 
             Assert.That(to.Zoom, Is.EqualTo(0f));
             AssertVec2(to.PanInRigSpace, Vec2.Zero, "pan 0");
@@ -109,7 +110,7 @@ namespace Ked.Presentation.Core.Tests
             foreach (Vec2 desired in desireds)
             foreach (float zoom in new[] { 2.5f, 6f, -4f })
             {
-                ShotIntentState to = ShotZoomFocusReduction.Reduce(zoom, focus, desired, depth, Curve);
+                ShotIntentState to = ShotIntents.FocusTo(zoom, focus, desired, depth, Curve);
 
                 // 값이 수백 px이라 float 왕복 오차를 1e-3까지 둔다.
                 AssertVec2(SeenAt(in to, focus, depth), desired, $"d={depth} focus={focus} desired={desired} zoom={zoom}", 1e-3f);
@@ -123,7 +124,7 @@ namespace Ked.Presentation.Core.Tests
             // 층 산개의 기준이 되는 점이다. 카메라를 벗길 것이 없다 — 입력이 이미 무대 좌표다.
             Vec2 focus = new(250f, 380f);
 
-            ShotIntentState to = ShotZoomFocusReduction.Reduce(6f, focus, Vec2.Zero, StageLayerLabels.Close, Curve);
+            ShotIntentState to = ShotIntents.FocusTo(6f, focus, Vec2.Zero, StageLayerLabels.Close, Curve);
 
             AssertVec2(to.FocusPointInRigSpace, focus, "논리 focus");
         }
@@ -136,7 +137,7 @@ namespace Ked.Presentation.Core.Tests
             Vec2 desired = new(-460.8f, 0f);
             float scale = ShotIntentMath.EvaluateCameraScale(6f);
 
-            ShotIntentState to = ShotZoomFocusReduction.Reduce(6f, focus, desired, StageLayerLabels.Mid, Curve);
+            ShotIntentState to = ShotIntents.FocusTo(6f, focus, desired, StageLayerLabels.Mid, Curve);
 
             AssertVec2(to.PanInRigSpace, desired - focus * scale, "mid 팬");
         }
@@ -144,12 +145,12 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void mid가_아닌_층에서는_카메라만으로_푼_팬과_다르다()
         {
-            // 층 반응을 빼고 풀면 빗나간다 — 이 리덕션이 층을 보는 이유.
+            // 층 반응을 빼고 풀면 빗나간다 — 이 목표 계산이 층을 보는 이유.
             Vec2 focus = new(-460.8f, 300f);
             float scale = ShotIntentMath.EvaluateCameraScale(2.5f);
             Vec2 cameraOnly = Vec2.Zero - focus * scale;
 
-            ShotIntentState to = ShotZoomFocusReduction.Reduce(2.5f, focus, Vec2.Zero, StageLayerLabels.Close, Curve);
+            ShotIntentState to = ShotIntents.FocusTo(2.5f, focus, Vec2.Zero, StageLayerLabels.Close, Curve);
 
             Assert.That(Math.Abs(to.PanInRigSpace.X - cameraOnly.X), Is.GreaterThan(1f), $"close 팬={to.PanInRigSpace} 카메라만={cameraOnly}");
         }
@@ -161,8 +162,8 @@ namespace Ked.Presentation.Core.Tests
             Vec2 focus = new(120f, 90f);
             Vec2 desired = new(50f, -20f);
 
-            ShotIntentState a = ShotZoomFocusReduction.Reduce(3f, focus, desired, StageLayerLabels.Front, Curve);
-            ShotIntentState b = ShotZoomFocusReduction.Reduce(3f, focus, desired, StageLayerLabels.Front, Curve);
+            ShotIntentState a = ShotIntents.FocusTo(3f, focus, desired, StageLayerLabels.Front, Curve);
+            ShotIntentState b = ShotIntents.FocusTo(3f, focus, desired, StageLayerLabels.Front, Curve);
 
             Assert.That(b.Zoom, Is.EqualTo(a.Zoom));
             AssertVec2(b.PanInRigSpace, a.PanInRigSpace, "pan");

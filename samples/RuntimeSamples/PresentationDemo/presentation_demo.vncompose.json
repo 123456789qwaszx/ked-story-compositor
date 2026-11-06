@@ -446,12 +446,10 @@
             },
             {
               "id": "pc_mqzvc4nw",
-              "definitionId": "char_rig_staging.gesture",
+              "definitionId": "char_rig_staging.motion",
               "arguments": {
-                "duration": "12fr",
-                "slot": "s2",
-                "xAmp": "0u",
-                "yAmp": "0.3u"
+                "motion": "nod",
+                "slot": "s2"
               }
             }
           ]

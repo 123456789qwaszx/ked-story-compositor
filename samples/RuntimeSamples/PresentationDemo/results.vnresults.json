@@ -183,11 +183,7 @@
           "index": 25,
           "lineId": "ln_nrhqqani",
           "revision": 1,
-          "text": "조금 더 보고 갈래",
-          "condition": {
-            "kind": "beginChoice",
-            "option": "op_rdhsissz"
-          }
+          "text": "조금 더 보고 갈래"
         },
         {
           "index": 26,
@@ -200,11 +196,7 @@
           "index": 27,
           "lineId": "ln_awcnxgku",
           "revision": 1,
-          "text": "이제 됐어",
-          "condition": {
-            "kind": "beginNextOption",
-            "option": "op_0fnfwvtk"
-          }
+          "text": "이제 됐어"
         },
         {
           "index": 28,
@@ -217,10 +209,7 @@
           "index": 29,
           "lineId": "ln_bvxtdk3u",
           "revision": 1,
-          "text": "캐릭터 퇴장",
-          "condition": {
-            "kind": "endChoice"
-          }
+          "text": "캐릭터 퇴장"
         }
       ],
       "resultId": "rs_jagr3c27",
@@ -2030,6 +2019,774 @@
       "schemaVersion": 3,
       "contentHash": "sha256:2acd860f125311df9edf4c733ae06c586ef045f5fe6da08f617029b0a7f4b392",
       "publishedAt": "2026-11-04T13:40:36.3999542+00:00"
+    },
+    {
+      "sourceNode": "nd_8ms6gy3t",
+      "sourceNodeName": "Demo_Presentation 연출",
+      "source": {
+        "resultId": "rs_jagr3c27",
+        "version": 2,
+        "contentHash": "sha256:ca8c666d7a4afe570c0b5ae4d1b6276792ec90aee2969a8d1ca4a085535c0195"
+      },
+      "setup": [
+        {
+          "id": "pc_v8n5z4mr",
+          "definitionId": "shot.shot_reset",
+          "arguments": {
+            "duration": "0fr"
+          }
+        },
+        {
+          "id": "pc_fatq4k5u",
+          "definitionId": "screen_effect.screen_vignette_clear",
+          "arguments": {
+            "duration": "0fr"
+          }
+        },
+        {
+          "id": "pc_es6iq4u2",
+          "definitionId": "screen_effect.screen_noise_clear",
+          "arguments": {
+            "duration": "0fr"
+          }
+        },
+        {
+          "id": "pc_8ui9bbzd",
+          "definitionId": "background.bg_spawn",
+          "arguments": {
+            "rigKey": "bg_main",
+            "spriteKey": "class_day"
+          }
+        },
+        {
+          "id": "pc_i94xfju6",
+          "definitionId": "char_rig_cast.slot",
+          "arguments": {
+            "layer": "front",
+            "slotKey": "s1",
+            "stage": "stage00"
+          }
+        },
+        {
+          "id": "pc_771qr87f",
+          "definitionId": "char_rig_cast.cast",
+          "arguments": {
+            "characterKey": "harin",
+            "emotionKey": "1",
+            "slot": "s1",
+            "variantKey": "a"
+          }
+        },
+        {
+          "id": "pc_rrftyz68",
+          "definitionId": "char_rig_cast.slot",
+          "arguments": {
+            "layer": "mid",
+            "slotKey": "s2",
+            "stage": "stage00"
+          }
+        },
+        {
+          "id": "pc_5an0wxxu",
+          "definitionId": "char_rig_cast.cast",
+          "arguments": {
+            "characterKey": "sigure",
+            "emotionKey": "1",
+            "slot": "s2",
+            "variantKey": "a"
+          }
+        },
+        {
+          "id": "pc_fd4k1e9a",
+          "definitionId": "char_rig_cast.slot",
+          "arguments": {
+            "layer": "mid",
+            "slotKey": "s3",
+            "stage": "stage00"
+          }
+        },
+        {
+          "id": "pc_sw7jnh4y",
+          "definitionId": "char_rig_cast.cast",
+          "arguments": {
+            "characterKey": "kasmi",
+            "emotionKey": "1",
+            "slot": "s3",
+            "variantKey": "a"
+          }
+        },
+        {
+          "id": "pc_zvgk078u",
+          "definitionId": "dialogue_box.surface_reset"
+        },
+        {
+          "id": "pc_w15tvxne",
+          "definitionId": "screen_blur.screen_blur_reset"
+        }
+      ],
+      "bindings": [
+        {
+          "lineId": "ln_7u3jtu6n",
+          "commands": [
+            {
+              "id": "pc_6pinsb39",
+              "definitionId": "background.bg_sprite",
+              "arguments": {
+                "rigKey": "bg_main",
+                "spriteKey": "class_day"
+              }
+            },
+            {
+              "id": "pc_bxam0xjh",
+              "definitionId": "background.bg_fade_in",
+              "arguments": {
+                "duration": "24fr",
+                "rigKey": "bg_main"
+              }
+            },
+            {
+              "id": "pc_7cpfd3f6",
+              "definitionId": "audio.bgm",
+              "arguments": {
+                "clipKey": "audio/bgm_idoberg-relaxing-guitar-loop-v5-245859",
+                "fadeDuration": "2s"
+              }
+            },
+            {
+              "id": "pc_f40bd3j1",
+              "definitionId": "control.frame_wait",
+              "arguments": {
+                "n": "12"
+              }
+            },
+            {
+              "id": "pc_s6m7bq10",
+              "definitionId": "char_rig_placement.place_center",
+              "arguments": {
+                "duration": "0fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_0zfbb5bm",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "0fr",
+                "preserveFocus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_nu13nm8m",
+              "definitionId": "char_rig_presentation.fade_in",
+              "arguments": {
+                "duration": "18fr",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_2jfcj5dr",
+          "commands": [
+            {
+              "id": "pc_bem02n9g",
+              "definitionId": "screen_blur.screen_blur",
+              "arguments": {
+                "layer": "far"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_cydaj9ym",
+          "commands": [
+            {
+              "id": "pc_tpcupypn",
+              "definitionId": "screen_blur.screen_blur",
+              "arguments": {
+                "blurRadius": "0.5",
+                "layer": "front"
+              }
+            },
+            {
+              "id": "pc_1t3y5ygi",
+              "definitionId": "char_rig_visual.char_visual_dim",
+              "arguments": {
+                "intensity": "2",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_sjdhaa13",
+              "definitionId": "shot.shot_to",
+              "arguments": {
+                "x": "24u",
+                "zoom": "12"
+              }
+            },
+            {
+              "id": "pc_9wy5xhg7",
+              "definitionId": "char_rig_entrance.show",
+              "arguments": {
+                "slot": "sigure"
+              }
+            },
+            {
+              "id": "pc_yfvy610w",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "12",
+                "slot": "sigure"
+              }
+            },
+            {
+              "id": "pc_jkh4uapj",
+              "definitionId": "char_rig_placement.place_left",
+              "arguments": {
+                "focus": "bust",
+                "slot": "sigure"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_80fvnx4u",
+          "commands": [
+            {
+              "id": "pc_2c6j1nxg",
+              "definitionId": "screen_blur.screen_blur_reset"
+            }
+          ]
+        },
+        {
+          "lineId": "ln_a7r9k13x",
+          "commands": [
+            {
+              "id": "pc_j9qyb267",
+              "definitionId": "line_tag.box_letterbox"
+            }
+          ]
+        },
+        {
+          "lineId": "ln_nf0ieq41",
+          "commands": [
+            {
+              "id": "pc_3m789jfg",
+              "definitionId": "char_rig_placement.place_left",
+              "arguments": {
+                "duration": "33fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_tt3bgmub",
+              "definitionId": "control.frame_wait",
+              "arguments": {
+                "n": "24"
+              }
+            },
+            {
+              "id": "pc_9c07fdk2",
+              "definitionId": "char_rig_placement.place_right",
+              "arguments": {
+                "duration": "33fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_7438zveq",
+              "definitionId": "control.frame_wait",
+              "arguments": {
+                "n": "24"
+              }
+            },
+            {
+              "id": "pc_80qgq55i",
+              "definitionId": "char_rig_placement.place_center",
+              "arguments": {
+                "duration": "33fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_e0km1s3w",
+              "definitionId": "control.frame_wait",
+              "arguments": {
+                "n": "24"
+              }
+            },
+            {
+              "id": "pc_rbpxhha9",
+              "definitionId": "line_tag.box_hide"
+            },
+            {
+              "id": "pc_kr6ttuxe",
+              "definitionId": "line_tag.auto"
+            }
+          ]
+        },
+        {
+          "lineId": "ln_4m8a87j3",
+          "commands": [
+            {
+              "id": "pc_p7pw6z7r",
+              "definitionId": "char_rig_placement.place_left",
+              "arguments": {
+                "duration": "0fr",
+                "focus": "bust",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_9idtfutf",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "0fr",
+                "preserveFocus": "bust",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_40bfqhvu",
+              "definitionId": "char_rig_presentation.slide_in",
+              "arguments": {
+                "direction": "left",
+                "distance": "2u",
+                "duration": "14fr",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_4x5wkasy",
+              "definitionId": "char_rig_presentation.fade_in",
+              "arguments": {
+                "duration": "14fr",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_82vfjsbi",
+              "definitionId": "char_rig_placement.place_right",
+              "arguments": {
+                "duration": "16fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_prgac1qy",
+          "commands": [
+            {
+              "id": "pc_pmxa9ca6",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "front",
+                "duration": "16fr",
+                "preserveFocus": "bust",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_hdksazhc",
+          "commands": [
+            {
+              "id": "pc_gzdze4ah",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "16fr",
+                "preserveFocus": "bust",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_9aib11vh",
+              "definitionId": "char_rig_staging.sibling_front",
+              "arguments": {
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_n44jexpj",
+          "commands": [
+            {
+              "id": "pc_rmqfk862",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "3",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_anizmf84",
+          "commands": [
+            {
+              "id": "pc_gfz5k8v2",
+              "definitionId": "char_rig_presentation.face_swap",
+              "arguments": {
+                "duration": "10fr",
+                "emotion": "05",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_xd9t914r",
+          "commands": [
+            {
+              "id": "pc_xsrisgr9",
+              "definitionId": "char_rig_cast.pose",
+              "arguments": {
+                "slot": "s2",
+                "variantKey": "b"
+              }
+            },
+            {
+              "id": "pc_mqzvc4nw",
+              "definitionId": "char_rig_staging.motion",
+              "arguments": {
+                "motion": "nod",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_f5fsqpgu",
+          "commands": [
+            {
+              "id": "pc_2hmkpn2q",
+              "definitionId": "char_rig_staging.motion",
+              "arguments": {
+                "motion": "nod",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_nrmvr5n2",
+          "commands": [
+            {
+              "id": "pc_hznffc41",
+              "definitionId": "char_rig_staging.motion",
+              "arguments": {
+                "mode": "absolute",
+                "motion": "bow",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_cjzch0sn",
+          "commands": [
+            {
+              "id": "pc_d38xbxdi",
+              "definitionId": "char_rig_placement.place_center",
+              "arguments": {
+                "duration": "16fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_x8r45cck",
+          "commands": [
+            {
+              "id": "pc_i64hj92h",
+              "definitionId": "char_rig_presentation.char_rotate_to",
+              "arguments": {
+                "degree": "0",
+                "duration": "10fr",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_97r130t6",
+              "definitionId": "char_rig_placement.place_right",
+              "arguments": {
+                "duration": "16fr",
+                "focus": "bust",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_5ag43erq",
+          "commands": [
+            {
+              "id": "pc_r33m1x48",
+              "definitionId": "char_rig_visual.char_visual_focus",
+              "arguments": {
+                "duration": "14fr",
+                "intensity": "1",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_kb3c9ag0",
+              "definitionId": "char_rig_visual.char_visual_dim",
+              "arguments": {
+                "duration": "20fr",
+                "intensity": "0.5",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_01mhdu3v",
+          "commands": [
+            {
+              "id": "pc_hrp2xrqt",
+              "definitionId": "screen_blur.screen_blur",
+              "arguments": {
+                "blurRadius": "1",
+                "layer": "far"
+              }
+            },
+            {
+              "id": "pc_ftsz117v",
+              "definitionId": "shot.shot_focus_to",
+              "arguments": {
+                "duration": "30fr",
+                "focus": "face",
+                "screenPoint": "center",
+                "slot": "s1",
+                "zoom": "1.25"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_9nyveem8",
+          "commands": [
+            {
+              "id": "pc_8gedibs2",
+              "definitionId": "shot.shot_reset",
+              "arguments": {
+                "duration": "20fr"
+              }
+            },
+            {
+              "id": "pc_85ekcar3",
+              "definitionId": "screen_blur.screen_blur_reset"
+            },
+            {
+              "id": "pc_2wu6nsmt",
+              "definitionId": "char_rig_visual.char_visual_clear",
+              "arguments": {
+                "duration": "10fr",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_0cgxcq91",
+              "definitionId": "char_rig_visual.char_visual_clear",
+              "arguments": {
+                "duration": "10fr",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_jam87iua",
+          "commands": [
+            {
+              "id": "pc_hz5bhbu4",
+              "definitionId": "screen_effect.screen_vignette",
+              "arguments": {
+                "duration": "20fr",
+                "intensity": "0.6",
+                "preset": "dream"
+              }
+            },
+            {
+              "id": "pc_ut4knw0i",
+              "definitionId": "screen_effect.screen_noise",
+              "arguments": {
+                "duration": "20fr",
+                "intensity": "0.4",
+                "preset": "memory"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_8bpnwdqw",
+          "commands": [
+            {
+              "id": "pc_ayy3wm0f",
+              "definitionId": "screen_effect.screen_noise_clear"
+            },
+            {
+              "id": "pc_7dk3i4ca",
+              "definitionId": "screen_effect.screen_vignette_clear",
+              "arguments": {
+                "duration": "12fr"
+              }
+            },
+            {
+              "id": "pc_7jwmpjxi",
+              "definitionId": "audio.sfx",
+              "arguments": {
+                "clipKey": "audio/sfx_dragon-studio-notification-sound-effect-372475"
+              }
+            },
+            {
+              "id": "pc_bkgmdd2d",
+              "definitionId": "screen_effect.screen_flash",
+              "arguments": {
+                "intensity": "0.45",
+                "preset": "soft"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_z94y5hi1",
+          "commands": [
+            {
+              "id": "pc_vf5004yq",
+              "definitionId": "transition.tx",
+              "arguments": {
+                "duration": "14fr",
+                "preset": "daze_close",
+                "stage": "stage00"
+              }
+            },
+            {
+              "id": "pc_4fuwtqms",
+              "definitionId": "background.bg_sprite",
+              "arguments": {
+                "rigKey": "bg_main",
+                "spriteKey": "studio_evening"
+              }
+            },
+            {
+              "id": "pc_5tzdfk7u",
+              "definitionId": "char_rig_placement.place_center",
+              "arguments": {
+                "duration": "0fr",
+                "focus": "bust",
+                "slot": "s3"
+              }
+            },
+            {
+              "id": "pc_4r6nuumz",
+              "definitionId": "char_rig_depth.size",
+              "arguments": {
+                "depth": "mid",
+                "duration": "0fr",
+                "preserveFocus": "bust",
+                "slot": "s3"
+              }
+            },
+            {
+              "id": "pc_ai95eymf",
+              "definitionId": "char_rig_presentation.fade_in",
+              "arguments": {
+                "duration": "0fr",
+                "slot": "s3"
+              }
+            },
+            {
+              "id": "pc_znpwvcbk",
+              "definitionId": "transition.tx",
+              "arguments": {
+                "duration": "16fr",
+                "preset": "daze_open",
+                "stage": "stage00"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_bvxtdk3u",
+          "commands": [
+            {
+              "id": "pc_sykqui1r",
+              "definitionId": "char_rig_presentation.fade_out",
+              "arguments": {
+                "duration": "12fr",
+                "slot": "s3"
+              }
+            },
+            {
+              "id": "pc_hjcpn4w1",
+              "definitionId": "char_rig_presentation.fade_out",
+              "arguments": {
+                "duration": "12fr",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_68bhkctq",
+              "definitionId": "char_rig_presentation.fade_out",
+              "arguments": {
+                "duration": "12fr",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_k6wf857k",
+              "definitionId": "audio.stop_bgm",
+              "arguments": {
+                "fadeDuration": "2s"
+              }
+            },
+            {
+              "id": "pc_1pn7r1hd",
+              "definitionId": "background.bg_fade_out",
+              "arguments": {
+                "duration": "20fr",
+                "rigKey": "bg_main"
+              }
+            },
+            {
+              "id": "pc_g2z7eu02",
+              "definitionId": "control.frame_wait",
+              "arguments": {
+                "n": "24"
+              }
+            },
+            {
+              "id": "pc_kqsrgj6k",
+              "definitionId": "line_tag.box_hide"
+            },
+            {
+              "id": "pc_n08r4u4y",
+              "definitionId": "line_tag.auto"
+            }
+          ]
+        }
+      ],
+      "resultId": "rs_vk4fe975",
+      "version": 4,
+      "schemaVersion": 3,
+      "contentHash": "sha256:aae9fc6c37578a8624bea46be0fbfd925fe10835958e845aada3a5bff1920e2a",
+      "publishedAt": "2026-11-06T16:11:30.0950930+00:00"
     }
   ]
 }

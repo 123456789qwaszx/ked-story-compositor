@@ -70,19 +70,19 @@ namespace Ked.Presentation.Core
         }
 
         /// <summary>
-        /// 채널의 클레임 — 장부 게시·트윈 종점·상태 폴드 세 갈래가 같은 값을 본다. commit 모션에서만 뜻이 있다
+        /// 채널의 타깃 — 장부 게시·트윈 종점·상태 폴드 세 갈래가 같은 값을 본다. commit 모션에서만 뜻이 있다
         /// (restore는 남기는 것이 없다 — 호출부가 End를 보고 부르지 않는다).
-        /// 종류가 StageNodeClaimKind로 가는 자리는 여기 하나다.
+        /// 종류가 NodeTargetKind로 가는 자리는 여기 하나다.
         /// </summary>
-        public static StageNodeClaim ClaimFor(in MotionChannel channel, MotionChannelMode mode, string nodeKey, Vec3 start)
+        public static NodeTarget TargetFor(in MotionChannel channel, MotionChannelMode mode, string nodeKey, Vec3 start)
         {
             Vec3 end = EndValue(channel, mode, start);
 
             return channel.Kind switch
             {
-                MotionChannelKind.Position => StageNodeClaim.AnchoredPosition(nodeKey, end.XY),
-                MotionChannelKind.Scale => StageNodeClaim.LocalScaleXY(nodeKey, end.XY),
-                MotionChannelKind.Euler => StageNodeClaim.LocalEuler(nodeKey, end),
+                MotionChannelKind.Position => NodeTarget.AnchoredPosition(nodeKey, end.XY),
+                MotionChannelKind.Scale => NodeTarget.LocalScaleXY(nodeKey, end.XY),
+                MotionChannelKind.Euler => NodeTarget.LocalEuler(nodeKey, end),
                 _ => throw new System.ArgumentOutOfRangeException(nameof(channel), channel.Kind, "모르는 채널 종류"),
             };
         }

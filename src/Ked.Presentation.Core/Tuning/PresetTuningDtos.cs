@@ -82,7 +82,7 @@ namespace Ked.Presentation.Core
         public AnimationCurveDto scaleCurve;
 
         // farPreserveFocus 등 보존 프리셋은 담지 않는다 — 프리셋 경로와 같은 이유로
-        // 런타임이 커맨드 인자로 덮어쓰는 사장 데이터다(SetDepthStageReduction 주석 참조).
+        // 런타임이 커맨드 인자로 덮어쓰는 사장 데이터다(NodeTargets.TrySetDepth 주석 참조).
 
         public bool TryResolve(float level, out float depthY, out float depthScale)
         {

@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 트리의 불변식과 좌표 조회.

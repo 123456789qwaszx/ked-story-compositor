@@ -1,7 +1,8 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 정착 focus 수학 — 값이 아니라 **성질**로 고정한다.

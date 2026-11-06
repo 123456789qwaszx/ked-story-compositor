@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 초상 치수 조회의 골든 — 런타임 PortraitResolver의 규약을 그대로 고정한다.
@@ -165,7 +166,7 @@ namespace Ked.Presentation.Core.Tests
         {
             // 생략된 인자의 기본값("e1")과는 다른 규칙이다 — 런타임 ShowFaceAliasParser 그대로.
             // 다만 원문 추출기가 빈 토큰을 버리므로 폴드에서 이 갈래는 닿지 않는다
-            // (reduction-boundary.md의 알려진 한계).
+            // (target-boundary.md의 알려진 한계).
             Assert.That(PortraitKeyNormalizer.ParseShowFaceAlias(""), Is.EqualTo("2"));
             Assert.That(PortraitKeyNormalizer.ParseShowFaceAlias(null), Is.EqualTo("2"));
         }

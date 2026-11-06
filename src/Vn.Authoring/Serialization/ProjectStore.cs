@@ -237,7 +237,6 @@ public static class ProjectStore
         //    않는다(WriterSpeaker는 가변이라 복제한다).
         project.Chapters.AddRange(manifest.Chapters);
         project.WriterSpeakers.AddRange(manifest.WriterSpeakers.Select(speaker => speaker.Clone()));
-        project.EaseCurves.AddRange(manifest.EaseCurves.Select(curve => curve.Clone()));
         project.Compositions.AddRange(manifest.Compositions.Select(item => item.Clone()));
 
         JsonSupport.ValidateProject(project);

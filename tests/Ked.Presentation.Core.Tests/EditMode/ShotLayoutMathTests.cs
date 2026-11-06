@@ -1,7 +1,8 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 샷 식의 순수 산수. 기대값은 종전 PresentationResponseMath · PresentationCameraRootApplier의

@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 리듀서 폴드 골든.
@@ -383,54 +384,6 @@ namespace Ked.Presentation.Core.Tests
         // ── 이동 계열 (1u = 기준 폭 / 48) ────────────────────────────
 
         [Test]
-        public void gesture는_무변으로_접힌다()
-        {
-            // 순변위 0이 정체다 — 라인 시작과 끝의 무대가 같으므로 손대지 않는 것이 옳다.
-            StageState before = Fold(Cmd("slot", "c1"), Cmd("left", "c1", "2u"));
-            StageState after = StageReducer.Apply(before, Cmd("gesture", "c1", "0.3u", "1u", "12fr"), NewTuning());
-
-            Assert.That(after.Unhandled, Is.Empty, "Unhandled에 싣지 않는다");
-
-            Assert.That(after.Nodes.GetState("c1/CharacterPortrait_Shake").AnchoredPosition,
-                Is.EqualTo(before.Nodes.GetState("c1/CharacterPortrait_Shake").AnchoredPosition));
-            Assert.That(after.Nodes.GetState("c1/CharSlot_Track_X").AnchoredPosition.X,
-                Is.EqualTo(before.Nodes.GetState("c1/CharSlot_Track_X").AnchoredPosition.X).Within(Eps),
-                "다른 축도 건드리지 않는다");
-        }
-
-        [Test]
-        public void gesture의_인자는_폴드에_무해하다()
-        {
-            // 폴드가 곡선·진폭을 읽지 않으므로 인자 자리에 의존하는 것이 없다.
-            // 표준 이징 이름도, 없는 곡선 이름도 폴드를 흔들지 않는다(재생 쪽이 경고한다).
-            StageReducerTuning tuning = NewTuning();
-            StageState before = Fold(Cmd("slot", "c1"));
-
-            foreach (StageCommand cmd in new[]
-                     {
-                         Cmd("gesture", "c1"),
-                         Cmd("gesture", "c1", "0.3u"),
-                         Cmd("gesture", "c1", "0u", "1.2u", "24fr", "", "@hop"),
-                         Cmd("gesture", "c1", "1u", "1u", "12fr", "@no_such", "OutCubic"),
-                     })
-            {
-                StageState after = StageReducer.Apply(before, cmd, tuning);
-
-                Assert.That(after.Unhandled, Is.Empty, cmd.ToString());
-                Assert.That(after.Nodes.GetState("c1/CharacterPortrait_Shake").AnchoredPosition,
-                    Is.EqualTo(Vec2.Zero), cmd.ToString());
-            }
-        }
-
-        [Test]
-        public void 없는_슬롯의_gesture는_사유를_남긴다()
-        {
-            StageState state = Fold(Cmd("gesture", "nobody", "1u"));
-
-            Assert.That(state.Unhandled.Count, Is.EqualTo(1));
-        }
-
-        [Test]
         public void nudge의_마지막_이징_인자는_폴드에_무해하다()
         {
             // 이징은 경로의 모양만 정한다 — 종점은 그대로다.
@@ -647,6 +600,19 @@ namespace Ked.Presentation.Core.Tests
             Assert.That(back.GetAlpha("c1/CharacterPortraitSprite_Root"), Is.EqualTo(1f));
         }
 
+        [Test]
+        public void fade는_목표_alpha까지_접고_범위_밖은_자른다()
+        {
+            StageState state = Fold(Cmd("slot", "c1"), Cmd("show", "c1"));
+
+            StageState half = StageReducer.Apply(state, Cmd("fade", "c1", "0.5", "12fr"), NewTuning());
+            Assert.That(half.GetAlpha("c1/CharacterPortraitSprite_Root"), Is.EqualTo(0.5f));
+            Assert.That(half.GetAlpha("c1/__root"), Is.EqualTo(1f), "리그 루트는 그대로");
+
+            StageState over = StageReducer.Apply(state, Cmd("fade", "c1", "1.5"), NewTuning());
+            Assert.That(over.GetAlpha("c1/CharacterPortraitSprite_Root"), Is.EqualTo(1f), "[0,1] 밖은 자른다");
+        }
+
         // ── shot ─────────────────────────────────────────────────────
 
         [Test]
@@ -674,7 +640,7 @@ namespace Ked.Presentation.Core.Tests
         public void shot_focus_to는_focus_튜닝_없이도_접힌다()
         {
             // 튜닝이 없으면 오프셋이 0일 뿐 폴드 자체는 성립한다.
-            // (오프셋 합의 정확성은 FocusStageReductionTests가 본다.)
+            // (오프셋 합의 정확성은 FocusStageTargetTests가 본다.)
             StageState state = Fold(Cmd("slot", "c1"), Cmd("shot_focus_to", "c1", "body", "center", "2.5"));
 
             Assert.That(state.Unhandled, Is.Empty);
@@ -775,7 +741,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void 폴드_중_예외는_기록이_되고_이전_상태는_무사하다()
         {
-            // VisualOffset이 없는 손상 리그: show의 앵커 클레임이 트리에서 터진다.
+            // VisualOffset이 없는 손상 리그: show의 앵커 타깃이 트리에서 터진다.
             StageReducerTuning tuning = NewTuning();
             tuning.RigSchemas.rigs[0].nodes.RemoveAll(n => n.id == "CharacterPortrait_VisualOffset");
             tuning.RigSchemas.rigs[0].nodes.RemoveAll(n => n.parent == "CharacterPortrait_VisualOffset");
@@ -808,7 +774,7 @@ namespace Ked.Presentation.Core.Tests
                 Is.EqualTo(-PixelsPerUnit).Within(Eps));
         }
 
-        // ── motion — 채널마다 마지막 키가 클레임 ─────────────────────
+        // ── motion — 채널마다 마지막 키가 타깃 ─────────────────────
 
         private static MotionChannel MotionChannelOf(
             string node, MotionChannelKind kind, float duration,

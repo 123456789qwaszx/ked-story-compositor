@@ -5,7 +5,7 @@ namespace Ked.Presentation.Core
     ///
     /// 배경도 캐릭터 리그지만 `bg_` 어휘를 둔다 — "이건 배경"이라는 저작 의도가 대본에 남는다.
     /// 그래서 여기 폴드는 새로 발명한 것이 없다: 슬롯 스폰 · 사이징 · fade · move · scale을
-    /// 캐릭터 폴드와 **같은 노드, 같은 리덕션**으로 접는다. 다른 것은 종횡비의 출처 하나다
+    /// 캐릭터 폴드와 **같은 노드, 같은 목표 계산**으로 접는다. 다른 것은 종횡비의 출처 하나다
     /// (초상 DB가 아니라 background-dimensions.json).
     ///
     /// 파서(StageCommandParser.Background)와의 대응(PLAN_background-as-slot "명령 대응표"):
@@ -62,7 +62,7 @@ namespace Ked.Presentation.Core
         }
 
         /// <summary>
-        /// 배경 사이징 — 초상과 같은 리덕션(폭 = 부모 높이 × 종횡비), 종횡비만 배경 치수표에서.
+        /// 배경 사이징 — 초상과 같은 목표 계산(폭 = 부모 높이 × 종횡비), 종횡비만 배경 치수표에서.
         /// 치수표가 없거나 키가 없으면 false — 짐작으로 잇지 않는다.
         /// </summary>
         private static bool ApplyBackgroundSizing(
@@ -79,11 +79,11 @@ namespace Ked.Presentation.Core
                 return false;
 
             float parentHeight = state.Nodes
-                .GetRectSize(StageState.NodeKeyOf(slotKey, PortraitSizingStageReduction.ParentNodeId))
+                .GetRectSize(StageState.NodeKeyOf(slotKey, NodeTargets.PortraitParentNodeId))
                 .Y;
 
-            state.Apply(PortraitSizingReduction.Reduce(
-                StageState.NodeKeyOf(slotKey, PortraitSizingStageReduction.ImageNodeId),
+            state.Apply(NodeTargets.PortraitSizing(
+                StageState.NodeKeyOf(slotKey, NodeTargets.PortraitImageNodeId),
                 parentHeight,
                 aspect));
 

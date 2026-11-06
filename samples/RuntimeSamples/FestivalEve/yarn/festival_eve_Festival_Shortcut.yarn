@@ -2,7 +2,7 @@ title: Festival_Shortcut
 ---
 
 <<face s2 4>>
-<<gesture s2 0u 0.3u 12fr>>
+<<motion s2 nod>>
 시구레: 마른 칸은 살리고, 빈 칸만 스티커로 채워요. #line:ln_jfze1fzb
 
 <<face s1 4>>

@@ -1,7 +1,8 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 예약 장부의 규약. 실제 리그 위에서 종전 알고리즘과 같은 값이 나오는지는

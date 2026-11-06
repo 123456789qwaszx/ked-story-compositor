@@ -109,13 +109,6 @@ internal sealed class LiveOutputService
                 ? YarnBundleEmitter.WriteBundles(bundles, directory)
                 : []);
 
-            // 커스텀 곡선 — 라이브 출력도 정식 내보내기와 같은 동반 파일을 낸다.
-            if (bundles.Count > 0 &&
-                YarnBundleEmitter.WriteCurves(_session.Project.EaseCurves, directory) is { } curvesPath)
-            {
-                written.Add(curvesPath);
-            }
-
             // 낡은 파일 판정은 이번에 쓴 것이 아니라 "지금 프로젝트가 만들 수 있는 것"과
             // 견준다. 막혀서 못 쓴 노드의 파일까지 고아로 몰지 않기 위해서다.
             Orphans = OutputManifest.Scan(
@@ -139,7 +132,6 @@ internal sealed class LiveOutputService
             if (_session.GameFolder is { } gameFolder && bundles.Count > 0)
             {
                 IReadOnlyList<string> gameWritten = YarnBundleEmitter.WriteBundles(bundles, gameFolder);
-                YarnOutputVerification.WriteCurvesTo(_session.Project.EaseCurves, gameFolder);
                 YarnOutputVerdict gameVerdict = YarnOutputVerification.Verify(
                     Directory.GetFiles(gameFolder, "*.yarn", SearchOption.TopDirectoryOnly));
 

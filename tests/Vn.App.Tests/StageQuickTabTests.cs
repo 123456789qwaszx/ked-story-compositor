@@ -191,18 +191,18 @@ public sealed class StageQuickTabTests
         session.Project.QuickCommands =
         [
             StageQuickCommand.Single(
-                "흔들기",
-                "char_rig_staging.gesture",
-                new Dictionary<string, string>(StringComparer.Ordinal) { ["xAmp"] = "0.3u" })
+                "밀기",
+                "char_rig_staging.move_by",
+                new Dictionary<string, string>(StringComparer.Ordinal) { ["x"] = "0.3u" })
         ];
 
         StageSceneView view = SceneOf(
             session, nodeId, lineId, Command("char_rig_cast.slot", ("slotKey", "c1")));
 
         // 슬롯이 안 골라져 있으면 회색 — 눌러서 무효한 커맨드가 나가지 않는다.
-        Assert.False(Chip(view.BuildQuickTabProbe(null), "흔들기").IsEnabled);
+        Assert.False(Chip(view.BuildQuickTabProbe(null), "밀기").IsEnabled);
 
-        Chip(view.BuildQuickTabProbe("c1"), "흔들기").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Chip(view.BuildQuickTabProbe("c1"), "밀기").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Equal("c1", Assert.Single(LineCommands(session, nodeId, lineId)).Arguments["slot"]);
     });
 
@@ -213,8 +213,8 @@ public sealed class StageQuickTabTests
 
         // 이미 원하는 값으로 맞춰 둔 커맨드 하나 — 슬롯도 duration도 여기 적혀 있다.
         PresentationResultCommand tuned = Command(
-            "char_rig_staging.gesture",
-            ("slot", "c1"), ("xAmp", "0.7u"), ("yAmp", "0u"), ("duration", "18fr"));
+            "char_rig_staging.move_by",
+            ("slot", "c1"), ("x", "0.7u"), ("y", "0u"), ("duration", "18fr"));
 
         var preview = new MiniStagePreview();
         var window = new Window { Width = 1200, Height = 800, Content = preview };
@@ -232,7 +232,7 @@ public sealed class StageQuickTabTests
             ScriptRows:
             [
                 new PresentationScriptRow(
-                    PresentationScriptRowKind.Command, lineId, tuned, "<<gesture c1 0.7u 0u 18fr>>")
+                    PresentationScriptRowKind.Command, lineId, tuned, "<<move_by c1 0.7u 0u 18fr>>")
             ]));
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -251,21 +251,21 @@ public sealed class StageQuickTabTests
             preview.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "★");
 
         // 행 자체가 단추다 — 그냥 클릭하면 담긴다.
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
 
         // 인자가 통째로 담긴다 — 슬롯도 duration도 그대로 복사하는 것이 요점이다.
         StageQuickCommand pinned = session.Project.EffectiveQuickCommands[^1];
-        Assert.Equal("char_rig_staging.gesture", pinned.Steps[0].DefinitionId);
+        Assert.Equal("char_rig_staging.move_by", pinned.Steps[0].DefinitionId);
         Assert.Equal("c1", pinned.Steps[0].Arguments["slot"]);
         Assert.Equal("18fr", pinned.Steps[0].Arguments["duration"]);
-        Assert.Equal("0.7u", pinned.Steps[0].Arguments["xAmp"]);
+        Assert.Equal("0.7u", pinned.Steps[0].Arguments["x"]);
 
         // 같은 커맨드를 또 담으면 이름에 번호가 붙는다 — 값만 달리해 담는 것이 정상 쓰임이다.
         session.Editor.PinQuickCommand(StageQuickCommand.Single(
             pinned.DisplayName,
             pinned.Steps[0].DefinitionId,
             new Dictionary<string, string>(StringComparer.Ordinal) { ["slot"] = "c2" }));
-        Assert.Equal("제자리 몸짓", pinned.DisplayName);
+        Assert.Equal("슬롯 상대 이동", pinned.DisplayName);
     });
 
 
@@ -320,7 +320,7 @@ public sealed class StageQuickTabTests
             session,
             nodeId,
             lineId,
-            Command("char_rig_staging.gesture", ("slot", "c1"), ("xAmp", "0.7u"), ("duration", "18fr")),
+            Command("char_rig_staging.move_by", ("slot", "c1"), ("x", "0.7u"), ("duration", "18fr")),
             Command("shot.shot_zoom", ("zoom", "2.2"), ("duration", "1.1s")));
 
         int target = session.Editor.CreateQuickBundle();
@@ -330,13 +330,13 @@ public sealed class StageQuickTabTests
         preview.Scene.ExpandQuickChipProbe(target); // 이름 칸 초점과 같은 자리 = 담을 대상
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
 
         // 새 칩이 생기지 않는다 — 담을 대상 묶음의 뒤에 단계로 붙는다.
         Assert.Equal(before, session.Project.EffectiveQuickCommands.Count);
 
         StageQuickStep step = Assert.Single(session.Project.EffectiveQuickCommands[target].Steps);
-        Assert.Equal("char_rig_staging.gesture", step.DefinitionId);
+        Assert.Equal("char_rig_staging.move_by", step.DefinitionId);
         // 인자는 통째로 온다 — 한 개짜리 담기와 같은 규칙이다.
         Assert.Equal("18fr", step.Arguments["duration"]);
 
@@ -355,15 +355,15 @@ public sealed class StageQuickTabTests
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         MiniStagePreview preview = PreviewWith(session, nodeId, lineId, Command(
-            "char_rig_staging.gesture", ("slot", "c1"), ("xAmp", "0.7u"), ("duration", "18fr")));
+            "char_rig_staging.move_by", ("slot", "c1"), ("x", "0.7u"), ("duration", "18fr")));
 
         preview.Scene.SetCommandEditModeProbe(true);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
         int after = session.Project.EffectiveQuickCommands.Count;
 
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
 
         Assert.Equal(after, session.Project.EffectiveQuickCommands.Count); // 안 늘었다
         Assert.Contains("이미", session.StatusMessage, StringComparison.Ordinal); // 그렇게 말했다
@@ -376,7 +376,7 @@ public sealed class StageQuickTabTests
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         MiniStagePreview preview = PreviewWith(session, nodeId, lineId, Command(
-            "char_rig_staging.gesture", ("slot", "c1"), ("xAmp", "0.7u")));
+            "char_rig_staging.move_by", ("slot", "c1"), ("x", "0.7u")));
 
         int target = session.Editor.CreateQuickBundle();
         int before = session.Project.EffectiveQuickCommands.Count;
@@ -387,7 +387,7 @@ public sealed class StageQuickTabTests
 
         Assert.Null(preview.Scene.QuickPinTarget);
 
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
 
         Assert.Equal(before + 1, session.Project.EffectiveQuickCommands.Count);
         Assert.Empty(session.Project.EffectiveQuickCommands[target].Steps);
@@ -405,7 +405,7 @@ public sealed class StageQuickTabTests
         (AuthoringSession session, string nodeId, string lineId) = Stage();
 
         MiniStagePreview preview = PreviewWith(session, nodeId, lineId, Command(
-            "char_rig_staging.gesture", ("slot", "c1"), ("xAmp", "0.7u")));
+            "char_rig_staging.move_by", ("slot", "c1"), ("x", "0.7u")));
 
         int before = session.Project.EffectiveQuickCommands.Count;
 
@@ -420,11 +420,11 @@ public sealed class StageQuickTabTests
         Assert.True(preview.Scene.IsQuickPinMode);
         Assert.Equal(before, preview.Scene.QuickPinTarget);
 
-        LeftClick(CommandRowOf(preview, "gesture"));
+        LeftClick(CommandRowOf(preview, "move_by"));
 
         StageQuickStep step = Assert.Single(session.Project.EffectiveQuickCommands[^1].Steps);
-        Assert.Equal("char_rig_staging.gesture", step.DefinitionId);
-        Assert.Equal("0.7u", step.Arguments["xAmp"]);
+        Assert.Equal("char_rig_staging.move_by", step.DefinitionId);
+        Assert.Equal("0.7u", step.Arguments["x"]);
     });
 
     [Fact]

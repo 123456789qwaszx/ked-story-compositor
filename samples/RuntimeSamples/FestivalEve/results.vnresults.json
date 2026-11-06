@@ -32,11 +32,7 @@
           "index": 3,
           "lineId": "ln_v25zy8n9",
           "revision": 1,
-          "text": "하늘색",
-          "condition": {
-            "kind": "beginChoice",
-            "option": "op_4p04yf14"
-          }
+          "text": "하늘색"
         },
         {
           "index": 4,
@@ -49,11 +45,7 @@
           "index": 5,
           "lineId": "ln_0881u5vn",
           "revision": 1,
-          "text": "노란색",
-          "condition": {
-            "kind": "beginNextOption",
-            "option": "op_9bwgf8g3"
-          }
+          "text": "노란색"
         },
         {
           "index": 6,
@@ -67,10 +59,7 @@
           "lineId": "ln_q1me6jy8",
           "revision": 1,
           "speaker": "하린",
-          "text": "문제는 시간이야. 처음부터 다시 그릴지, 있는 걸로 마무리할지.",
-          "condition": {
-            "kind": "endChoice"
-          }
+          "text": "문제는 시간이야. 처음부터 다시 그릴지, 있는 걸로 마무리할지."
         },
         {
           "index": 8,
@@ -1538,6 +1527,106 @@
       "schemaVersion": 3,
       "contentHash": "sha256:c48d271346eb2cb911315a634b989b5a58086656d377e99da826e2a72457bccb",
       "publishedAt": "2026-11-04T13:40:35.9692879+00:00"
+    },
+    {
+      "sourceNode": "nd_5gpnu5z7",
+      "sourceNodeName": "Festival_Remake 연출",
+      "source": {
+        "resultId": "rs_4rd0x2mw",
+        "version": 1,
+        "contentHash": "sha256:dd2cf448ceb0ecb46d97afda1456b5179cdecf079013b985475e51863fca4bbd"
+      },
+      "bindings": [
+        {
+          "lineId": "ln_kdy67tc8",
+          "commands": [
+            {
+              "id": "pc_5q3n2gq8",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "2",
+                "slot": "s1"
+              }
+            },
+            {
+              "id": "pc_xu9n1z6k",
+              "definitionId": "char_rig_staging.motion",
+              "arguments": {
+                "motion": "nod",
+                "slot": "s1"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_2ibajvnq",
+          "commands": [
+            {
+              "id": "pc_5s0ptear",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "1",
+                "slot": "s2"
+              }
+            }
+          ]
+        }
+      ],
+      "resultId": "rs_y3dnhn78",
+      "version": 3,
+      "schemaVersion": 3,
+      "contentHash": "sha256:247e8371d3e058945411559aec13fdc342219457f24dc7d43c25096fd92d68f7",
+      "publishedAt": "2026-11-06T16:11:30.0442594+00:00"
+    },
+    {
+      "sourceNode": "nd_9s8a0q4p",
+      "sourceNodeName": "Festival_Shortcut 연출",
+      "source": {
+        "resultId": "rs_de9kw5ns",
+        "version": 1,
+        "contentHash": "sha256:c1c526a2c17ac1973f922133b6fb9a2e01440f91827b3faf4f4daf5d9056cbe4"
+      },
+      "bindings": [
+        {
+          "lineId": "ln_jfze1fzb",
+          "commands": [
+            {
+              "id": "pc_cg2q0e33",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "4",
+                "slot": "s2"
+              }
+            },
+            {
+              "id": "pc_xb7m2iby",
+              "definitionId": "char_rig_staging.motion",
+              "arguments": {
+                "motion": "nod",
+                "slot": "s2"
+              }
+            }
+          ]
+        },
+        {
+          "lineId": "ln_rbxvmjp0",
+          "commands": [
+            {
+              "id": "pc_y0etjae0",
+              "definitionId": "char_rig_cast.face",
+              "arguments": {
+                "emotionKey": "4",
+                "slot": "s1"
+              }
+            }
+          ]
+        }
+      ],
+      "resultId": "rs_hp36y087",
+      "version": 3,
+      "schemaVersion": 3,
+      "contentHash": "sha256:ef92ed5c10119803a699cc8e8927c6c58cc182b5a83b0c07b3f7100c78be6b95",
+      "publishedAt": "2026-11-06T16:11:30.0789727+00:00"
     }
   ]
 }

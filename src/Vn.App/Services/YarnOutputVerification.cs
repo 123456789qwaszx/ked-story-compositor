@@ -34,15 +34,11 @@ namespace Vn.App.Services;
 /// </summary>
 internal static class YarnOutputVerification
 {
-    /// <summary>이 검사가 보는 파일 확장자. 곡선·매니페스트 같은 동반 파일은 대본이 아니다.</summary>
+    /// <summary>이 검사가 보는 파일 확장자. 매니페스트 같은 동반 파일은 대본이 아니다.</summary>
     private const string YarnExtension = ".yarn";
 
     /// <summary>상태줄에 이름을 적는 최대 개수. 나머지는 수로 접는다.</summary>
     private const int Shown = 2;
-
-    /// <summary>게임 폴더에도 곡선 파일을 낸다 — 번들이 @이름으로 참조하는 곡선은 같은 폴더에 있어야 한다. 곡선이 없으면 파일도 없다.</summary>
-    public static void WriteCurvesTo(IReadOnlyList<Vn.Authoring.Model.EaseCurve> curves, string folder) =>
-        Vn.Authoring.Rendering.YarnBundleEmitter.WriteCurves(curves, folder);
 
     public static YarnOutputVerdict Verify(IEnumerable<string>? writtenPaths)
     {

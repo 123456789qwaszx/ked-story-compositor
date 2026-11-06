@@ -25,7 +25,7 @@ public sealed class StageDiagnosticsCopyTests
         {
             Unhandled =
             [
-                new MiniStageUnhandled("In_5m8shih4", "gesture", FoldedButNotDrawn: true)
+                new MiniStageUnhandled("In_5m8shih4", "fade", FoldedButNotDrawn: true)
             ]
         };
 
@@ -76,7 +76,7 @@ public sealed class StageDiagnosticsCopyTests
 
         Assert.Contains(
             preview.FindControl<StackPanel>("UnhandledHost")!.Children.OfType<TextBlock>(),
-            block => (block.Text ?? string.Empty).Contains("gesture", StringComparison.Ordinal) &&
+            block => (block.Text ?? string.Empty).Contains("fade", StringComparison.Ordinal) &&
                      (block.Text ?? string.Empty).Contains("접힘·미표시", StringComparison.Ordinal));
     });
 

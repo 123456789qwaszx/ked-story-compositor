@@ -8,7 +8,7 @@ namespace Vn.Authoring.Flow;
 public readonly record struct StageFade(double Seconds, bool FadeIn);
 
 /// <summary>
-/// 이 라인의 페이드 — slotKey → 그 슬롯의 fade_in/fade_out.
+/// 이 라인의 페이드 — slotKey → 그 슬롯의 fade_in/fade_out/fade.
 ///
 /// 페이드 불투명도는 <b>라인 시계(커맨드 duration 최댓값)가 아니라 그 페이드 커맨드
 /// 자신의 duration</b>으로 흘러야 런타임과 같다 — 라인 시계를 타면 같은 라인에 더 긴
@@ -41,7 +41,7 @@ public static class StageFades
         foreach (PresentationResultCommand command in commands ?? [])
         {
             if (catalog.Find(command.DefinitionId) is not { } definition ||
-                definition.OutputCommandName is not ("fade_in" or "fade_out"))
+                definition.OutputCommandName is not ("fade_in" or "fade_out" or "fade"))
             {
                 continue;
             }
@@ -67,8 +67,13 @@ public static class StageFades
                 Arg("duration") is { } token && DurationToken.TryParseSeconds(token, out float seconds)
                     ? seconds
                     : 0,
-                FadeIn: string.Equals(
-                    definition.OutputCommandName, "fade_in", StringComparison.Ordinal));
+                FadeIn: definition.OutputCommandName switch
+                {
+                    "fade_in" => true,
+                    // 목표 alpha 페이드의 방향은 프리뷰 가시성 투영과 같은 기준(0.5)이다(CoreStageFold.ProjectSlots).
+                    "fade" => NumberToken.TryParseFloat(Arg("alpha") ?? "1", out float alpha) && alpha > 0.5f,
+                    _ => false
+                });
         }
 
         return fades;

@@ -2,7 +2,7 @@ title: Festival_Remake
 ---
 
 <<face s1 2>>
-<<gesture s1 0u 0.3u 12fr>>
+<<motion s1 nod>>
 하린: 좋아, 처음부터 다시. 붓부터 새로 빨아 올게. #line:ln_kdy67tc8
 
 <<face s2 1>>

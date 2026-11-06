@@ -255,8 +255,7 @@ public partial class PresentationNodeEditor : UserControl
             draft.SetupCommands,
             branch.FoldLines,
             lineBinding?.Commands,
-            _session.TuningLibrary.Tuning,
-            _session.Project.EaseCurves);
+            _session.TuningLibrary.Tuning);
 
         // 이 라인의 시간 흐름 — 시간을 가진 커맨드가 저마다 바꾼 노드를
         // 자기 duration·이징으로 끈다. 이동·배치·뎁스가 같은 규칙 하나를 지난다.
@@ -265,8 +264,7 @@ public partial class PresentationNodeEditor : UserControl
             draft.SetupCommands,
             branch.FoldLines,
             lineBinding?.Commands,
-            _session.TuningLibrary.Tuning,
-            _session.Project.EaseCurves);
+            _session.TuningLibrary.Tuning);
 
         // 선택지는 대사 안이 아니라 에피소드 끝에서 무대(TryPresentEpisodeChoices)가 간선으로
         // 세운다. 줄 요청의 ChoiceOptions는 언제나 비어 있다.

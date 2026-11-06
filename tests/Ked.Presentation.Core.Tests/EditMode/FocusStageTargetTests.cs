@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// place/size 폴드. 수학은 SettledFocusMath가 이미 성질로 고정했으므로,
@@ -10,7 +11,7 @@ namespace Ked.Presentation.Core.Tests
     ///
     /// 튜닝 값은 실제 덤프(presets/depth.json · focus-tuning.json)의 실측값을 쓴다.
     /// </summary>
-    public sealed class FocusStageReductionTests
+    public sealed class FocusStageTargetTests
     {
         private const float Eps = 1e-2f;
 
@@ -250,7 +251,7 @@ namespace Ked.Presentation.Core.Tests
         }
 
         [Test]
-        public void place는_이동_축에만_클레임을_건다()
+        public void place는_이동_축에만_타깃을_건다()
         {
             StageState state = Fold(NewTuning(), Cmd("slot", "c1"), Cmd("place_right", "c1", "bust"));
 

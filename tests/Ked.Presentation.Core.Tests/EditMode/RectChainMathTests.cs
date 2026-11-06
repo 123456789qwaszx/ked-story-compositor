@@ -1,6 +1,7 @@
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 순수 좌표 수학의 골든. 기대값은 전부 손으로 계산한 것이다 —

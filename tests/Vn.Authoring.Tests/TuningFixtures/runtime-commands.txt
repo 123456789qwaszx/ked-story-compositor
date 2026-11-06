@@ -17,8 +17,9 @@
 #
 # 2026-11-03 box_hide · box_show · box_close도 걷었다 — 대사창 숨김은 줄 태그(#boxhide)로 한다.
 # 2026-11-06 char_to도 걷었다 — 리그는 무대 · 층을 옮기지 않는다(다른 자리는 fade_out 뒤 새 slot).
+# 2026-11-07 gesture를 걷고(몸짓은 motion) 목표 alpha 페이드 fade를 더했다.
 #
-# 스냅샷 시점: 2026-11-06 (ked-presentation-runtime dev @ 3f1fb583 — 브리지 등록 75개.
+# 스냅샷 시점: 2026-11-07 (ked-presentation-runtime dev @ bb90f3dd — 브리지 등록 75개.
 #   무대 파서 표 73개 + 대사창 2개 — surface_layout · surface_reset)
 actor
 bg_fade_in
@@ -43,11 +44,11 @@ char_visual_silhouette
 down
 face
 face_swap
+fade
 fade_in
 fade_out
 focus_clear
 focus_on
-gesture
 left
 mirror
 motion

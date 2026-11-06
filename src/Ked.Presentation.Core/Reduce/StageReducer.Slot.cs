@@ -143,15 +143,15 @@ namespace Ked.Presentation.Core
             reason = null;
 
             string aliasSymbol = cmd.Arg(0);
-            string targetKey = cmd.Arg(1);
+            string roleKey = cmd.Arg(1);
 
-            if (string.IsNullOrEmpty(aliasSymbol) || string.IsNullOrEmpty(targetKey))
+            if (string.IsNullOrEmpty(aliasSymbol) || string.IsNullOrEmpty(roleKey))
             {
                 reason = "actor 인자가 모자란다 (별칭, 대상)";
                 return false;
             }
 
-            state.SetAlias(aliasSymbol, targetKey);
+            state.SetAlias(aliasSymbol, roleKey);
             return true;
         }
     }

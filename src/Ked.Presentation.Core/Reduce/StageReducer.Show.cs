@@ -4,7 +4,7 @@ namespace Ked.Presentation.Core
     /// show · fade — 등장과 가시성.
     ///
     /// show는 한 커맨드가 아니라 묶음이다: 축 리셋 + 역할 앵커 + 가시성 두 장.
-    /// 리셋 목록은 리그 스키마 지식이라 리덕션이 아니라 여기가 갖는다.
+    /// 리셋 목록은 리그 스키마 지식이라 목표 계산이 아니라 여기가 갖는다.
     /// </summary>
     public static partial class StageReducer
     {
@@ -20,7 +20,7 @@ namespace Ked.Presentation.Core
         private static readonly string[] ShowResetEulerIds =
         {
             // CharSlot_SwayPivot은 목록에 없다 — rotate_by의 표적인데 show가 되돌리지
-            // 않는 것이 런타임 실동작이다(StagingBundleReductionTests가 고정).
+            // 않는 것이 런타임 실동작이다(StagingBundleTargetTests가 고정).
             "CharSlot_Rotation",
             "CharacterPortrait_Rotation", "CharacterPortrait_SwayPivot", "CharacterPortrait_Shake",
         };
@@ -40,7 +40,7 @@ namespace Ked.Presentation.Core
 
             // 역할 앵커: cast된 캐릭터의 튜닝. 배역이 없거나 엔트리가 없으면 Default —
             // 그게 데이터의 의미다. 튜닝 파일 자체가 없으면 침묵하지 않는다.
-            SetAnchorReduction.RoleAnchorTuning anchorTuning = SetAnchorReduction.RoleAnchorTuning.Default;
+            NodeTargets.RoleAnchorTuning anchorTuning = NodeTargets.RoleAnchorTuning.Default;
 
             if (tuning.RoleAnchors == null)
             {
@@ -51,15 +51,15 @@ namespace Ked.Presentation.Core
                 tuning.RoleAnchors.TryGet(characterKey, out anchorTuning);
             }
 
-            StageNodeClaim[] claims = SetAnchorReduction.Reduce(
+            NodeTarget[] targets = NodeTargets.SetAnchor(
                 StageState.NodeKeyOf(slotKey, "CharacterPortrait_VisualOffset"),
                 anchorTuning,
                 Prefixed(slotKey, ShowResetPositionIds),
                 Prefixed(slotKey, ShowResetEulerIds),
                 Prefixed(slotKey, ShowResetScaleIds));
 
-            foreach (StageNodeClaim claim in claims)
-                state.Apply(claim);
+            foreach (NodeTarget target in targets)
+                state.Apply(target);
 
             // 초상 사이징. faceToken의 기본값은 "e1"(생략된 인자)이고,
             // **명시적으로 빈 토큰은 "2"다** — 다른 규칙이라 별칭 파서가 나눠 본다.
@@ -69,8 +69,8 @@ namespace Ked.Presentation.Core
                 state.AddUnhandled(cmd, sizingReason);
 
             // 가시성 두 장: 리그 루트 + 초상 스프라이트 루트.
-            state.Apply(FadeInReduction.Reduce(StageState.NodeKeyOf(slotKey, RigSchemaLoader.RootKey)));
-            state.Apply(FadeInReduction.Reduce(StageState.NodeKeyOf(slotKey, "CharacterPortraitSprite_Root")));
+            state.Apply(NodeTargets.FadeIn(StageState.NodeKeyOf(slotKey, RigSchemaLoader.RootKey)));
+            state.Apply(NodeTargets.FadeIn(StageState.NodeKeyOf(slotKey, "CharacterPortraitSprite_Root")));
 
             return true;
         }
@@ -83,8 +83,25 @@ namespace Ked.Presentation.Core
             string nodeKey = StageState.NodeKeyOf(slotKey, "CharacterPortraitSprite_Root");
 
             state.Apply(visible
-                ? FadeInReduction.Reduce(nodeKey)
-                : FadeOutReduction.Reduce(nodeKey));
+                ? NodeTargets.FadeIn(nodeKey)
+                : NodeTargets.FadeOut(nodeKey));
+
+            return true;
+        }
+
+        /// <summary>fade(slot, alpha, dur) — 같은 표적, 목표 alpha만 인자에서. 생략값은 파서 표와 같은 1이다.</summary>
+        private static bool ApplyFadeTo(StageState state, in StageCommand cmd, out string reason)
+        {
+            if (!TryGetSpawnedSlot(state, cmd, out string slotKey, out reason))
+                return false;
+
+            if (!NumberToken.TryParseFloat(cmd.Arg(1, "1"), out float alpha))
+            {
+                reason = $"목표 alpha를 읽지 못했다: '{cmd.Arg(1)}'";
+                return false;
+            }
+
+            state.Apply(NodeTargets.Fade(StageState.NodeKeyOf(slotKey, "CharacterPortraitSprite_Root"), alpha));
 
             return true;
         }

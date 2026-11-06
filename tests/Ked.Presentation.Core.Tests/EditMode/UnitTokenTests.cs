@@ -1,7 +1,8 @@
 using System;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     // 1u = 기준 폭 / 48 (D-core-1). 기준 폭이 바뀌면 같은 토큰이 다른 픽셀을 내야 함.
     public sealed class UnitTokenTests

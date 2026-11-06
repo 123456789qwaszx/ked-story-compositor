@@ -199,4 +199,24 @@ public class LegacyCommandUpgradeTests
         Assert.Equal("sha256:not-the-body", reread.Identity.ContentHash);
         Assert.False(ResultHash.IsIntact(reread));
     }
+
+    [Fact]
+    public void 커스텀_곡선_참조는_읽을_때_빼서_기본_이징이_된다()
+    {
+        // 2026-11-07 커스텀 곡선을 걷었다 — 런타임이 곡선 파일을 읽지 않는다. 옮김표에 없는 정의도 옮긴다.
+        (string id, Dictionary<string, string> args) = Upgrade(
+            "char_rig_staging.move_by", ("slot", "c1"), ("x", "2u"), ("ease", "@hop"));
+        Assert.Equal("char_rig_staging.move_by", id);
+        Assert.False(args.ContainsKey("ease"));
+        Assert.Equal("2u", args["x"]);
+
+        // 옮김표에 있는 옛 정의면 둘 다 한 번에 옮긴다.
+        (id, args) = Upgrade("char_rig_placement.place_tl", ("slot", "c1"), ("ease", "@hop"));
+        Assert.Equal("char_rig_placement.place", id);
+        Assert.False(args.ContainsKey("ease"));
+
+        // 표준 이징은 그대로다 — 옮길 것이 없다.
+        Assert.False(LegacyCommandUpgrade.TryUpgrade(
+            "char_rig_staging.move_by", Args(("slot", "c1"), ("ease", "OutBack")), out _, out _));
+    }
 }

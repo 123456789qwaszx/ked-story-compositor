@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Ked.Presentation.Core;
 
-namespace Ked.Presentation.Core.Tests
+namespace Ked.Presentation.Tests
 {
     /// <summary>
     /// 덤프 → 트리 변환의 규율. 여기서는 합성 덤프를 쓴다 —

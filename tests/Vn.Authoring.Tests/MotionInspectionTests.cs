@@ -107,9 +107,9 @@ public class MotionInspectionTests
         MotionSegment segment = InspectMove(move, setup, lines, tuning);
 
         // 같은 입력을 런타임 커맨드가 쓰는 함수에 직접 넣어 본다.
-        StageNodeClaim expected = MoveByReduction.Reduce(
+        NodeTarget expected = NodeTargets.MoveBy(
             segment.NodeKey,
-            new MoveByReduction.Args(useAbsolutePosition: false, segment.Delta),
+            new NodeTargets.MoveByArgs(useAbsolutePosition: false, segment.Delta),
             segment.Start);
 
         Assert.Equal(expected.Value.XY.X, segment.End.X, 3);

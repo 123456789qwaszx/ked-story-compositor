@@ -118,13 +118,9 @@ public static class CommandText
     /// <b>값이 있는 마지막 파라미터 뒤부터</b> 트레일링 생략으로 자른다.
     /// 정의를 모르는 명령이나 파라미터 밖의 인자는 버리지 않고 이름순으로 뒤에 붙인다.
     ///
-    /// ⚠ <b>중간이 비면 자리표를 적는다</b> (2026-08-21 `gesture`가 드러낸 결함).
-    /// 예전에는 값 없는 파라미터를 만나면 그 자리에서 끊었는데, 그러면 뒤에 값이 있는 경우
-    /// 그 인자가 <b>앞 자리로 밀려</b> 런타임이 다른 것을 읽었다 — <c>gesture</c>의
-    /// <c>yEase</c>만 적으면 <c>&lt;&lt;gesture c1 0u 1u 24fr @bump&gt;&gt;</c>가 나와
-    /// <c>@bump</c>가 <b>가로</b> 곡선이 됐다(세로로 흔들려던 것이 좌우로 흔들린다).
-    /// 트레일링 생략이 대부분의 커맨드에서 통했던 것은 선택 인자가 <b>맨 뒤 하나</b>뿐이라
-    /// 우연히 안 드러났을 뿐이다.
+    /// <b>중간이 비면 자리표를 적는다.</b> 값 없는 파라미터에서 끊으면, 뒤에 값이 있을 때 그 인자가
+    /// <b>앞 자리로 밀려</b> 런타임이 다른 것을 읽는다 — <c>slide_in</c>에 punch만 적으면 그 값이 ease 자리로 간다.
+    /// 선택 인자가 맨 뒤 하나뿐인 커맨드에서는 드러나지 않는다.
     /// </summary>
     public static IReadOnlyList<OrderedCommandArgument> ResolveOrdered(
         PresentationCommandDefinition? definition,
@@ -250,7 +246,8 @@ public static class CommandText
         {
             PresentationCommandParameter parameter = definition.Parameters[index];
 
-            if (index < values.Length)
+            // 자리표("")는 안 적은 자리다 — 검증도 저장도 하지 않는다(필수면 빠진 것과 같다).
+            if (index < values.Length && values[index] != EmptyArgumentPlaceholder)
             {
                 if (ValidateType(parameter, values[index]) is { } typeError)
                 {
@@ -329,12 +326,6 @@ public static class CommandText
                 $"'{parameter.Name}'은 숫자여야 하는데 '{value}'가 왔습니다.",
             "bool" when !bool.TryParse(value, out _) && value is not ("0" or "1") =>
                 $"'{parameter.Name}'은 true/false여야 하는데 '{value}'가 왔습니다.",
-            // @이름 = 커스텀 곡선 참조 — 문법만 여기서 보고, 실재 여부는 내보내기 검증이
-            // 프로젝트 곡선 목록과 대조한다(카탈로그는 프로젝트를 모른다).
-            "ease" when value.StartsWith('@') =>
-                Model.EaseCurve.IsValidName(value[1..])
-                    ? null
-                    : $"'{parameter.Name}'의 곡선 이름 '{value}'이 규칙에 맞지 않습니다 — @뒤에 소문자·숫자·언더스코어만 됩니다.",
             "ease" when long.TryParse(value, out _) ||
                         !Enum.TryParse<Ked.Presentation.Core.EaseKind>(value, ignoreCase: true, out _) =>
                 $"'{parameter.Name}'은 이징 이름이어야 하는데 '{value}'가 왔습니다 (예: OutCubic, Linear, InOutSine).",

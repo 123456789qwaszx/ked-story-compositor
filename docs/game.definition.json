@@ -568,55 +568,6 @@
       "notes": "CharSlot_SwayPivotì ì ë 0ëë¡ ëëë¦°ë¤."
     },
     {
-      "id": "char_rig_staging.gesture",
-      "name": "제자리 몸짓",
-      "category": "char_rig_staging",
-      "outputCommand": "gesture",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "xAmp",
-          "type": "signedUnit",
-          "required": false,
-          "default": "0u",
-          "slider": { "min": -2, "max": 2, "step": 0.1 },
-          "description": "가로 진폭(최대 변위). 부호는 곡선 좌우 반전. 흔들기는 0.3u(12px)쯤이면 충분하다"
-        },
-        {
-          "name": "yAmp",
-          "type": "signedUnit",
-          "required": false,
-          "default": "0u",
-          "slider": { "min": -2, "max": 2, "step": 0.1 },
-          "description": "세로 진폭. 부호는 상하 반전"
-        },
-        {
-          "name": "duration",
-          "type": "duration",
-          "required": false,
-          "default": "12fr"
-        },
-        {
-          "name": "xEase",
-          "type": "oscillation",
-          "required": false,
-          "description": "가로 진동 곡선. 표준 이징 이름(OutBack·OutBounce·OutElastic…)이면 그 이징의 핑퐁(나갔다 돌아오는 왕복의 절반)이고, @이름이면 손으로 그린 진동 곡선이다. 비우면 내장 기본 혹 — OutSine의 핑퐁과 정확히 같은 함수라 거기서 손대기 시작하면 된다"
-        },
-        {
-          "name": "yEase",
-          "type": "oscillation",
-          "required": false,
-          "description": "세로 진동 곡선. 규칙은 xEase와 같다(표준 이징 = 핑퐁 · @이름 = 진동 곡선 · 비우면 기본 혹 = OutSine 핑퐁)"
-        }
-      ],
-      "notes": "제자리 몸짓 — 순변위 0이라 최종 자리가 안 바뀐다(shake·hop·jolt·surprise를 곡선으로 그린다). 변위(t) = 진폭 × 진동곡선(t)이고 축마다 곡선이 따로 간다. 표적은 CharacterPortrait_Shake라 move_by·place·넛지와 다른 노드다 — 같은 라인에 겹쳐 쓰면 '총총 뛰며 이동'이 된다. 진동 곡선은 (0,0)→(1,0)이다. 표준 이징 이름은 핑퐁으로 받고(2026-08-21 증보), 이동 곡선(@이름)을 잘못 끼우면 내보내기가 막는다(CurveKindRules를 툴·런타임이 공유)."
-    },
-    {
       "id": "char_rig_staging.motion",
       "name": "모션 클립",
       "category": "char_rig_staging",
@@ -1155,6 +1106,33 @@
       ]
     },
     {
+      "id": "char_rig_presentation.fade",
+      "name": "페이드(목표 alpha)",
+      "category": "char_rig_presentation",
+      "outputCommand": "fade",
+      "execution": "queued",
+      "parameters": [
+        {
+          "name": "slot",
+          "type": "aliasOrSlot",
+          "required": true
+        },
+        {
+          "name": "alpha",
+          "type": "float",
+          "required": false,
+          "default": "1",
+          "description": "목표 불투명도 0~1. 범위 밖은 런타임이 0~1로 자른다. 반투명까지의 페이드에 쓴다"
+        },
+        {
+          "name": "duration",
+          "type": "duration",
+          "required": false,
+          "default": "14fr"
+        }
+      ]
+    },
+    {
       "id": "char_rig_presentation.slide_in",
       "name": "슬라이드 인",
       "category": "char_rig_presentation",
@@ -1184,6 +1162,18 @@
           "type": "duration",
           "required": false,
           "default": "10fr"
+        },
+        {
+          "name": "ease",
+          "type": "ease",
+          "required": false,
+          "description": "이징 이름. 비우면 종류별 기본(등장 OutCubic · 퇴장 InCubic)"
+        },
+        {
+          "name": "punch",
+          "type": "unit",
+          "required": false,
+          "description": "튐의 양(단위 토큰). 비우면 종류별 기본(등장 24px · 퇴장 14px), 0u면 튐 없음"
         }
       ],
       "notes": "뒤쪽 인자부터만 생략 가능. 인자를 건너뛰면 앞 인자 자리로 밀려 잘못 해석된다."
@@ -1218,6 +1208,18 @@
           "type": "duration",
           "required": false,
           "default": "10fr"
+        },
+        {
+          "name": "ease",
+          "type": "ease",
+          "required": false,
+          "description": "이징 이름. 비우면 종류별 기본(등장 OutCubic · 퇴장 InCubic)"
+        },
+        {
+          "name": "punch",
+          "type": "unit",
+          "required": false,
+          "description": "튐의 양(단위 토큰). 비우면 종류별 기본(등장 24px · 퇴장 14px), 0u면 튐 없음"
         }
       ]
     },

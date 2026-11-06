@@ -58,6 +58,47 @@ public sealed class CompositionStoreTests : IDisposable
     }
 
     [Fact]
+    public void 걷은_커스텀_곡선은_버리고_그_참조는_기본_이징으로_읽고_센다()
+    {
+        // 2026-11-07 커스텀 곡선을 걷었다. 옛 연출 파일의 곡선 목록은 읽지 않고, @이름 이징은 빼서 기본으로 읽는다 —
+        // 재생이 바뀌는 옮김이라 열 때 몇 개인지 알려야 한다(앱 상태줄).
+        (string dialogueId, _) = WriteManuscript();
+        CompositionLoadResult loaded = CompositionStore.Load(Manuscript);
+        var editor = new ProjectEditor(loaded.Project);
+        PresentationNode presentation = EnterChannel(editor, dialogueId);
+        CompositionStore.Save(loaded.ComposePath, loaded.ManuscriptPath, editor.Project);
+
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(loaded.ComposePath))!.AsObject();
+        root["easeCurves"] = new System.Text.Json.Nodes.JsonArray(
+            new System.Text.Json.Nodes.JsonObject { ["name"] = "hop" },
+            new System.Text.Json.Nodes.JsonObject { ["name"] = "bump" });
+        System.Text.Json.Nodes.JsonObject node = root["nodes"]!.AsArray()
+            .Select(item => item!.AsObject())
+            .Single(item => (string?)item["id"] == presentation.Id);
+        node["setup"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject
+        {
+            ["id"] = "pc_curve",
+            ["definitionId"] = "char_rig_staging.move_by",
+            ["arguments"] = new System.Text.Json.Nodes.JsonObject { ["slot"] = "c1", ["ease"] = "@hop" }
+        });
+        File.WriteAllText(loaded.ComposePath, root.ToJsonString());
+
+        CompositionLoadResult reopened = CompositionStore.Load(Manuscript);
+
+        Assert.Equal(2, reopened.RetiredEaseCurves);
+        Assert.Equal(1, reopened.RetiredEaseReferences);
+        PresentationCommandInstance command = reopened.Project.FindPresentation(presentation.Id)!.SetupCommands
+            .Single(item => item.Id == "pc_curve");
+        Assert.False(command.Arguments.ContainsKey("ease"));
+
+        // 저장하면 파일에서도 사라진다 — 다시 열면 셀 것이 없다.
+        CompositionStore.Save(reopened.ComposePath, reopened.ManuscriptPath, reopened.Project);
+        CompositionLoadResult saved = CompositionStore.Load(Manuscript);
+        Assert.Equal(0, saved.RetiredEaseCurves);
+        Assert.Equal(0, saved.RetiredEaseReferences);
+    }
+
+    [Fact]
     public void 이_툴의_파일로도_열린다()
     {
         (string dialogueId, _) = WriteManuscript();

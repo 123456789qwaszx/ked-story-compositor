@@ -215,34 +215,32 @@ public class CommandTextTests
     [Fact]
     public void 중간이_빈_인자는_자리표로_메워_자리가_안_밀린다()
     {
-        // ⚠ 2026-08-21 `gesture`가 드러낸 결함의 고정. 예전에는 값 없는 파라미터에서
-        // 끊어서, 뒤에 값이 있으면 그 인자가 앞 자리로 밀렸다 — yEase만 적었는데
-        // <<gesture c1 0u 1u 24fr @bump>>가 나와 @bump가 가로 곡선이 됐다
-        // (세로로 흔들려던 것이 좌우로 흔들린다).
+        // 값 없는 파라미터에서 끊으면 뒤의 값이 앞 자리로 밀린다 — slide_in에 punch만 적었는데
+        // ease 자리로 가면 런타임은 "0u"를 이징 이름으로 읽고 기본 이징으로 물러서며 튐은 그대로 남는다.
         PresentationCommandCatalog catalog = PresentationCommandCatalog.Default;
 
         string text = CommandText.Format(
-            catalog.Find("char_rig_staging.gesture"), "char_rig_staging.gesture",
+            catalog.Find("char_rig_presentation.slide_in"), "char_rig_presentation.slide_in",
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["slot"] = "c1", ["yAmp"] = "1u", ["duration"] = "24fr", ["yEase"] = "@bump"
+                ["slot"] = "c1", ["punch"] = "0u"
             });
 
-        Assert.Equal("<<gesture c1 0u 1u 24fr \"\" @bump>>", text);
+        Assert.Equal("<<slide_in c1 left 12u 10fr \"\" 0u>>", text);
 
         // 되읽어도 같은 자리다 — 자리표는 "안 적은 것"과 같게 받힌다.
         CommandTextParseResult parsed = CommandText.Parse(text, catalog);
         Assert.True(parsed.Success, parsed.Error);
-        Assert.Equal("@bump", parsed.Arguments!["yEase"]);
+        Assert.Equal("0u", parsed.Arguments!["punch"]);
 
         // 트레일링 생략은 그대로다 — 뒤에 값이 없으면 자리표도 안 붙는다.
         Assert.Equal(
-            "<<gesture c1 0.3u 0u 12fr>>",
+            "<<slide_in c1 right 12u 10fr>>",
             CommandText.Format(
-                catalog.Find("char_rig_staging.gesture"), "char_rig_staging.gesture",
+                catalog.Find("char_rig_presentation.slide_in"), "char_rig_presentation.slide_in",
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["slot"] = "c1", ["xAmp"] = "0.3u", ["duration"] = "12fr"
+                    ["slot"] = "c1", ["direction"] = "right"
                 }));
     }
 }

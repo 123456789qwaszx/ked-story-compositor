@@ -4,7 +4,7 @@ namespace Ked.Presentation.Core
     /// place · size — focus 지점을 기준으로 삼는 배치.
     ///
     /// 둘 다 "노드를 어디로"가 아니라 "focus 지점을 어디로"를 말한다.
-    /// 그 역산은 FocusStageReductions가 하고, 여기는 토큰 해석과 배선만 맡는다.
+    /// 그 역산은 NodeTargets.TryPlaceFocus · TrySetDepth가 하고, 여기는 토큰 해석과 배선만 맡는다.
     /// </summary>
     public static partial class StageReducer
     {
@@ -23,14 +23,14 @@ namespace Ked.Presentation.Core
 
             state.TryGetCharacter(slotKey, out string characterKey);
 
-            if (!PlaceFocusStageReduction.TryReduce(
+            if (!NodeTargets.TryPlaceFocus(
                     state, slotKey, characterKey, focusName, screenPointName,
-                    tuning.FocusTuning, out StageNodeClaim claim, out reason))
+                    tuning.FocusTuning, out NodeTarget target, out reason))
             {
                 return false;
             }
 
-            state.Apply(claim);
+            state.Apply(target);
             return true;
         }
 
@@ -43,17 +43,17 @@ namespace Ked.Presentation.Core
 
             state.TryGetCharacter(slotKey, out string characterKey);
 
-            if (!SetDepthStageReduction.TryReduce(
+            if (!NodeTargets.TrySetDepth(
                     state, slotKey, characterKey, depthPresetKey, preserveFocusToken,
                     tuning.DepthLevel, tuning.FocusTuning,
-                    out StageNodeClaim depthYClaim, out StageNodeClaim depthScaleClaim,
+                    out NodeTarget depthYTarget, out NodeTarget depthScaleTarget,
                     out reason))
             {
                 return false;
             }
 
-            state.Apply(depthYClaim);
-            state.Apply(depthScaleClaim);
+            state.Apply(depthYTarget);
+            state.Apply(depthScaleTarget);
             return true;
         }
     }

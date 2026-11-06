@@ -220,7 +220,7 @@ MonoBehaviour.entries[] : { key(캐릭터), offset(px, Vec2), visualScale(무단
 
 ## 4. `portrait-dimensions.json`
 
-`Assets/Samples/Data/PortraitGeneratedDB.asset` → (캐릭터 · 변형 · 표정) → 초상 스프라이트 픽셀 치수.
+`Assets/Samples/Settings/PortraitGeneratedDB.asset` → (캐릭터 · 변형 · 표정) → 초상 스프라이트 픽셀 치수.
 
 프리셋과 달리 직렬화 그대로 낼 수 없어 따로 있다: DB가 들고 있는 건 `Sprite` **참조**이고,
 `EditorJsonUtility`는 그걸 `instanceID`로만 적는다 — 덤프만으로는 해석되지 않는 값이다.

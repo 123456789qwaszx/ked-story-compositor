@@ -69,7 +69,7 @@ title: Demo_Presentation
 하린: 이렇게 겹쳐 가며 바꿀 수도 있어. #line:ln_anizmf84
 
 <<pose s2 b>>
-<<gesture s2 0u 0.3u 12fr>>
+<<motion s2 nod>>
 시구레: 자세를 바꾸고, 가볍게 몸짓도. #line:ln_xd9t914r
 
 <<motion s1 nod>>

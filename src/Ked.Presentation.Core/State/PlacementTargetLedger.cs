@@ -46,28 +46,28 @@ namespace Ked.Presentation.Core
         }
 
         /// <summary>
-        /// 리덕션 출력을 그대로 예약으로 받는다 — 클레임이 흐르는 세 갈래 중 하나.
+        /// 목표 계산 출력을 그대로 예약으로 받는다 — 타깃이 흐르는 세 갈래 중 하나.
         /// 트윈 종점·상태 폴드와 같은 값을 보게 하는 것이 요점이다.
         /// </summary>
-        public void Publish(in StageNodeClaim claim)
+        public void Publish(in NodeTarget target)
         {
-            switch (claim.Kind)
+            switch (target.Kind)
             {
-                case StageNodeClaimKind.AnchoredPosition:
-                    PublishAnchoredPosition(claim.NodeKey, claim.Value.XY);
+                case NodeTargetKind.AnchoredPosition:
+                    PublishAnchoredPosition(target.NodeKey, target.Value.XY);
                     break;
 
-                case StageNodeClaimKind.LocalScaleXY:
-                    PublishLocalScale(claim.NodeKey, claim.Value.XY);
+                case NodeTargetKind.LocalScaleXY:
+                    PublishLocalScale(target.NodeKey, target.Value.XY);
                     break;
 
-                case StageNodeClaimKind.LocalEulerAngles:
-                    PublishLocalEuler(claim.NodeKey, claim.Value);
+                case NodeTargetKind.LocalEulerAngles:
+                    PublishLocalEuler(target.NodeKey, target.Value);
                     break;
 
                 default:
                     // SizeDelta(즉시 쓰기) · CanvasAlpha(가시성 축)는 장부 대상이 아니다 — 모르는 게 아니라 받지 않는 것.
-                    throw new ArgumentException($"장부 대상이 아닌 클레임 종류: {claim.Kind}", nameof(claim));
+                    throw new ArgumentException($"장부 대상이 아닌 타깃 종류: {target.Kind}", nameof(target));
             }
         }
 

@@ -19,31 +19,6 @@ public sealed record MotionNodeTween(string NodeKey, RectNodeState From, RectNod
 public sealed record MotionShotTween(ShotIntentState From, ShotIntentState To);
 
 /// <summary>
-/// 제자리 몸짓 하나가 이 커맨드 동안 흔드는 폭 (2026-08-21 `gesture` 개통).
-///
-/// ⚠ 다른 구간과 근본이 다르다: <b>폴드 차이가 근거가 아니다.</b> gesture는 순변위 0이라
-/// 코어가 무변으로 접고(그것이 정의다), 그래서 직전·직후 상태가 같다 — 차이를 재는
-/// 방식으로는 영원히 안 보인다. 대신 <b>인자가 직접</b> 말한다: 변위(t) = 진폭 × 곡선(t).
-///
-/// 표적은 <c>CharacterPortrait_Shake</c> — 이동 계열이 안 쓰는 노드라 겹쳐도 안 부딪친다.
-/// </summary>
-/// <param name="NodeKey">흔들 노드(<c>{슬롯}/CharacterPortrait_Shake</c>).</param>
-/// <param name="AmplitudeX">가로 진폭(픽셀). 부호는 곡선 좌우 반전.</param>
-/// <param name="AmplitudeY">세로 진폭(픽셀).</param>
-/// <param name="SourceX">
-/// 가로 진동 재료 — <b>곡선 키 → 이징 핑퐁 → 기본 혹</b>의 우선순위를 값 하나가 담는다.
-/// 그 세 갈래를 푸는 것은 코어 <see cref="OscillationFunctions.Evaluate(in OscillationSource, float)"/>
-/// 하나이고 런타임 스펙도 같은 타입을 싣는다 — 프리뷰가 재생과 갈릴 자리가 없다.
-/// </param>
-/// <param name="SourceY">세로 진동 재료.</param>
-public sealed record MotionGestureTween(
-    string NodeKey,
-    double AmplitudeX,
-    double AmplitudeY,
-    OscillationSource SourceX,
-    OscillationSource SourceY);
-
-/// <summary>
 /// 커맨드 하나의 시간 구간 — 자기 <c>duration</c>·<c>ease</c>로 자기가 바꾼 노드들을 끈다.
 /// 노드가 여럿인 것은 정상이다(예: <c>size</c>는 배율과 포커스 보정을 함께 바꾼다).
 /// </summary>
@@ -52,10 +27,8 @@ public sealed record MotionTween(
     string OutputCommand,
     double DurationSeconds,
     string? Ease,
-    IReadOnlyList<CurveKey>? CurveKeys,
     IReadOnlyList<MotionNodeTween> Nodes,
     MotionShotTween? Shot = null,
-    MotionGestureTween? Gesture = null,
     MotionSlidePunch? Punch = null);
 
 /// <summary>
@@ -100,14 +73,6 @@ public sealed class StageMotionPlan
             .Select(node => SlotOfNode(node.NodeKey))
             .Where(slot => slot.Length > 0)
             .ToHashSet(StringComparer.Ordinal);
-
-        foreach (MotionTween tween in tweens)
-        {
-            if (tween.Gesture is { } gesture && SlotOfNode(gesture.NodeKey) is { Length: > 0 } slot)
-            {
-                animated.Add(slot);
-            }
-        }
 
         // 카메라가 흐르면 무대 위의 <b>전부</b>가 흐른다 — 샷은 슬롯 하나의 일이 아니다.
         if (tweens.Any(tween => tween.Shot is not null))
@@ -156,19 +121,6 @@ public sealed class StageMotionPlan
                 state.Shot = Lerp(shot.From, shot.To, shaped);
             }
 
-            if (tween.Gesture is { } gesture && state.Nodes.Contains(gesture.NodeKey))
-            {
-                // ⚠ 진동은 <b>이징을 안 탄다</b> — 런타임도 트윈을 Linear로 흘리고 콜백에서
-                // 두 축 곡선을 각각 평가한다(GestureCommandCharR). 모양의 주인이 진동
-                // 곡선이라, 진행도에 또 곡선을 먹이면 재생과 갈린다.
-                float raw = (float)progress;
-
-                RectNodeState rest = state.Nodes.GetState(gesture.NodeKey);
-                state.Nodes.SetState(gesture.NodeKey, rest.WithAnchoredPosition(new Vec2(
-                    (float)(gesture.AmplitudeX * OscillationFunctions.Evaluate(gesture.SourceX, raw)),
-                    (float)(gesture.AmplitudeY * OscillationFunctions.Evaluate(gesture.SourceY, raw)))));
-            }
-
             foreach (MotionNodeTween node in tween.Nodes)
             {
                 if (state.Nodes.Contains(node.NodeKey))
@@ -182,14 +134,11 @@ public sealed class StageMotionPlan
     }
 
     /// <summary>
-    /// 진행도 → 곡선 값. 커스텀 곡선이 있으면 그것, 없으면 이징이다 — 재생·스크럽·정지가
-    /// 전부 이 하나를 지난다(런타임과 등가 고정된 코어 함수).
+    /// 진행도 → 이징 값. 재생·스크럽·정지가 전부 이 하나를 지난다(런타임과 등가 고정된 코어 함수).
     /// </summary>
     private static float Shape(MotionTween tween, double progress)
     {
-        float shaped = tween.CurveKeys is { Count: >= 2 } keys
-            ? CurveFunctions.Evaluate(keys as CurveKey[] ?? keys.ToArray(), (float)progress)
-            : EaseFunctions.Evaluate(EaseKindOf(tween.Ease), (float)progress);
+        float shaped = EaseFunctions.Evaluate(EaseKindOf(tween.Ease), (float)progress);
 
         if (tween.Punch is not { } punch)
         {
@@ -222,10 +171,6 @@ public sealed class StageMotionPlan
         Lerp(from.LocalScale, to.LocalScale, t),
         Lerp(from.LocalEulerAngles, to.LocalEulerAngles, t));
 
-    /// <summary>코어 평가기가 배열을 받는다 — 이미 배열이면 그대로 쓴다(복사 없음).</summary>
-    private static CurveKey[]? KeyArray(IReadOnlyList<CurveKey>? keys) =>
-        keys is null ? null : keys as CurveKey[] ?? keys.ToArray();
-
     private static ShotIntentState Lerp(in ShotIntentState from, in ShotIntentState to, float t) => new(
         from.Zoom + ((to.Zoom - from.Zoom) * t),
         Lerp(from.PanInRigSpace, to.PanInRigSpace, t),
@@ -250,8 +195,7 @@ public sealed class StageMotionPlan
         IReadOnlyList<PresentationResultCommand> setupCommands,
         IReadOnlyList<MiniStageFoldLine> foldLines,
         IReadOnlyList<PresentationResultCommand>? lineCommands,
-        StageReducerTuning? tuning,
-        IReadOnlyList<EaseCurve>? curves = null)
+        StageReducerTuning? tuning)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(setupCommands);
@@ -302,11 +246,8 @@ public sealed class StageMotionPlan
                 ? new MotionShotTween(before.Shot, after.Shot)
                 : null;
 
-            // 제자리 몸짓은 상태를 안 바꾸는 것이 정의라 차이로는 안 보인다 — 인자가 말한다.
-            MotionGestureTween? gesture = GestureOf(definition, command, final, tuning, curves);
-
             // 슬라이드도 시간 축을 인자에서 얻는다 — 등장은 순변위 0이라 차이로 안 보이고,
-            // 퇴장은 차이로 보이지만 이징·튐이 Yarn 인자가 아니라 스펙 상수다.
+            // 퇴장은 차이로 보이지만 튐이 상태 차이에 없다.
             SlideMotion.Kind? slideKind = SlideMotion.KindOf(definition.OutputCommandName);
             MotionSlidePunch? punch = null;
 
@@ -315,14 +256,13 @@ public sealed class StageMotionPlan
                 (nodes, punch) = SlideOf(kind, definition, command, before, tuning, nodes);
             }
 
-            if (nodes.Count == 0 && shot is null && gesture is null)
+            if (nodes.Count == 0 && shot is null)
             {
                 continue; // 바뀐 자리가 없다 — 태울 것도 없다(0u 이동 등).
             }
 
-            // 슬라이드의 이징은 Yarn 인자가 아니라 스펙 상수다 — 인자 선언을 뒤져도 없다.
             string? ease = slideKind is { } slide
-                ? SlideMotion.EaseOf(slide).ToString()
+                ? SlideEaseOf(slide, Argument(definition, command, "ease")).ToString()
                 : EaseOf(definition, command);
 
             tweens.Add(new MotionTween(
@@ -330,10 +270,8 @@ public sealed class StageMotionPlan
                 definition.OutputCommandName,
                 seconds,
                 ease,
-                CurveKeysOf(ease, curves),
                 nodes,
                 shot,
-                gesture,
                 punch));
         }
 
@@ -447,48 +385,6 @@ public sealed class StageMotionPlan
     }
 
     /// <summary>
-    /// 이 커맨드가 제자리 몸짓인가, 그렇다면 무엇을 얼마나 흔드는가 (2026-08-21).
-    ///
-    /// 판정은 <b>출력 커맨드 이름</b>이다 — 폴드가 무변이라 상태 차이로는 못 알아본다.
-    /// 이름으로 추측하지 않는다는 규칙의 예외처럼 보이지만 그렇지 않다: <c>gesture</c>는
-    /// "상태를 안 바꾸는 것이 정의"인 유일한 시간 커맨드라, 계약을 아는 것 말고는 길이 없다.
-    ///
-    /// 진폭이 양쪽 다 0이면 null — 흔들 것이 없다(런타임도 같은 값에서 아무 일도 안 한다).
-    /// </summary>
-    private static MotionGestureTween? GestureOf(
-        PresentationCommandDefinition definition,
-        PresentationResultCommand command,
-        StageState state,
-        StageReducerTuning tuning,
-        IReadOnlyList<EaseCurve>? curves)
-    {
-        if (!string.Equals(definition.OutputCommandName, "gesture", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        if (!state.TryResolveSlot(Argument(definition, command, "slot"), out string slotKey))
-        {
-            return null; // 없는 슬롯 — 폴드가 이미 사유를 남겼다
-        }
-
-        double x = AmplitudePixels(definition, command, "xAmp", tuning);
-        double y = AmplitudePixels(definition, command, "yAmp", tuning);
-
-        if (Math.Abs(x) < 0.001 && Math.Abs(y) < 0.001)
-        {
-            return null;
-        }
-
-        return new MotionGestureTween(
-            StageState.NodeKeyOf(slotKey, "CharacterPortrait_Shake"),
-            x,
-            y,
-            OscillationOf(Argument(definition, command, "xEase"), curves),
-            OscillationOf(Argument(definition, command, "yEase"), curves));
-    }
-
-    /// <summary>
     /// 슬라이드의 시간 축 (2026-08-24 소유자: "SlideOut, SlideIn이 지금 동작하지 않는데").
     ///
     /// 두 가지를 인자에서 얻는다 — 폴드 차이만으로는 못 얻는 것들이다:
@@ -496,8 +392,8 @@ public sealed class StageMotionPlan
     ///   <item><b>등장의 구간</b>. 정착 상태가 항등이라(도착점 = 현재 위치) 차이로는 아무것도
     ///     안 보인다. 화면 밖 출발점은 <c>현재 자리 + 방향 × 거리</c>로 <b>합성</b>한다 —
     ///     그러면 순변위 0인 채로 들어오는 움직임이 산다.</item>
-    ///   <item><b>튐</b>. 이징도 튐도 Yarn 인자가 아니라 런타임 <em>스펙 상수</em>라
-    ///     (브리지가 안 넘긴다) 카탈로그를 뒤져도 없다.</item>
+    ///   <item><b>튐</b>. <c>punch</c> 인자(단위 토큰)이고, 비었거나 못 읽으면 종류별 기본값이다 —
+    ///     런타임 파서와 같은 규칙(<see cref="SlidePunchPixelsOf"/>).</item>
     /// </list>
     ///
     /// 퇴장의 구간은 손대지 않는다 — <see cref="DiffNodes"/>가 이미 만들었다(<c>move_by</c>와
@@ -524,7 +420,7 @@ public sealed class StageMotionPlan
         }
 
         var punch = new MotionSlidePunch(
-            SlideMotion.PunchPixels(kind) / distance,
+            SlidePunchPixelsOf(kind, Argument(definition, command, "punch")) / distance,
             TowardEnd: kind == SlideMotion.Kind.In);
 
         if (kind == SlideMotion.Kind.Out)
@@ -552,6 +448,27 @@ public sealed class StageMotionPlan
             punch);
     }
 
+    /// <summary>
+    /// 슬라이드의 이징 — 적힌 이름, 비었거나 못 읽으면 종류별 기본(등장 OutCubic · 퇴장 InCubic).
+    /// 런타임 파서가 <c>YarnEaseParser.Parse(토큰, SlideMotion.EaseOf(종류))</c>로 읽는 것과 같다. 숫자 토큰은 이름이 아니다.
+    /// </summary>
+    private static EaseKind SlideEaseOf(SlideMotion.Kind kind, string token) =>
+        !string.IsNullOrWhiteSpace(token) &&
+        !double.TryParse(token, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out _) &&
+        Enum.TryParse(token, ignoreCase: true, out EaseKind ease)
+            ? ease
+            : SlideMotion.EaseOf(kind);
+
+    /// <summary>
+    /// 슬라이드의 튐(px) — 단위 토큰을 기준 폭으로 읽고, 비었거나 못 읽으면 종류별 기본값.
+    /// 런타임 파서(<c>StageCommandParser.ParsePunch</c>)와 같은 기준 폭을 쓴다.
+    /// </summary>
+    private static float SlidePunchPixelsOf(SlideMotion.Kind kind, string token) =>
+        UnitToken.TryParsePixels(token, UnitToken.DefaultReferenceStageWidth, out float pixels)
+            ? pixels
+            : SlideMotion.PunchPixels(kind);
+
     /// <summary>적힌 값 → 카탈로그 기본값 → <paramref name="fallback"/>. 빈 값은 없는 것이다.</summary>
     private static string ArgumentOr(
         PresentationCommandDefinition definition,
@@ -571,58 +488,4 @@ public sealed class StageMotionPlan
             ? written
             : definition.FindParameter(name)?.Default ?? string.Empty;
 
-    /// <summary>u 토큰 → 픽셀. 환산의 유일한 자리는 <see cref="UnitToken"/>이다.</summary>
-    private static double AmplitudePixels(
-        PresentationCommandDefinition definition,
-        PresentationResultCommand command,
-        string name,
-        StageReducerTuning tuning) =>
-        UnitToken.TryParseSignedPixels(
-            Argument(definition, command, name), tuning.ReferenceStageWidth, out float pixels)
-            ? pixels
-            : 0;
-
-    /// <summary>
-    /// 진동 한 축의 재료 — <b>브리지 <c>ResolveOscillation</c>과 같은 세 갈래</b>다
-    /// (2026-08-21 증보 개통):
-    ///
-    /// <list type="number">
-    /// <item><c>@이름</c> → 프로젝트 곡선. 단 <b>진동 종류일 때만</b>이고, 판정은 코어
-    /// <see cref="CurveKindRules"/> 하나를 쓴다(런타임 로더와 같은 규칙). 이동 곡선이면
-    /// 못 찾은 것으로 친다 — 한쪽만 알면 "툴에서는 되는데 재생에서 사라지는" 곡선이 된다</item>
-    /// <item><b>표준 이징 이름</b> → 그 이징의 핑퐁. 숫자 토큰은 안 받는다 —
-    /// <see cref="EaseKind"/>가 임의 정수로도 파싱돼 엉뚱한 이징이 되기 때문이다(런타임과 같은 방어)</item>
-    /// <item>그 밖(빈 토큰·못 읽는 낱말) → 기본 혹. <c>OutSine</c>의 핑퐁과 같은 함수다</item>
-    /// </list>
-    /// </summary>
-    private static OscillationSource OscillationOf(string token, IReadOnlyList<EaseCurve>? curves)
-    {
-        if (token is ['@', .. var name])
-        {
-            if (curves?.FirstOrDefault(curve =>
-                    string.Equals(curve.Name, name, StringComparison.Ordinal))?.Keys is { } keys &&
-                CurveKindRules.TryClassify(KeyArray(keys)!, out CurveKind kind, out _) &&
-                kind == CurveKind.Oscillation)
-            {
-                return OscillationSource.FromCurve(KeyArray(keys)!);
-            }
-
-            return OscillationSource.Default;
-        }
-
-        // 숫자로 읽히는 토큰은 이징 이름이 아니다 — Enum.TryParse가 "3"을 받아들인다.
-        return !string.IsNullOrWhiteSpace(token) &&
-            !double.TryParse(token, System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out _) &&
-            Enum.TryParse(token, ignoreCase: true, out EaseKind ease)
-                ? OscillationSource.FromEase(ease)
-                : OscillationSource.Default;
-    }
-
-    /// <summary><c>@이름</c>이면 프로젝트 곡선의 키. 못 찾으면 null — 런타임과 같은 폴백이다.</summary>
-    private static IReadOnlyList<CurveKey>? CurveKeysOf(string? ease, IReadOnlyList<EaseCurve>? curves) =>
-        ease is ['@', .. var name]
-            ? curves?.FirstOrDefault(curve =>
-                string.Equals(curve.Name, name, StringComparison.Ordinal))?.Keys
-            : null;
 }

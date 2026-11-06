@@ -118,11 +118,6 @@ public static class ProjectSnapshotCodec
             root["writerSpeakers"] = writerSpeakers;
         }
 
-        if (ProjectManifestJson.WriteEaseCurves(project.EaseCurves) is { } easeCurves)
-        {
-            root["easeCurves"] = easeCurves;
-        }
-
         if (!project.Results.IsEmpty)
         {
             root["results"] = JsonNode.Parse(ResultStoreJson.Write(project.Results));
@@ -204,7 +199,6 @@ public static class ProjectSnapshotCodec
 
         project.Chapters.AddRange(ChapterDocumentJson.Read(root["chapters"]));
         project.WriterSpeakers.AddRange(ProjectManifestJson.ReadWriterSpeakers(root["writerSpeakers"]));
-        project.EaseCurves.AddRange(ProjectManifestJson.ReadEaseCurves(root["easeCurves"]));
         project.PreviewRoutes.AddRange(ProjectManifestJson.ReadPreviewRoutes(root["previewRoutes"]));
 
         if (root["results"] is JsonObject resultsObject)
