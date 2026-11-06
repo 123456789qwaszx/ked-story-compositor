@@ -50,10 +50,8 @@ private void ClaimTarget()
         _startPos.ToCore());
 
     _destPos = claim.Value.XY.ToUnity();                   // 호스트: 트윈 종점
-    _rigRefs.PlacementTargets.PublishAnchoredPosition(_rect, _destPos); // 호스트: 게시
-
-    HasClaimedTarget = true;
-}
+    Claim(_rect, claim);                                   // 기반(RigClaimTweenCommandBase)이 게시·Clear
+}                                                          // 클레임을 안 내면 움직이지 않는다(place의 해 실패) — 무음 실패 금지
 ```
 
 **동작 불변이 규약이다**: 어댑터는 계산의 **자리만** 바꾸고 값·순서·부작용을 바꾸지 않는다.
@@ -108,9 +106,13 @@ sizeDelta(Overlay) · 마스크(StageMaskMotion).
 
 ### 축 ③ — 게시 여부
 
-57곳 중 **4곳만** 장부에 게시한다: MoveBy · ScaleTo · PlaceCharacterFocus · SetDepth.
-나머지는 트윈 종점으로만 쓴다. 이건 편차가 아니라 **의미 차이**다 —
-"이 노드가 정착 후 어디 있을지 남이 알아야 하는가"의 문제다.
+> **2026-11-05 갱신.** 처음(2026-08)엔 "남이 알아야 하는 노드"만 골라 4곳(MoveBy · ScaleTo ·
+> PlaceCharacterFocus · SetDepth)에 손으로 게시를 넣었다. 그 판정에서 **회전(SwayPivot)과
+> 슬라이드(Track)가 빠졌다** — 둘 다 측정 체인 위라 같은 줄의 place가 트윈 중간값을 읽었다.
+> 지금은 판정하지 않는다. `RigClaimTweenCommandBase`가 파생이 기록한 클레임을 **전부** 게시하고
+> 확정 때 Clear한다. 체인 아래 노드도 게시된다 — 아무도 안 읽을 뿐 틀리지 않는다.
+> 게시를 잊는 상태는 구조적으로 없다. 리덕션 없이 끝값을 정하는 커맨드(Slide · RotateBy ·
+> Gesture · Mirror)는 호스트가 클레임을 만든다 — "클레임 = 리덕션 출력"의 유일한 예외다.
 
 ## 두 가지 주의 (표본 정독에서 드러난 것)
 
@@ -177,6 +179,21 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 `shot_zoom` · `shot_track` · `shot_to` · `shot_reset` · `shot_focus_to` 5종 전부.
 `ShotIntentMath`가 zoom→배율 규약(0.05)의 유일한 자리다 — 커맨드와 적용측이 같이 본다.
 
+샷 리덕션의 출력은 노드 클레임이 아니라 **샷 의도 `ShotIntentState`(zoom · pan · focus) 하나**다.
+그 셋이 무대 노드(무대마다 카메라 둘 · 층마다 하나)에 무엇을 쓰는지는 **`Transforms/ShotLayoutMath`가 유일한 자리**다(2026-11-05).
+
+| 누가 | 무엇을 |
+|---|---|
+| 런타임 `PresentationShotResponseSystem` | 식의 출력을 노드에 쓴다(applier). 중립 = `Solve(Default)` |
+| 폴드 `StageReducer.Shot` | 의도만 접는다. 층 반응은 상태에 저장하지 않는다 — 의도 + 부착 d에서 언제든 풀린다 |
+| 하네스 `StageStateComparer.CompareStageView` | 같은 식으로 기대값(카메라 · 층마다 중심 · 전체 배율)을 풀어 캡처와 비교한다. 샷은 본 무대만 움직이므로(`StageRoles`, 2026-11-06) 덮는 무대의 기대값은 `Solve(Default)` |
+
+`shot_focus_to`는 정방향 식의 역으로 팬을 푼다(`ShotLayoutMath.SolvePanToPlace`). 입력은 무대 좌표의 focus와 그 슬롯이 선 층 d다.
+팬 1px당 그 점이 화면에서 움직이는 양이 층마다 일정(`1 + panResponse`)해서 축마다 나눗셈 한 번이다.
+종전에는 "지금 카메라를 씌웠다 벗기는" 왕복 뒤 카메라만 본 식(`desired − p × 배율`)이었고, mid가 아닌 층에서 층 반응만큼 빗나갔다
+(close에서 약 96px). 런타임과 코어가 똑같이 틀려 하네스가 잡지 못했다(`a7974fa2`에서 고침).
+식 · 계층 · 결정은 [stage-rig.md](../../Runtime/StageRig/Documentation~/stage-rig.md).
+
 ### staging (12커맨드)
 
 | 커맨드 | 스펙 클래스 | 처리 |
@@ -185,13 +202,14 @@ yarn 4묶음 기준. "이관 안 함"은 **조용히 버린 것이 아니라 판
 | `scale_by` · `scale_reset` | `ScaleToCommandSpecCharR` | 동일 |
 | `rotate_by` · `rotate_reset` | `RotateToCommandSpecCharR` | `RotateToReduction` |
 | `sibling_front` · `sibling_back` | — | **이관 안 함** (아래) |
-| `char_to` | — | **이관 안 함** (아래) — 무대를 이름에 박은 `char_to_s0/s1/s2`는 2026-11-03에 걷었다 |
+| `char_to` | — | **어휘에서 걷었다 (2026-11-06)** — 리그는 무대 · 층을 옮기지 않는다. 다른 자리는 fade_out 뒤 새 slot([stage-rig.md](../../Runtime/StageRig/Documentation~/stage-rig.md) §2.4). 무대를 이름에 박은 `char_to_s0/s1/s2`는 그 전 2026-11-03에 걷었다 |
 
-**구조 커맨드(`sibling_front` · `sibling_back` · `char_to`)를 이관하지 않는 이유: 변환부가 항등이다.**
+**구조 커맨드(`sibling_front` · `sibling_back`, 그리고 걷기 전의 `char_to`)를 이관하지 않는 이유: 변환부가 항등이다.**
 스펙 값(stage·layer·순서 모드)이 곧 목표이고 본문은 유니티 구조 조작(`SetParent` ·
 `SetSiblingIndex`)뿐이라 **코어로 옮길 계산이 없다.**
-이 구조 축(리그가 어느 스테이지/레이어에 어떤 순서로 붙는가)은 무대 상태 조립 때
-데이터 모델로 들어간다.
+이 구조 축(리그가 어느 스테이지/레이어에 어떤 순서로 붙는가) 중 **부착은 데이터 모델에 들어갔다** —
+`StageState`의 `SlotAttachment`(무대 키 · 층 라벨 · 깊이 d)를 slot · bg_spawn이 스폰 때 한 번 접는다.
+층 d는 2026-11-05부터 하네스의 층 판정과 `shot_focus_to`의 팬 역산이 읽는다. 형제 순서(`sibling_*`)는 아직 모델 밖이다.
 
 ### 이관 대상이 아닌 부류 — 절차적 커맨드
 
@@ -264,7 +282,7 @@ fade·move·scale을 **같은 노드, 같은 리덕션**으로 접고, 종횡비
 
 ### 백로그
 
-- 구조 축 상태 모델 (stage/layer 부착 + 형제 순서)
+- 구조 축 상태 모델의 형제 순서(`sibling_*`). 부착(stage/layer)은 `SlotAttachment`로 들어갔다
 - `SetPortraitSprite` (초상 축)
 - `ScreenFocusPoint` 비율표 — 게임별 값이므로 코어 코드가 아니라 **tuning 데이터**가 맞다.
   지금은 호스트 `ScreenFocusPointResolver`에 있다. U12 덤프 추가 후보.

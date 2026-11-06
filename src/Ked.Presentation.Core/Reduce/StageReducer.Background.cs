@@ -3,13 +3,12 @@ namespace Ked.Presentation.Core
     /// <summary>
     /// bg_* — 배경은 **캐스팅하지 않은 캐릭터 슬롯**이다.
     ///
-    /// 리그는 캐릭터와 하나지만 `bg_` 어휘는 따로 둔다 — 대본·문서·외부 도구가 이 이름을 쓰고,
-    /// "이건 배경"이라는 저작 의도가 대본에 남는다.
+    /// 배경도 캐릭터 리그지만 `bg_` 어휘를 둔다 — "이건 배경"이라는 저작 의도가 대본에 남는다.
     /// 그래서 여기 폴드는 새로 발명한 것이 없다: 슬롯 스폰 · 사이징 · fade · move · scale을
     /// 캐릭터 폴드와 **같은 노드, 같은 리덕션**으로 접는다. 다른 것은 종횡비의 출처 하나다
     /// (초상 DB가 아니라 background-dimensions.json).
     ///
-    /// 파서(StageCommandParser.Background)와의 대응:
+    /// 파서(StageCommandParser.Background)와의 대응(PLAN_background-as-slot "명령 대응표"):
     ///   bg_spawn             → SetupCharRig(stage00 · far 생략값, 배경) + 스프라이트 → 여기: SpawnSlot + 배역 풀기 + 사이징 (숨은 채)
     ///   bg_sprite            → 스프라이트 키 Spec(HeightFit)                 → 사이징
     ///   bg_fade_in/out       → FadeIn/Out(CharacterPortraitSprite_Root)       → ApplyFade (디스패치에서 직접)

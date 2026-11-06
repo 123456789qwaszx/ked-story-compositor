@@ -7,7 +7,7 @@ namespace Ked.Presentation.Core
     ///
     /// 주의: 이 비율은 게임별 값이므로 원칙적으로는 tuning 데이터가 맞다
     /// (reduction-boundary.md 백로그). 지금은 호스트에도 같은 상수가 있어 두 곳이다 —
-    /// 덤프에 screen-focus-points.json을 추가할 때 여기를 지운다.
+    /// 연출 기준값 덤프에 screen-focus-points.json을 추가할 때 여기를 지운다.
     /// </summary>
     public static class ScreenPointRatios
     {
@@ -151,7 +151,7 @@ namespace Ked.Presentation.Core
         /// <param name="preserveFocusToken">
         /// 보존할 focus 프리셋 토큰. **항상 커맨드 인자에서 온다**(브리지 기본값 "bust").
         ///
-        /// 주의: 덤프의 preset.preserveFocusPreset / preserveFocusOffset은 쓰지 않는다 —
+        /// 덤프의 preset.preserveFocusPreset / preserveFocusOffset은 쓰지 않는다 —
         /// 런타임 CharacterDepthResolver.ResolveRawDepth가 프리셋 값을 읽은 직후
         /// 커맨드 인자로 무조건 덮어쓰기 때문이다(그 두 필드는 런타임에서 사장 데이터다).
         /// 프리셋 값을 폴백으로 쓰면 재생과 갈라진다.

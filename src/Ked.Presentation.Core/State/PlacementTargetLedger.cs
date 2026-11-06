@@ -66,7 +66,8 @@ namespace Ked.Presentation.Core
                     break;
 
                 default:
-                    throw new ArgumentException($"모르는 클레임 종류: {claim.Kind}", nameof(claim));
+                    // SizeDelta(즉시 쓰기) · CanvasAlpha(가시성 축)는 장부 대상이 아니다 — 모르는 게 아니라 받지 않는 것.
+                    throw new ArgumentException($"장부 대상이 아닌 클레임 종류: {claim.Kind}", nameof(claim));
             }
         }
 

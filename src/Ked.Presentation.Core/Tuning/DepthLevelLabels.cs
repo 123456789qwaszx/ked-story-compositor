@@ -16,9 +16,8 @@ namespace Ked.Presentation.Core
     public static class DepthLevelLabels
     {
         /// <summary>
-        /// 눈금. 커브 설계 구간은 [0,20]이고 라벨이 그 위쪽을 쓴다 —
-        /// far 0 · back 10 · mid 14 · front 16 · close 20.
-        /// close가 설계 구간의 끝에 서므로 그 너머는 외삽이다.
+        /// 눈금. 커브 설계 구간은 [0,20]이고 라벨이 그 위쪽을 쓴다 — back 10 · mid 14 · front 16 · close 20.
+        /// close가 설계 구간의 끝에 서므로 그 너머는 외삽이다. far(0)만 제자리다.
         /// </summary>
         public const float Far = 0f;
         public const float Back = 10f;

@@ -95,7 +95,7 @@ namespace Ked.Presentation.Core
         /// outSlope(-56)과 할선((-440-120)/10 = -56)이 우연히 같지만,
         /// 커브를 손보는 날 조용히 갈린다.
         ///
-        /// WrapMode(m_PreInfinity/m_PostInfinity)는 보지 않는다 —
+        /// 주의: WrapMode(m_PreInfinity/m_PostInfinity)는 보지 않는다 —
         /// 런타임이 그걸 쓰지 않는다. 흉내 내면 재생과 갈린다.
         /// </summary>
         public static float EvaluateUnclamped(CurveKey[] keys, float t)

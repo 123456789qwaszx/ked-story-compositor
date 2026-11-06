@@ -301,7 +301,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void 보존_focus는_커맨드_인자가_정한다_프리셋_필드가_아니다()
         {
-            // 주의: 런타임 ResolveRawDepth가 프리셋의 preserveFocusPreset을 읽은 직후
+            // 런타임 ResolveRawDepth가 프리셋의 preserveFocusPreset을 읽은 직후
             // 커맨드 인자로 덮어쓴다 — 덤프의 그 필드는 사장 데이터다.
             // close 프리셋 값은 30(face)이지만 셋째 인자 없이 부르면 파서 표 기본 "bust"가 된다.
             StageReducerTuning tuning = NewTuning();
@@ -342,7 +342,7 @@ namespace Ked.Presentation.Core.Tests
         public void close_위의_무릎이_라벨_구간을_건드리지_않는다()
         {
             // scale 커브는 레벨 10에 무릎이 있다 — 그 위로 더 가파르다(0.052 → 0.082).
-            // back(10)은 무릎에 서고 mid·front·close는 무릎 위에 산다.
+            // back(10)이 무릎에 서고 mid·front·close는 무릎 위에 산다.
             StageReducerTuning tuning = NewTuning();
 
             foreach ((string label, float expected) in new[]
@@ -450,7 +450,7 @@ namespace Ked.Presentation.Core.Tests
         [Test]
         public void shot_focus_to를_접으면_적용측_규약으로_화면_지점에_온다()
         {
-            // 명중 검산: 보이는 위치 = 논리 focus × 목표 배율 + pan.
+            // 명중 검산: slot 생략값은 mid라 층 반응이 항등이다 — 보이는 위치 = 논리 focus × 목표 배율 + pan.
             StageReducerTuning tuning = NewTuning();
 
             StageState state = Fold(tuning,
@@ -472,11 +472,11 @@ namespace Ked.Presentation.Core.Tests
         }
 
         [Test]
-        public void shot_focus_to는_현재_카메라를_벗겨_논리_focus를_남긴다()
+        public void shot_focus_to는_지금_카메라와_무관하게_무대_위_자리로_푼다()
         {
             StageReducerTuning tuning = NewTuning();
 
-            // 카메라가 이미 움직인 상태에서 접는다.
+            // 카메라가 이미 움직인 상태에서 접어도 명중한다 — 입력은 무대 좌표다.
             StageState state = Fold(tuning,
                 Cmd("slot", "c1"),
                 Cmd("shot_to", "3", "1u", "0u"),
@@ -494,6 +494,51 @@ namespace Ked.Presentation.Core.Tests
 
             Assert.That(visible.X, Is.EqualTo(desired.X).Within(Eps));
             Assert.That(visible.Y, Is.EqualTo(desired.Y).Within(Eps));
+        }
+
+        [TestCase("far")]
+        [TestCase("back")]
+        [TestCase("front")]
+        [TestCase("close")]
+        public void shot_focus_to는_슬롯이_선_층의_반응까지_넣어_명중한다(string layer)
+        {
+            // 층 반응이 항등이 아닌 층. 정방향 식(SolveLayer → ProjectToRigSpace)으로 보이는 자리를 검산한다.
+            StageReducerTuning tuning = NewTuning();
+
+            StageState state = Fold(tuning,
+                Cmd("slot", "c1", "stage00", layer),
+                Cmd("place_left", "c1", "bust"),
+                Cmd("shot_focus_to", "c1", "bust", "center", "2.5"));
+
+            Assert.That(state.Unhandled, Is.Empty);
+
+            float depth = state.GetAttachment("c1").LayerDepth;
+            Vec2 focus = FocusOf(state, "c1", "bust", tuning);
+            Assert.That(state.Shot.FocusPointInRigSpace.X, Is.EqualTo(focus.X).Within(Eps), "논리 focus = 무대 위 자리");
+            Assert.That(state.Shot.FocusPointInRigSpace.Y, Is.EqualTo(focus.Y).Within(Eps), "논리 focus = 무대 위 자리");
+
+            ShotLayoutMath.SolveCamera(state.Shot, out float cameraScale, out Vec2 pan);
+            LayerResponse response = ShotLayoutMath.SolveLayer(state.Shot, depth, LayerProfileCurve.Default);
+            Vec2 seen = ShotLayoutMath.ProjectToRigSpace(focus, cameraScale, pan, in response);
+
+            Assert.That(seen.X, Is.EqualTo(0f).Within(Eps), $"{layer} center에 명중 — seen={seen}");
+            Assert.That(seen.Y, Is.EqualTo(0f).Within(Eps), $"{layer} center에 명중 — seen={seen}");
+        }
+
+        [Test]
+        public void 덮는_무대에_선_슬롯에는_shot_focus_to를_걸_수_없다()
+        {
+            // 샷은 본 무대만 움직인다(StageRoles). 런타임은 경고하고 건너뛰고, 폴드는 Unhandled로 남긴다.
+            StageReducerTuning tuning = NewTuning();
+
+            StageState state = Fold(tuning,
+                Cmd("slot", "c1", "stage01", "mid"),
+                Cmd("shot_to", "3", "1u", "0u"),
+                Cmd("shot_focus_to", "c1", "bust", "center", "2.5"));
+
+            Assert.That(state.Unhandled.Count, Is.EqualTo(1));
+            Assert.That(state.Unhandled[0].Reason, Does.Contain("덮는 무대"));
+            Assert.That(state.Shot.Zoom, Is.EqualTo(3f), "샷은 앞 커맨드 그대로");
         }
     }
 }

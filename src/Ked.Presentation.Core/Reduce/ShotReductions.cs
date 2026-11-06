@@ -33,27 +33,29 @@ namespace Ked.Presentation.Core
 
     // shot_focus_to - 캐릭터 focus 지점이 화면의 지정 지점에 오는 zoom/pan.
     //
-    // 입력의 measuredFocusInRigSpace는 "현재 카메라가 적용된 채로 측정된" 값.
-    // (정착 focus 측정 결과). 카메라를 영향을 제거해, 논리 좌표로 되돌리고,
-    // 목표 배율에서 원하는 지점에 오도록 pan을 역산
+    // focus는 무대 좌표다(카메라 중립). 런타임은 정착 사슬이 샷 노드를 중립으로 재고, 폴드는 상태가 곧 무대 좌표다.
+    // 그 점이 선 층(d)의 반응까지 넣어, 목표 배율에서 원하는 지점에 보이는 팬을 푼다.
+    // 논리 focus는 그 점 자체다 — 층 산개의 기준이 된다.
+    //
+    // 지금 카메라는 입력이 아니다. 결과는 무대 위 자리와 층만으로 정해진다.
     public static class ShotZoomFocusReduction
     {
         public static ShotIntentState Reduce(
-            in ShotIntentState from,
             float targetZoom,
-            Vec2 measuredFocusInRigSpace,
-            Vec2 desiredPointInRigSpace)
+            Vec2 focusInStageSpace,
+            Vec2 desiredPointInRigSpace,
+            float layerDepth,
+            LayerProfileCurve curve)
         {
-            float fromScale = ShotIntentMath.EvaluateCameraScale(from.Zoom);
-            float targetScale = ShotIntentMath.EvaluateCameraScale(targetZoom);
+            Vec2 pan = ShotLayoutMath.SolvePanToPlace(
+                targetZoom,
+                focusInStageSpace,
+                focusInStageSpace,
+                desiredPointInRigSpace,
+                layerDepth,
+                curve);
 
-            Vec2 logicalFocusPoint = ShotIntentMath.RemoveCurrentCameraTransformFromFocusPoint(
-                measuredFocusInRigSpace, from.PanInRigSpace, fromScale);
-
-            Vec2 targetPan = ShotIntentMath.CalculatePanToPlaceFocusAtScreenPoint(
-                logicalFocusPoint, desiredPointInRigSpace, targetScale);
-
-            return new ShotIntentState(targetZoom, targetPan, logicalFocusPoint);
+            return new ShotIntentState(targetZoom, pan, focusInStageSpace);
         }
     }
 }

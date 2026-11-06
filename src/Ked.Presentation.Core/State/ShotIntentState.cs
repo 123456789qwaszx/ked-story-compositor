@@ -31,21 +31,5 @@ namespace Ked.Presentation.Core
 
         public static float EvaluateCameraScale(float zoom)
             => 1f + zoom * ZoomToScaleFactor;
-
-        // 현재 보이는 위치에서 저작된 pan/배율을 제거해 논리 좌표를 복원.
-        public static Vec2 RemoveCurrentCameraTransformFromFocusPoint(
-            Vec2 focusPointInRigSpace,
-            Vec2 currentPan,
-            float currentScale) 
-            => new Vec2(
-                (focusPointInRigSpace.X - currentPan.X) / currentScale,
-                (focusPointInRigSpace.Y - currentPan.Y) / currentScale);
-
-        // focus가 원하는 화면 지점에 보이도록 pan을 역산.
-        public static Vec2 CalculatePanToPlaceFocusAtScreenPoint(
-            Vec2 logicalFocusPointInRigSpace,
-            Vec2 desiredPointInRigSpace,
-            float targetScale) 
-            => desiredPointInRigSpace - logicalFocusPointInRigSpace * targetScale;
     }
 }

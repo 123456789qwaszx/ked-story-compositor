@@ -291,21 +291,21 @@ public class CoreStageFoldTests
     [Fact]
     public void 미표시_분류_접혔지만_안_그리는_축은_플래그로_갈린다()
     {
-        // char_to는 코어가 구조 축으로 접지만(v1 컨테이너 항등 가정) 화면에 그릴 것이 없다 —
+        // gesture는 코어가 접지만(제자리 몸짓 — 순변위 0) 화면에 그릴 것이 없다 —
         // H-3 "미표시". 코어도 툴도 모르는 커맨드는 "반영 안 됨"(플래그 false)이다.
         PresentationResultCommand[] setup =
         [
             Command("char_rig_cast.slot", ("slotKey", "c1")),
-            Command("char_rig_staging.char_to", ("slot", "c1"), ("stage", "stage01")),
+            Command("char_rig_staging.gesture", ("slot", "c1")),
             Command("custom.mystery", ("x", "1"))
         ];
 
         CoreStageFoldResult composite = CoreStageFold.Fold(
             Catalog, setup, Array.Empty<MiniStageFoldLine>(), LoadTuning());
 
-        MiniStageUnhandled charTo = Assert.Single(
-            composite.State.Unhandled, entry => entry.CommandName == "char_to");
-        Assert.True(charTo.FoldedButNotDrawn);
+        MiniStageUnhandled gesture = Assert.Single(
+            composite.State.Unhandled, entry => entry.CommandName == "gesture");
+        Assert.True(gesture.FoldedButNotDrawn);
 
         MiniStageUnhandled mystery = Assert.Single(
             composite.State.Unhandled, entry => entry.CommandName == "custom.mystery");

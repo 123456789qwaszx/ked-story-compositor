@@ -64,6 +64,9 @@ namespace Ked.Presentation.Core
         public static StageNodeClaim CanvasAlpha(string nodeKey, float alpha)
             => new(nodeKey, StageNodeClaimKind.CanvasAlpha, new Vec3(alpha, 0f, 0f));
 
+        /// <summary>같은 목표를 다른 키로. 호스트 장부가 참조에서 정한 키로 바꿔 싣는 용도다.</summary>
+        public StageNodeClaim WithNodeKey(string nodeKey) => new(nodeKey, Kind, Value);
+
         /// <summary>클레임을 상태 값에 적용한다. 스케일 z 보존 규약이 여기 산다.</summary>
         public RectNodeState ApplyTo(in RectNodeState state)
         {

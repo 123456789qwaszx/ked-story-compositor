@@ -53,7 +53,7 @@ namespace Ked.Presentation.Core
         public Float3Dto localEulerAngles;
 
         /// <summary>
-        /// 주의: 재현 입력이 아니다. 캡처 시점의 파생 rect 크기 —
+        /// 재현 입력이 아니다. 캡처 시점의 파생 rect 크기 —
         /// 트리를 세운 뒤 GetRectSize와 대조하는 검산용이다.
         /// </summary>
         public Float2Dto measuredRectSize;

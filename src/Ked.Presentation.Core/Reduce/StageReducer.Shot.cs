@@ -10,16 +10,23 @@ namespace Ked.Presentation.Core
         /// <summary>
         /// shot_focus_to (role, focus="body", screenPoint="center", zoom=2.5, duration).
         ///
-        /// 런타임과 같은 경로를 태운다: "현재 카메라가 적용된" 측정 focus를 만들어
-        /// ShotZoomFocusReduction에 넘긴다(내부에서 카메라를 벗겨 논리 좌표 복원).
-        /// 폴드의 측정값 = 논리 focus × 현재 배율 + 현재 pan — 적용측 규약 그대로다.
-        /// 여기서 지름길을 내면 런타임과 폴드가 갈라진다.
+        /// 런타임과 같은 리덕션을 태운다: 무대 좌표의 focus와 그 슬롯이 선 층 d를 ShotZoomFocusReduction에 넘긴다.
+        /// 층 반응 곡선은 하네스가 무대 뷰를 판정할 때와 같은 것(ResolveLayerProfileCurve)이다.
         /// </summary>
         private static bool ApplyShotFocusTo(
             StageState state, in StageCommand cmd, StageReducerTuning tuning, out string reason)
         {
             if (!TryGetSpawnedSlot(state, cmd, out string slotKey, out reason))
                 return false;
+
+            // 샷은 본 무대만 움직인다(StageRoles). 덮는 무대의 리그로는 본 무대의 카메라를 풀 수 없다 — 런타임은 경고하고 건너뛴다.
+            SlotAttachment attachment = state.GetAttachment(slotKey);
+
+            if (StageRoles.Of(attachment.StageKey) != StageRole.Main)
+            {
+                reason = $"슬롯 '{slotKey}'은 덮는 무대 '{attachment.StageKey}'에 서 있다 — 샷은 본 무대만 움직인다";
+                return false;
+            }
 
             if (!FocusPresetName.TryNormalizeToken(cmd.Arg(1, "body"), out string focusName))
             {
@@ -48,13 +55,16 @@ namespace Ked.Presentation.Core
             RectNodeState[] chain = state.Nodes.BuildChainTo(
                 StageState.NodeKeyOf(slotKey, PlaceFocusStageReduction.MeasureNodeId));
 
-            Vec2 logicalFocus = SettledFocusMath.FocusPointInRigSpace(
+            Vec2 focus = SettledFocusMath.FocusPointInRigSpace(
                 chain, state.Nodes.RootSpace, focusOffset);
 
-            float currentScale = ShotIntentMath.EvaluateCameraScale(state.Shot.Zoom);
-            Vec2 measuredFocus = logicalFocus * currentScale + state.Shot.PanInRigSpace;
+            state.Shot = ShotZoomFocusReduction.Reduce(
+                zoom,
+                focus,
+                desired,
+                attachment.LayerDepth,
+                tuning.ResolveLayerProfileCurve());
 
-            state.Shot = ShotZoomFocusReduction.Reduce(state.Shot, zoom, measuredFocus, desired);
             return true;
         }
 

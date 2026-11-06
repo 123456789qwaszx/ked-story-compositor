@@ -3,10 +3,13 @@ namespace Vn.Authoring.Definition;
 /// <summary>
 /// 걷은 별칭 정의 → 정본 정의 (2026-11-03).
 ///
-/// 런타임 어휘에서 "인자 하나를 이름에 박아 다시 부르던" 이름(slotNN · char_to_sN · bg_slotNN · screen_blur_sN ·
+/// 런타임 어휘에서 "인자 하나를 이름에 박아 다시 부르던" 이름(slotNN · bg_slotNN · screen_blur_sN ·
 /// place_* · size_&lt;라벨&gt; · tx_&lt;프리셋&gt;)을 걷고 정본만 남겼다. 카탈로그에도 정본만 있다.
 /// 예외(소유자 결정)는 걷지 않았으므로 옮기지 않는다: place_left · place_center · place_right,
 /// 프레임 대기 &lt;&lt;Nfr&gt;&gt;(control.frame_wait), char_visual_&lt;효과&gt; 일곱(캐릭터 비주얼은 이름에서 효과가 드러나야 한다).
+///
+/// 정본 없이 걷은 커맨드는 옮기지 않는다(ui_patch · debug_log · box_* · char_to와 그 별칭 char_to_sN).
+/// char_to는 2026-11-06에 걷었다 — 리그는 무대 · 층을 옮기지 않고, 다른 자리는 fade_out 뒤 새 slot이다.
 ///
 /// 이 툴의 데이터는 명령을 <b>정의 id + 이름 인자</b>로 저장한다. 걷은 정의를 가리키는 저장본이 있으면
 /// <b>읽을 때</b> 여기서 정본으로 옮긴다 — 작업 데이터(연출 노드 · 프리셋 · 칩 · 최근 명령)도, 얼린 발행본도.
@@ -40,12 +43,6 @@ public static class LegacyCommandUpgrade
         {
             rules[$"char_rig_cast.slot{stage}"] = new Rule("char_rig_cast.slot", Fixed: One("stage", $"stage{stage}"));
             rules[$"background.bg_slot{stage}"] = new Rule("background.bg_spawn", Fixed: One("stage", $"stage{stage}"));
-        }
-
-        for (int stage = 0; stage <= 2; stage++)
-        {
-            rules[$"char_rig_staging.char_to_s{stage}"] =
-                new Rule("char_rig_staging.char_to", Fixed: One("stage", $"stage0{stage}"));
         }
 
         rules["screen_blur.screen_blur_s1"] = new Rule("screen_blur.screen_blur", Fixed: One("stage", "stage01"));

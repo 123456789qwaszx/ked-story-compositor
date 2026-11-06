@@ -12,13 +12,13 @@ public class PresentationCommandCatalogTests
         // docs/game.definition.json — 런타임 등록 테이블과 교차 검증한다.
         // 실제 대조는 아래 `카탈로그_어휘는_런타임_등록_목록과_일치한다`가 진다.
         //
-        // 89 = 커맨드 77(카테고리 15) + 줄 태그 12(범주 line_tag — #auto · #box 전환 다섯 · 대사창 종류 여섯).
+        // 88 = 커맨드 76(카테고리 15) + 줄 태그 12(범주 line_tag — #auto · #box 전환 다섯 · 대사창 종류 여섯).
         // 커맨드는 런타임 정본만 둔다 — 인자 하나를 이름에 박은 별칭은 없고, 프레임 대기 <N>fr과
         // char_visual_<효과> 일곱만 별칭으로 남는다.
         // 줄 태그는 커맨드가 아니라 대사 줄의 태그다(execution "lineTag") — 대사창 숨김·전환은
         // 커맨드가 아니라 줄 태그(#boxhide 등)로 연출 층이 든다.
-        Assert.Equal(89, catalog.Definitions.Count);
-        Assert.Equal(77, catalog.Definitions.Count(item => !item.IsLineTag));
+        Assert.Equal(88, catalog.Definitions.Count);
+        Assert.Equal(76, catalog.Definitions.Count(item => !item.IsLineTag));
         Assert.Equal(16, catalog.Categories.Count);
         Assert.Same(catalog, PresentationCommandCatalog.For(definition: null));
     }

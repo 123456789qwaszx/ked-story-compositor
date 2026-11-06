@@ -672,33 +672,6 @@
       ]
     },
     {
-      "id": "char_rig_staging.char_to",
-      "name": "스테이지/레이어 이동",
-      "category": "char_rig_staging",
-      "outputCommand": "char_to",
-      "execution": "queued",
-      "parameters": [
-        {
-          "name": "slot",
-          "type": "aliasOrSlot",
-          "required": true
-        },
-        {
-          "name": "stage",
-          "type": "stageKey",
-          "required": false,
-          "default": "stage00"
-        },
-        {
-          "name": "layer",
-          "type": "layerKey",
-          "required": false,
-          "default": "mid"
-        }
-      ],
-      "notes": "재부모화 후 Front 정렬된다."
-    },
-    {
       "id": "char_rig_entrance.show",
       "name": "캐릭터 표시(등장)",
       "category": "char_rig_entrance",
@@ -1753,7 +1726,7 @@
           "description": "이징 곡선 이름(EaseKind 35종, 대소문자 무시). 비우면 런타임 기본 OutCubic — 기본값을 여기 적지 않는 이유는 미지정 시 마지막 토큰이 아예 생략되게 하기 위해서다(기존 대본 최소 diff). 2026-08-21 런타임이 샷 5종에 열었다."
         }
       ],
-      "notes": "지정 캐릭터의 focus 지점을 화면 screenPoint로 가져오며 zoom 적용 — 인물 클로즈업의 표준 수단."
+      "notes": "지정 캐릭터의 focus 지점을 화면 screenPoint로 가져오며 zoom 적용 — 인물 클로즈업의 표준 수단. 캐릭터가 선 층의 시차까지 넣어 맞춘다. 샷은 본 무대(stage00)만 움직이므로 덮는 무대(stage01 · stage02)의 캐릭터에는 걸 수 없다."
     },
     {
       "id": "shot.shot_to",

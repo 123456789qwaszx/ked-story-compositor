@@ -16,9 +16,10 @@
 # 예외(소유자 결정): place_left · center · right, 프레임 대기 <<Nfr>>, char_visual_<효과> 일곱.
 #
 # 2026-11-03 box_hide · box_show · box_close도 걷었다 — 대사창 숨김은 줄 태그(#boxhide)로 한다.
+# 2026-11-06 char_to도 걷었다 — 리그는 무대 · 층을 옮기지 않는다(다른 자리는 fade_out 뒤 새 slot).
 #
-# 스냅샷 시점: 2026-11-04 (무대 ked-stage-runtime refactor/canonical-commands @ 316602e의 파서 표 74개 +
-#   재생 저장소 브리지의 대사창 2개 — surface_layout · surface_reset)
+# 스냅샷 시점: 2026-11-06 (ked-presentation-runtime dev @ 3f1fb583 — 브리지 등록 75개.
+#   무대 파서 표 73개 + 대사창 2개 — surface_layout · surface_reset)
 actor
 bg_fade_in
 bg_fade_out
@@ -31,7 +32,6 @@ cast
 char_move_to
 char_rotate_to
 char_scale_to
-char_to
 char_visual
 char_visual_clear
 char_visual_defocus

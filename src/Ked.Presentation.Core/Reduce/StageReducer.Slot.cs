@@ -154,17 +154,5 @@ namespace Ked.Presentation.Core
             state.SetAlias(aliasSymbol, targetKey);
             return true;
         }
-
-        // ── 구조 ─────────────────────────────────────────────────────
-
-        private static bool ApplyCharTo(
-            StageState state, in StageCommand cmd, string stageKey, string layerKey, out string reason)
-        {
-            if (!TryGetSpawnedSlot(state, cmd, out string slotKey, out reason))
-                return false;
-
-            state.SetAttachment(slotKey, new SlotAttachment(stageKey, layerKey));
-            return true;
-        }
     }
 }

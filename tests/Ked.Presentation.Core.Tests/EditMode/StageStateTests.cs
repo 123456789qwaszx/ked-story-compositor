@@ -248,6 +248,39 @@ namespace Ked.Presentation.Core.Tests
             Assert.That(state.TryGetAttachment("c1", out SlotAttachment attachment), Is.True);
             Assert.That(attachment.StageKey, Is.EqualTo("stage01"));
             Assert.That(attachment.LayerKey, Is.EqualTo("front"));
+            Assert.That(attachment.LayerDepth, Is.EqualTo(StageLayerLabels.Front));
+        }
+
+        [Test]
+        public void 부착의_층은_깊이_값이고_모르는_라벨은_mid다_런타임과_같다()
+        {
+            Assert.That(new SlotAttachment("stage00", "close").LayerDepth, Is.EqualTo(StageLayerLabels.Close));
+            Assert.That(new SlotAttachment("stage00", "near").LayerDepth, Is.EqualTo(StageLayerLabels.Mid), "별칭은 없다");
+            Assert.That(new SlotAttachment(" Stage01 ", "far").StageKey, Is.EqualTo("stage01"), "무대 키는 런타임 파서처럼 다듬는다");
+            Assert.That(new SlotAttachment("", "far").StageKey, Is.EqualTo("stage00"));
+        }
+
+        [Test]
+        public void 무대를_생략하면_본_무대고_그_밖은_덮는_무대다()
+        {
+            Assert.That(StageRoles.MainStageKey, Is.EqualTo("stage00"));
+            Assert.That(StageRoles.Of(new SlotAttachment("", "mid").StageKey), Is.EqualTo(StageRole.Main));
+            Assert.That(StageRoles.Of("stage01"), Is.EqualTo(StageRole.Overlay));
+            Assert.That(StageRoles.Of("stage02"), Is.EqualTo(StageRole.Overlay));
+        }
+
+        [Test]
+        public void 무대별로_리그가_선_층을_먼_층부터_낸다()
+        {
+            StageState state = NewState();
+            state.SetAttachment("c1", new SlotAttachment("stage00", "close"));
+            state.SetAttachment("c2", new SlotAttachment("stage00", "far"));
+            state.SetAttachment("c3", new SlotAttachment("stage00", "close"));
+            state.SetAttachment("bg", new SlotAttachment("stage01", "mid"));
+
+            Assert.That(state.AttachedStages(), Is.EqualTo(new[] { "stage00", "stage01" }));
+            Assert.That(state.AttachedLayerDepths("stage00"), Is.EqualTo(new[] { StageLayerLabels.Far, StageLayerLabels.Close }));
+            Assert.That(state.AttachedLayerDepths("stage02"), Is.Empty);
         }
 
         // ── 복제 (리듀서 순수성의 전제) ──────────────────────────────

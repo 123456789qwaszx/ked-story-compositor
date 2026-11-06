@@ -33,7 +33,8 @@ public static class CoreStageFold
     /// 프리뷰가 화면에 그리는 코어 축의 커맨드 — 커맨드 해석이 아니라 <b>표시 정책</b>이다.
     /// 여기 없는 코어 처리 커맨드는 상태에는 접히지만 아직 안 그리므로 뱃지에 남는다(규칙 14).
     /// W25부터 좌표 축(place·size·이동·샷)이 코어 상태 그대로 그려지므로 이 목록에 있다 —
-    /// 코어가 접었는데 화면에 안 나오는 것은 이제 구조 기록(char_to)과 셰이더 축뿐이다.
+    /// 코어가 접었는데 화면에 안 나오는 것은 이제 제자리 몸짓 · 모션 같은 시간 축과 초상 연기 축 일부뿐이다
+    /// (셰이더 축은 애초에 코어 밖이다).
     /// </summary>
     internal static readonly HashSet<string> DrawnCoreCommands = new(StringComparer.Ordinal)
     {

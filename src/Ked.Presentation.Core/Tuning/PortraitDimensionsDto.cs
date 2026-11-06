@@ -131,8 +131,8 @@ namespace Ked.Presentation.Core
 
         /// <summary>
         /// 변형 키는 **문자열 전체**가 키다 (`a` → "a", `school` → "school").
-        /// 초상 에셋이 폴더 규약(&lt;캐릭터&gt;/&lt;변형&gt;/&lt;표정&gt;.png)을 따르므로 변형은 폴더 이름
-        /// 그 자체다. 마지막 글자만 보면 `school`과 `casual`이 조용히 같은 키가 된다.
+        /// 초상 에셋의 폴더 규약(&lt;캐릭터&gt;/&lt;변형&gt;/&lt;표정&gt;.png)에서 변형은 폴더 이름 그 자체다.
+        /// 마지막 글자만 보면 `school`과 `casual`이 조용히 같은 키가 된다.
         /// </summary>
         public static string VariantKey(string variantKey)
             => (variantKey ?? "").Trim().ToLowerInvariant();

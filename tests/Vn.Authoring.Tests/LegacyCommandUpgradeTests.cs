@@ -100,9 +100,19 @@ public class LegacyCommandUpgradeTests
     public void 무대를_이름에_박은_것은_stage_인자가_된다()
     {
         Assert.Equal("stage01", Upgrade("char_rig_cast.slot01", ("slotKey", "c1")).Arguments["stage"]);
-        Assert.Equal("stage02", Upgrade("char_rig_staging.char_to_s2", ("slot", "c1")).Arguments["stage"]);
         Assert.Equal("stage01", Upgrade("background.bg_slot01", ("rigKey", "bg"), ("spriteKey", "x")).Arguments["stage"]);
         Assert.Equal("stage02", Upgrade("screen_blur.screen_blur_s2", ("layer", "far")).Arguments["stage"]);
+    }
+
+    [Fact]
+    public void char_to와_그_별칭은_옮기지_않는다_정본_없이_걷었다()
+    {
+        // 리그는 무대 · 층을 옮기지 않는다(런타임 2026-11-06). 다른 자리는 fade_out 뒤 새 slot이라 옮길 정본이 없다.
+        foreach (string id in new[] { "char_rig_staging.char_to", "char_rig_staging.char_to_s1" })
+        {
+            Assert.False(LegacyCommandUpgrade.TryUpgrade(id, Args(("slot", "c1")), out _, out _), id);
+            Assert.Null(PresentationCommandCatalog.Default.Find(id));
+        }
     }
 
     [Fact]
