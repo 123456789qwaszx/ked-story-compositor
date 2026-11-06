@@ -70,15 +70,19 @@ public static class StageSceneComposer
         double width,
         double height,
         StageState? coreState = null,
-        SurfaceLayoutSet? surfaceLayouts = null)
+        SurfaceLayoutSet? surfaceLayouts = null,
+        LayerProfileCurve? layerProfile = null)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        // 층 반응 곡선 — 튜닝 덤프에 있으면 그것(RuntimeTuningLibrary.LayerProfile), 없으면 코어 기본(런타임 조립과 같은 값).
+        LayerProfileCurve curve = layerProfile ?? LayerProfileCurve.Default;
 
         bool hasSpeaker = !string.IsNullOrWhiteSpace(speakerName);
         (IReadOnlyList<StagePortraitPlacement> portraits, bool speakerOnStage) =
             coreState is null
                 ? PlacePortraits(state, speakerCharacterId, width, height)
-                : PlaceCorePortraits(state, coreState, speakerCharacterId, width, height);
+                : PlaceCorePortraits(state, coreState, speakerCharacterId, width, height, curve);
 
         return new StageSceneLayout(
             width,
@@ -88,50 +92,55 @@ public static class StageSceneComposer
             hasSpeaker && !speakerOnStage ? speakerName : null,
             coreState is null
                 ? new StageRect(0, 0, width, height)
-                : CameraStageRect(coreState, width, height));
+                : CameraStageRect(coreState, state.BackgroundRigKey, width, height, curve));
     }
 
     /// <summary>
-    /// 카메라(shot)를 태운 무대 전체 rect (2026-08-27 소유자: "shot_to … 원래라면 bg역시도
-    /// 크기를 받아야 하는데, 지금은 오직 캐릭터만") — 초상과 같은 적용측 규약
-    /// (보이는 위치 = 논리 × 배율 + pan)을 무대 네 모서리에 그대로 적용한 것이다.
-    /// 배경은 무대 크기로 깔리므로 이 rect가 곧 배경의 자리다.
+    /// 샷을 태운 배경의 자리 — 배경은 무대 크기로 깔리므로, 무대 네 모서리를 초상과 같은 식(<see cref="ShotView"/>)으로
+    /// 옮긴 것이 곧 배경의 자리다. 배경 슬롯이 선 무대 · 층의 반응까지 들어간다(배경도 캐스팅하지 않은 슬롯이다).
+    /// 배경 슬롯이 아직 없으면 bg_spawn의 생략 자리(본 무대 · far)로 본다.
     /// </summary>
-    private static StageRect CameraStageRect(StageState core, double width, double height)
+    private static StageRect CameraStageRect(
+        StageState core, string? backgroundRigKey, double width, double height, LayerProfileCurve curve)
     {
-        float cameraScale = ShotIntentMath.EvaluateCameraScale(core.Shot.Zoom);
-        Vec2 pan = core.Shot.PanInRigSpace;
+        SlotAttachment place = backgroundRigKey is not null && core.TryGetAttachment(backgroundRigKey, out SlotAttachment attachment)
+            ? attachment
+            : new SlotAttachment(StageRoles.MainStageKey, "far");
 
-        double halfWidth = width / 2 * cameraScale;
-        double halfHeight = height / 2 * cameraScale;
+        ShotView view = ShotViewAt(core, place, curve);
+
+        Vec2 min = view.Project(new Vec2((float)(-width / 2), (float)(-height / 2)));
+        Vec2 max = view.Project(new Vec2((float)(width / 2), (float)(height / 2)));
 
         // 루트 공간(중앙 원점·y 위) → 캔버스(좌상 원점·y 아래) — PlaceCorePortraits와 같은 변환.
         return new StageRect(
-            width / 2 + (-halfWidth + pan.X),
-            height / 2 - (halfHeight + pan.Y),
-            halfWidth * 2,
-            halfHeight * 2);
+            width / 2 + min.X,
+            height / 2 - max.Y,
+            max.X - min.X,
+            max.Y - min.Y);
     }
 
     /// <summary>
-    /// 슬롯 부착(stage/layer)의 그리기 순위 (W27). 캔버스는 나중에 그린 것이 위에 오므로
-    /// 뒤(far)부터 앞(close) 순으로 정렬한다. 레이어 어휘와 순서는
-    /// <see cref="ArgumentTokenCandidates"/>의 layerKey 후보(far→close)가 원천이다 —
-    /// 여기 사본을 두지 않는다. 모르는 레이어 토큰은 기본값 mid 자리로 취급한다.
+    /// 슬롯이 선 자리(무대 · 층)에서 샷이 그 점을 무대 루트의 어디에 보이게 하는가 — 런타임 계층(Pan → Zoom → Layer)과
+    /// 같은 식(<see cref="ShotLayoutMath.ProjectToRigSpace"/>)이다. 본 무대만 샷을 따르고(<see cref="StageRoles"/>),
+    /// 덮는 무대는 중립(항등)이다. mid 층의 반응은 항등이라 본 무대 mid에서는 "논리 × 배율 + pan" 그대로다.
     /// </summary>
-    private static int LayerRank(string? layerKey)
+    private readonly record struct ShotView(float CameraScale, Vec2 Pan, LayerResponse Layer)
     {
-        IReadOnlyList<string> layers = Vn.Authoring.Definition.ArgumentTokenCandidates.For("layerKey");
-
-        for (int index = 0; index < layers.Count; index++)
+        public Vec2 Project(Vec2 pointInLayer)
         {
-            if (string.Equals(layers[index], layerKey, StringComparison.Ordinal))
-            {
-                return index;
-            }
+            LayerResponse layer = Layer;
+            return ShotLayoutMath.ProjectToRigSpace(pointInLayer, CameraScale, Pan, in layer);
         }
+    }
 
-        return layers.Count / 2; // 기본 레이어 mid의 자리
+    private static ShotView ShotViewAt(StageState core, in SlotAttachment place, LayerProfileCurve curve)
+    {
+        ShotIntentState shot = StageRoles.Of(place.StageKey) == StageRole.Main ? core.Shot : ShotIntentState.Default;
+
+        ShotLayoutMath.SolveCamera(in shot, out float cameraScale, out Vec2 pan);
+
+        return new ShotView(cameraScale, pan, ShotLayoutMath.SolveLayer(in shot, place.LayerDepth, curve));
     }
 
     /// <summary>깊이 스케일 — size 프리셋이 CharSlot_DepthScale에 접은 값. 없으면 1(기본).</summary>
@@ -147,12 +156,12 @@ public static class StageSceneComposer
     /// 코어 확정 상태의 실제 좌표로 배치한다 (W25) — 균등 나열이 아니라 재현이다(H-3).
     ///
     /// rect는 <c>CharacterPortraitSprite_Image</c>의 pivot 기준 네 모서리를 리그 트리로
-    /// 루트 공간에 변환한 축 정렬 경계이고, 샷은 적용측 규약(보이는 위치 = 논리 × 배율 + pan)
-    /// 그대로 씌운다. 좌표 계산은 전부 코어에서 끝났다 — 여기는 좌표계 변환(중앙 원점·y위 →
-    /// 캔버스 좌상 원점·y아래)만 있다(D-core-2).
+    /// 루트 공간에 변환한 축 정렬 경계이고, 샷은 그 슬롯이 선 무대 · 층의 식(<see cref="ShotView"/>)으로
+    /// 씌운다 — 런타임 무대 리그와 같은 식이다. 좌표 계산은 전부 코어에서 끝났다 — 여기는 좌표계 변환
+    /// (중앙 원점·y위 → 캔버스 좌상 원점·y아래)만 있다(D-core-2).
     ///
-    /// 그리기 순서 = 슬롯 부착 (stage, layer, 슬롯 키) 오름차순 (W27) — 슬롯 생성 시 고른
-    /// 위치(무대/레이어)가 실제 앞뒤 관계로 보인다. 같은 자리면 슬롯 키 순서(결정적).
+    /// 그리기 순서 = 슬롯 부착 (무대, 층 d, 깊이, 슬롯 키) 오름차순 (W27) — 런타임과 같다(무대는 세운 순서,
+    /// 층은 d 오름차순 = 먼 층이 뒤). 같은 자리면 슬롯 키 순서(결정적).
     ///
     /// 코어가 모르는 슬롯(보완 폴드의 관대한 생성분·slot_tyrant)은 기존 균등 나열로 함께
     /// 그린다 — 코어에 없다고 화면에서 사라지면 침묵이다.
@@ -162,14 +171,12 @@ public static class StageSceneComposer
         StageState core,
         string? speakerCharacterId,
         double width,
-        double height)
+        double height,
+        LayerProfileCurve curve)
     {
         var portraits = new List<StagePortraitPlacement>();
         var uniformLeftovers = new List<KeyValuePair<string, MiniStageSlot>>();
         bool speakerOnStage = false;
-
-        float cameraScale = ShotIntentMath.EvaluateCameraScale(core.Shot.Zoom);
-        Vec2 pan = core.Shot.PanInRigSpace;
 
         // 숨김·빈 슬롯도 배치한다 — 뷰가 네모 윤곽 + 슬롯명 태그로 자리를 보여 준다(W28).
         // 가시성 판정은 뷰의 일이고, 여기는 자리 계산만 한다.
@@ -177,11 +184,11 @@ public static class StageSceneComposer
         // close로 당긴 캐릭터가 far 캐릭터에 가려지면 화면이 거짓말을 한다.
         IEnumerable<KeyValuePair<string, MiniStageSlot>> drawOrdered = state.Slots
             .OrderBy(entry => core.TryGetAttachment(entry.Key, out SlotAttachment attachment)
-                ? attachment.StageKey ?? "stage00"
-                : "stage00", StringComparer.Ordinal)
+                ? attachment.StageKey
+                : StageRoles.MainStageKey, StringComparer.Ordinal)
             .ThenBy(entry => core.TryGetAttachment(entry.Key, out SlotAttachment attachment)
-                ? LayerRank(attachment.LayerKey)
-                : LayerRank(null))
+                ? attachment.LayerDepth
+                : StageLayerLabels.Mid)
             .ThenBy(entry => DepthScaleOf(core, entry.Key))
             .ThenBy(entry => entry.Key, StringComparer.Ordinal);
 
@@ -202,6 +209,7 @@ public static class StageSceneComposer
 
             RectNodeState imageState = core.Nodes.GetState(imageKey);
             Vec2 size = core.Nodes.GetRectSize(imageKey);
+            ShotView view = ShotViewAt(core, core.GetAttachment(slotKey), curve);
 
             // 로컬 rect의 네 모서리 (원점 = pivot). 회전·스케일이 섞여도 경계는 보존된다.
             Span<Vec3> corners =
@@ -218,10 +226,10 @@ public static class StageSceneComposer
             foreach (Vec3 corner in corners)
             {
                 Vec3 root = core.Nodes.TransformPoint(imageKey, corner);
+                Vec2 seen = view.Project(new Vec2(root.X, root.Y));
 
-                // 샷: 보이는 위치 = 논리 위치 × 배율 + pan (ShotIntentMath 규약).
-                double viewX = root.X * cameraScale + pan.X;
-                double viewY = root.Y * cameraScale + pan.Y;
+                double viewX = seen.X;
+                double viewY = seen.Y;
 
                 minX = Math.Min(minX, viewX);
                 maxX = Math.Max(maxX, viewX);

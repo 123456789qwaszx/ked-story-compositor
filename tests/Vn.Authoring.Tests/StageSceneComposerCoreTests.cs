@@ -107,11 +107,10 @@ public class StageSceneComposerCoreTests
     }
 
     [Fact]
-    public void 카메라는_배경도_태운다()
+    public void 카메라는_배경도_태운다_배경이_선_층의_반응까지()
     {
-        // 2026-08-27 소유자 — "shot_to … 원래라면 bg역시도 크기를 받아야 하는데, 지금은
-        // 오직 캐릭터만 크기영향을 받고 있어." 배경의 자리도 초상과 같은 적용측 규약
-        // (보이는 위치 = 논리 × 배율 + pan)을 무대 네 모서리에 씌운 것이어야 한다.
+        // 배경의 자리 = 무대 네 모서리를 배경 슬롯이 선 무대 · 층의 식(ShotLayoutMath)으로 옮긴 것.
+        // 배경 슬롯이 없으면 bg_spawn의 생략 자리(본 무대 · far)다. 먼 층은 카메라보다 덜 커진다(시차).
         StageCommand[] common =
         [
             new("slot", ["c1"]),
@@ -129,12 +128,80 @@ public class StageSceneComposerCoreTests
         // 샷 없음 = 무대 전체.
         Assert.Equal(new StageRect(0, 0, Width, Height), plain);
 
-        // 줌 = 배율 규약 그대로 커지고, 중앙 기준으로 사방으로 넘친다.
-        double scale = ShotIntentMath.EvaluateCameraScale(4f);
+        // 줌 = 카메라 배율 × far 층 배율로 커지고, 초점 · 팬이 0이라 중앙 기준으로 사방으로 넘친다.
+        double scale = TotalScale(new ShotIntentState(4f, Vec2.Zero, Vec2.Zero), StageLayerLabels.Far);
+        Assert.True(scale < ShotIntentMath.EvaluateCameraScale(4f), "먼 층은 카메라보다 덜 커진다");
         Assert.Equal(Width * scale, zoomed.Width, precision: 2);
         Assert.Equal(Height * scale, zoomed.Height, precision: 2);
         Assert.Equal((Width - zoomed.Width) / 2, zoomed.X, precision: 2);
         Assert.Equal((Height - zoomed.Height) / 2, zoomed.Y, precision: 2);
+    }
+
+    // 층 안의 크기가 화면에서 몇 배로 보이나 — 카메라 배율 × 층 배율(런타임 계층 Pan → Zoom → Layer).
+    private static double TotalScale(in ShotIntentState shot, float layerDepth)
+    {
+        ShotLayoutMath.SolveCamera(in shot, out float cameraScale, out _);
+        return cameraScale * ShotLayoutMath.SolveLayer(in shot, layerDepth, LayerProfileCurve.Default).Scale.X;
+    }
+
+    [Fact]
+    public void 가까운_층의_초상은_줌에_더_커진다()
+    {
+        // 슬롯이 선 층의 반응까지 그린다 — close의 배율 반응은 카메라를 강조한다.
+        StageCommand[] close =
+        [
+            new("slot", ["c1", "stage00", "close"]),
+            new("cast", ["c1", "harin", "a", "1"]),
+            new("show", ["c1"])
+        ];
+
+        StagePortraitPlacement plain = SinglePortrait(CoreState(close), Projection("c1"));
+        StagePortraitPlacement zoomed = SinglePortrait(
+            CoreState([.. close, new StageCommand("shot_zoom", ["4"])]),
+            Projection("c1"));
+
+        double scale = TotalScale(new ShotIntentState(4f, Vec2.Zero, Vec2.Zero), StageLayerLabels.Close);
+        Assert.True(scale > ShotIntentMath.EvaluateCameraScale(4f), "가까운 층은 카메라보다 더 커진다");
+        Assert.Equal(plain.Rect.Width * scale, zoomed.Rect.Width, precision: 2);
+        Assert.Equal(plain.Rect.Height * scale, zoomed.Rect.Height, precision: 2);
+    }
+
+    [Fact]
+    public void 덮는_무대의_초상은_샷을_따르지_않는다()
+    {
+        // 샷은 본 무대만 움직인다(StageRoles) — stage01 · stage02는 컷인 · 인서트 · 커튼이라 카메라가 중립에 고정이다.
+        StageCommand[] overlay =
+        [
+            new("slot", ["c1", "stage01", "mid"]),
+            new("cast", ["c1", "harin", "a", "1"]),
+            new("show", ["c1"])
+        ];
+
+        StagePortraitPlacement plain = SinglePortrait(CoreState(overlay), Projection("c1"));
+        StagePortraitPlacement shot = SinglePortrait(
+            CoreState([.. overlay, new StageCommand("shot_to", ["4", "1u", "0u"])]),
+            Projection("c1"));
+
+        Assert.Equal(plain.Rect, shot.Rect);
+    }
+
+    [Fact]
+    public void mid_층에_선_배경은_카메라_그대로다()
+    {
+        // 배경 슬롯이 선 층의 반응이 들어간다 — mid는 항등이라 카메라 배율 그대로다.
+        StageCommand[] common =
+        [
+            new("bg_spawn", ["bg", "class_day", "stage00", "mid"]),
+            new("shot_zoom", ["4"])
+        ];
+
+        MiniStageState projection = MiniStageState.Empty with { BackgroundRigKey = "bg" };
+        StageRect zoomed = StageSceneComposer.Compose(
+            projection, speakerName: null, speakerCharacterId: null, Width, Height, CoreState(common)).Background!;
+
+        double scale = ShotIntentMath.EvaluateCameraScale(4f);
+        Assert.Equal(Width * scale, zoomed.Width, precision: 2);
+        Assert.Equal(Height * scale, zoomed.Height, precision: 2);
     }
 
     [Fact]

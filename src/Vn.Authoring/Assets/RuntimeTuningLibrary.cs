@@ -55,6 +55,7 @@ public sealed class RuntimeTuningLibrary
         HasFocusTuning = hasFocusTuning;
         SurfaceLayouts = surfaceLayouts;
         Problems = problems;
+        LayerProfile = tuning?.ResolveLayerProfileCurve() ?? LayerProfileCurve.Default;
     }
 
     /// <summary>해석된 덤프 폴더 절대 경로. null이면 폴더 자체가 없다(미수입 상태).</summary>
@@ -81,6 +82,13 @@ public sealed class RuntimeTuningLibrary
     /// 컴포저(대사창 배치)의 입력이라 <see cref="Tuning"/> 밖에 산다. null이면 고정 비율 근사.
     /// </summary>
     public SurfaceLayoutSet? SurfaceLayouts { get; }
+
+    /// <summary>
+    /// 층 반응 곡선 — 샷이 깊이 층마다 다르게 미는 계수(ShotLayoutMath). presets/layer-profile.json이 있으면 그것,
+    /// 없으면 코어 기본(런타임 조립이 쓰는 값). 프리뷰가 슬롯이 선 층의 반응을 풀 때 쓴다 — 폴드는 같은 값을
+    /// <see cref="StageReducerTuning.ResolveLayerProfileCurve"/>로 본다.
+    /// </summary>
+    public LayerProfileCurve LayerProfile { get; }
 
     /// <summary>로드 중 발견한 문제 전부 — 없는 파일의 배치 안내 포함. 프리뷰가 그대로 보여 준다.</summary>
     public IReadOnlyList<string> Problems { get; }
@@ -245,6 +253,30 @@ public sealed class RuntimeTuningLibrary
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 problems.Add($"tuning 파일을 읽지 못했습니다: {MotionLibraryJson.FileName} — {exception.Message}");
+            }
+        }
+
+        // ── 층 반응 곡선 (presets/layer-profile.json) — 런타임 덤프의 것. 없는 것이 정상 경로라(코어 기본 곡선이
+        // 곧 런타임 조립의 값이다) 문제로 적지 않는다. 있는데 곡선이 성립하지 않으면(표본 순서 · panResponse) 적고 기본으로 간다.
+        string layerProfileRelative = Path.Combine("presets", "layer-profile.json");
+
+        if (File.Exists(Path.Combine(root, layerProfileRelative)))
+        {
+            LayerProfileFileDto? layerProfile = ReadFile<LayerProfileFileDto>(
+                root, layerProfileRelative, problems,
+                guidance: "층 반응은 코어 기본 곡선으로 풉니다.");
+
+            if (layerProfile is not null)
+            {
+                try
+                {
+                    LayerProfileCurve.FromDto(layerProfile);
+                    tuning.LayerProfile = layerProfile;
+                }
+                catch (ArgumentException exception)
+                {
+                    problems.Add($"tuning 파일의 층 반응 곡선이 성립하지 않습니다: presets/layer-profile.json — {exception.Message} 코어 기본 곡선으로 풉니다.");
+                }
             }
         }
 

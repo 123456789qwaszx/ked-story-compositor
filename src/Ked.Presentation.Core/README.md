@@ -5,7 +5,20 @@
 패키지화는 소유자 결정으로 보류 중이며(2026-08-20), 그 대신 아래 동기화 절차가
 반복 가능한 대체물이다 (`docs/work-orders/presentation-refresh-orders.md` W64).
 
-- 최근 동기화: **2026-11-04** — 저쪽 `dev` @ `5de605a4`. 소스는 줄바꿈까지 같은 한 벌(`diff -r` 0).
+- 최근 동기화: **2026-11-06** — 저쪽 `dev` @ `3f1fb583`. 소스는 줄바꿈까지 같은 한 벌(`diff -r` 0).
+  - 들어온 것: 샷 식(`Transforms/ShotLayoutMath` — 카메라 · 깊이 층 반응 · 합성 · 팬 역산), 층 프로필 곡선과 라벨
+    (`LayerProfileDto` · `StageLayerLabels` — far −1 … close 1), 무대의 역할(`StageRoles` — 본 무대 stage00만 샷을 따르고
+    덮는 무대 stage01 · stage02는 카메라 중립 고정), 슬롯 부착의 깊이 값(`SlotAttachment.LayerDepth`), 하네스의 무대 뷰
+    비교(`StageViewSnapshot` · `StageStateComparer.CompareStageView`), shot_focus_to가 층 반응까지 넣어 명중
+    (`ShotZoomFocusReduction` 시그니처가 바뀌었다 — 이쪽 소비자 0), char_to 제거(리그는 무대 · 층을 옮기지 않는다).
+  - 이쪽 코드 멤버 감사: 이쪽에만 있던 차이는 주석 아홉 파일(이쪽 `7b297a7` 주석 정리 · `6611fd3` place 주석)뿐이었고,
+    저쪽이 같은 정리를 제 문구로 이미 해 두었다 — 저쪽 본으로 덮었다. 로컬 코드 수정 0건.
+  - 소비자 적응(이쪽): 프리뷰(`StageSceneComposer`)가 슬롯 · 배경이 선 무대 · 층의 식(`ShotLayoutMath.ProjectToRigSpace`)으로
+    그리고 덮는 무대는 샷을 태우지 않는다, `RuntimeTuningLibrary`가 `presets/layer-profile.json`을 있으면 싣고
+    `LayerProfile`(없으면 코어 기본)을 낸다, 카탈로그 · 옮김표 · 런타임 등록 픽스처에서 char_to를 걷었다(옮길 정본 없음).
+  - 순수 테스트: `ShotLayoutMathTests`를 새로, 바뀐 다섯 개를 저쪽 본으로. 튜닝 덤프(`ExportedTuning/`)는 그 사이 변경 0.
+
+- 2026-11-04 — 저쪽 `dev` @ `5de605a4`.
   - 들어온 것: `Motion/`(모션 클립 · 규칙 · 수학 — `motion` 폴드), `StageReducer.Background.cs`와
     `BackgroundDimensionsDto`(배경은 캐스팅하지 않은 슬롯 — 저쪽 2026-10-29 배경 리그 제거),
     대본 커맨드 정본화(2026-11-03 — 별칭 이름을 걷음. 옛 연출은 `LegacyCommandUpgrade`가 읽을 때 정본으로 옮긴다).

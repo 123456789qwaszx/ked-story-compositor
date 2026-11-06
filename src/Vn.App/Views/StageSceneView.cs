@@ -633,7 +633,8 @@ internal sealed class StageSceneView : UserControl
             width,
             height,
             request.CoreState,
-            _session?.TuningLibrary.SurfaceLayouts);
+            _session?.TuningLibrary.SurfaceLayouts,
+            _session?.TuningLibrary.LayerProfile);
 
         // 배경도 카메라를 탄다 — 자리는 컴포저가 초상과 같은 규약으로 계산했다.
         // 캔버스에 가장 먼저 얹혀야 하므로(맨 뒤) 컴포즈 직후·초상 앞이 이 호출의 자리다.
@@ -1235,7 +1236,8 @@ internal sealed class StageSceneView : UserControl
             context.Width,
             context.Height,
             plan.Evaluate(elapsedSeconds),
-            _session?.TuningLibrary.SurfaceLayouts);
+            _session?.TuningLibrary.SurfaceLayouts,
+            _session?.TuningLibrary.LayerProfile);
 
         var rects = new Dictionary<string, StageRect>(StringComparer.Ordinal);
 
@@ -4435,7 +4437,9 @@ internal sealed class StageSceneView : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         stageCombo.SelectedItem = currentStage;
-        ToolTip.SetTip(stageCombo, "무대(stage) — 뒤 무대일수록 먼저 그려집니다.");
+        ToolTip.SetTip(stageCombo,
+            "무대(stage) — stage00은 본 무대(샷이 움직인다), stage01 · stage02는 덮는 무대(컷인 · 인서트 · 커튼, 카메라 고정). " +
+            "뒤 무대일수록 먼저 그려집니다.");
 
         var layerCombo = new ComboBox
         {
